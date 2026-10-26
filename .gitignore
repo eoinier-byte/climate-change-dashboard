@@ -1,0 +1,36 @@
+# Secrets
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Django
+db.sqlite3
+staticfiles/
+media/
+
+# Node / React
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+
+# Data: raw climate files are large and downloaded locally, not committed
+pipeline/data/raw/
+*.nc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
