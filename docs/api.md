@@ -1,32 +1,16 @@
-# API guide (draft)
+# API guide
 
 Base URL (local): `http://localhost:8000/api`
 
-## GET /counties/
-```json
-[{ "name": "Cork", "slug": "cork" }]
-```
+The full response shape, change-from-baseline rules and frontend usage are in **[data-flow.md](data-flow.md#stage-4-api-django-rest-framework)**. Keep both files in sync.
 
-## GET /counties/{slug}/
-```json
-{
-  "county": "Cork",
-  "periods": ["1976-2005", "2021-2050", "2071-2100"],
-  "units": { "temperature": "°C", "precipitation_change": "%" },
-  "temperature": {
-    "annual": {
-      "baseline": 10.2,
-      "series": { "rcp45": { "values": [10.2, 11.0, 11.6], "change": [0, 0.8, 1.4] } }
-    }
-  },
-  "rainfall": { "...": "same shape, change in %" },
-  "source": "EPA Research 471 / Climate Ireland"
-}
-```
-404 if the county does not exist. 400 for an invalid `scenario` or `season` query parameter.
+| Method | Path | Returns | Errors |
+|---|---|---|---|
+| GET | `/counties/` | `[{"name": "Cork", "slug": "cork"}, …]`: 26 counties, alphabetical | – |
+| GET | `/counties/{slug}/` | County projections: temperature + rainfall, all seasons, scenarios, periods, seasonal table, commentary, source | 404 unknown county |
+| GET | `/counties/{slug}/?variable=&season=&scenario=` | Filtered projections | 400 invalid parameter |
+| GET | `/sea-level/` | National sea-level projections (source to be confirmed) | – |
+| POST | `/auth/register/`, `/auth/login/`, `/auth/logout/` | Accounts (Sprint 3) | 400 / 401 |
+| POST | `/reports/` | Email a county report (Sprint 3) | 400 / 401 / 429 |
 
-## GET /sea-level/
-```json
-{ "scope": "national", "projections": [{ "scenario": "rcp45", "year": 2100, "rise_m": 0.5 }] }
-```
-(Example values only.)
+Every endpoint has tests for success, 404 and 400 (CCD-93).
