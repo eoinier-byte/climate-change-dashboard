@@ -126,7 +126,7 @@ Climate Ireland has no downloadable sea level data. Its coastal flooding page sh
 | Dublin | 18 | 19 | 23 | 33 | 43 | 65 |
 | Galway | 20 | 21 | 25 | 37 | 46 | 68 |
 
-**CSV rows:** `county, sea_level, {rcp}, {period}, Annual, {value_cm}` for coastal counties only. That adds at most 26 × 3 RCPs × 2 periods = 156 rows, fewer once inland counties are excluded.
+**CSV rows:** `county, sea_level, {rcp}, {period}, Annual, {value_cm}` for coastal counties only. That adds at most 15 coastal counties × 3 RCPs × 2 periods = 90 rows (see variables.md).
 
 ## 6. Not used (available on the site)
 
