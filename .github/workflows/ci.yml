@@ -5,24 +5,27 @@ on:
   push:
     branches: [main]
 
+# hashFiles() only works in step-level `if:`, not job-level, so each step
+# after checkout is skipped until its folder has code in it.
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('pipeline/requirements.txt') != '' }}
     defaults:
       run:
         working-directory: pipeline
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: ${{ hashFiles('pipeline/requirements.txt') != '' }}
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt pytest
+        if: ${{ hashFiles('pipeline/requirements.txt') != '' }}
       - run: pytest -q
+        if: ${{ hashFiles('pipeline/requirements.txt') != '' }}
 
   backend:
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('backend/manage.py') != '' }}
     services:
       postgres:
         image: postgres:16
@@ -45,22 +48,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: ${{ hashFiles('backend/manage.py') != '' }}
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+        if: ${{ hashFiles('backend/manage.py') != '' }}
       - run: python manage.py test
+        if: ${{ hashFiles('backend/manage.py') != '' }}
 
   frontend:
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('frontend/package.json') != '' }}
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        if: ${{ hashFiles('frontend/package.json') != '' }}
         with:
           node-version: "22"
       - run: npm ci
+        if: ${{ hashFiles('frontend/package.json') != '' }}
       - run: npm run build
+        if: ${{ hashFiles('frontend/package.json') != '' }}
       - run: npm test --if-present
+        if: ${{ hashFiles('frontend/package.json') != '' }}
