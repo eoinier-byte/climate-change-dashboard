@@ -18,7 +18,7 @@ The dashboard uses **two variables**, **four scenarios** and **two future period
 
 | Variable | File prefix | NetCDF variable | Scenarios | Periods | Seasons | Units | Absolute or anomaly | Grid | Download format | Files |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Mean temperature | `tmean` | `tmean` | Baseline, RCP2.6, RCP4.5, RCP8.5 | Baseline 1976–2005; 2021–2050; 2071–2100 | Annual, Winter (DJF), Spring (MAM), Summer (JJA), Autumn (SON) | °C | **Absolute** | 1.5 km × 1.5 km, EPSG:4326 (lat/lon) | `.zip` containing NetCDF (`.nc`); the `ensmean` `.nc` is the one used | 5 baseline + 30 future = **35** |
+| Mean temperature | `tmean` | `tmean` | Baseline, RCP2.6, RCP4.5, RCP8.5 | Baseline 1976–2005; 2021–2050; 2071–2100 | Annual, Winter (DJF), Spring (MAM), Summer (JJA), Autumn (SON) | °C | **Absolute** | 1.5 km × 1.5 km, EPSG:4326 (lat/lon) | `.zip` containing NetCDF-4 (`.nc`). The zip is named `…ensmid_final…` but the file inside is `…ensmean_final….nc` | 5 baseline + 30 future = **35** |
 | Precipitation (total) | `tot_prec` | `tot_prec` | same | same | same | mm (total for the season or year) | **Absolute** | same | same | **35** |
 
 **Total: 70 files.** Units and variable names were confirmed with Xarray on the downloaded files. The future files hold absolute climatological values, not anomalies.

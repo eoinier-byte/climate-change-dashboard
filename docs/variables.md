@@ -56,17 +56,16 @@ The pipeline should fail if `temperature` or `precipitation` don't have exactly 
 
 ## 4. Validation ranges
 
-Values outside these ranges should be flagged during cleaning (CCD-25).
+The cleaning step (CCD-275) uses sourced ranges for what is physically impossible in Ireland. They're based on Met Éireann's record extremes, UKCP18 and IPCC AR6. The ranges and their sources are in [`cleaning-rules.md`](cleaning-rules.md), and the values are in `pipeline/config.py`.
 
-| `variable` | Season | Plausible range |
+| `variable` | Season | Range |
 |---|---|---|
-| `temperature` | Annual | 5 to 16 °C |
-| `temperature` | seasonal | −2 to 22 °C |
-| `precipitation` | Annual | 500 to 3,000 mm |
-| `precipitation` | seasonal | 50 to 1,200 mm |
-| `sea_level` | Annual | 0 to 150 cm |
+| `temperature` | all | −18.8 to 32.5 °C |
+| `precipitation` | Annual | 356.6 to 3,964.9 mm |
+| `precipitation` | seasonal | 0 to 2,830.5 mm |
+| `sea_level` | Annual | 0 to 200 cm |
 
-These ranges are set from the baseline maps and the spot checks in `data-review.md`, with a margin. Adjust them if real data falls outside.
+Expected values are much narrower. In the first full run, county temperatures were 4.3 to 17.7 °C and annual precipitation was 832 to 1,890 mm.
 
 ## 5. Gaps and differences to tell the team
 

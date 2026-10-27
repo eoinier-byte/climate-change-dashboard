@@ -25,9 +25,13 @@ build/
 .vite/
 npm-debug.log*
 
-# Data: raw climate files are large and downloaded locally, not committed
-pipeline/data/raw/
+# Data: raw climate files are large and downloaded locally, not committed.
+# The manifest listing them IS committed (CCD-96), and so is the small
+# sample file the tests use.
+pipeline/data/raw/*
+!pipeline/data/raw/MANIFEST.md
 *.nc
+!pipeline/tests/data/*.nc
 
 # Editors / OS
 .vscode/
