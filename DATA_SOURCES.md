@@ -61,5 +61,6 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 | Source | Reason |
 |---|---|
 | IPCC AR6 Synthesis Report (sea level) | Global figures only, on SSP scenarios that don't match the RCPs used elsewhere. Replaced by UKCP18 on 27 Oct 2026 (Jira CCD-19). |
+| EPA Research 471, Updated High-resolution Climate Projections for Ireland (2025) | Newer CMIP6/SSP projections. The Climate Ireland Data Explorer still serves the CMIP5/RCP TRANSLATE data, so we use that for consistency. Revisit when TRANSLATE moves to CMIP6. |
 | EPA Climate Ireland coastal flooding maps | Images only, no downloadable data, and no RCP4.5 |
 | Climate Ireland max/min temperature, 2041–2070, global warming levels | Available but out of scope for the current dashboard |

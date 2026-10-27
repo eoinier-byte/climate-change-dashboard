@@ -29,7 +29,7 @@ pipeline/
 
 ## Getting the raw data
 
-Download from the Climate Ireland Data Explorer / EPA Research 471 into `data/raw/`. Record the exact file names, download date and licence/attribution in `docs/data-sources.md`.
+Download from the Climate Ireland Data Explorer into `data/raw/`. The URL pattern and file list are in `docs/data-review.md`. Sea level comes from Met Office UKCP18 (`data/raw/sea_level/`). Record the exact file names, download date and licence/attribution in [`DATA_SOURCES.md`](../DATA_SOURCES.md).
 
 ## Method notes
 

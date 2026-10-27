@@ -2,7 +2,9 @@
 
 MTU group project 2026. A web app where a user picks an Irish county and sees how its **temperature, rainfall and sea level** are projected to change by 2050 and 2100 under different emissions scenarios (RCP2.6 / RCP4.5 / RCP8.5), using official EPA / Climate Ireland data explained in plain language.
 
-> Academic prototype. We visualise published climate **projections**; we do not produce forecasts. Data © EPA / Climate Ireland, used with attribution.
+> Academic prototype. We visualise published climate **projections**; we do not produce forecasts. Data from EPA Climate Ireland / Met Éireann TRANSLATE, Met Office UKCP18 and the CSO, used with attribution.
+
+**Data sources:** see [DATA_SOURCES.md](DATA_SOURCES.md) for every dataset used, its licence and required attribution.
 
 - **Jira:** project `CCD` (backlog, sprints, Planning Poker). Story IDs in this repo (e.g. `CCD-25`) refer to Jira issues.
 - **Confluence:** Product Goal, Assumptions, Scope, Stakeholders, Risk Assessment (space `SCRUM`).
@@ -81,9 +83,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Data sources
 
-- EPA Climate Ireland Data Explorer: https://www.climateireland.ie/data-explorer/
-- EPA Research 471, Updated High-resolution Climate Projections for Ireland: https://www.epa.ie/publications/research/climate-change/research-471-updated-high-resolution-climate-projections-for-ireland.php
-- Sea-level rise: EPA / Climate Ireland or IPCC AR6 (source to be confirmed in Sprint 1)
+Full details, licences and footer attribution are in [DATA_SOURCES.md](DATA_SOURCES.md). In short:
+
+- **Temperature and rainfall:** Met Éireann TRANSLATE projections (CMIP5; baseline, RCP2.6/4.5/8.5) from the EPA Climate Ireland Data Explorer: https://www.climateireland.ie/data-explorer/
+- **Sea level:** Met Office UKCP18 time-mean sea level projections (RCP2.6/4.5/8.5, coastal counties). This replaces IPCC AR6, decided 27 Oct 2026 (CCD-19).
+- **County boundaries:** CSO `ie_county_26.json`
+
+Dataset review: [docs/data-review.md](docs/data-review.md) · Column specification: [docs/variables.md](docs/variables.md)
 
 ## AI assistance
 

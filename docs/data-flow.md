@@ -26,7 +26,7 @@ The values are climate-model **projections** (averages over 30-year periods), no
 
 ## Stage 1: Source data
 
-**Source:** EPA Climate Ireland, high-resolution CMIP5 projections (EPA Research 471). **Ensemble mean** files, meaning the average of several climate models.
+**Source:** EPA Climate Ireland Data Explorer, Met Éireann TRANSLATE high-resolution CMIP5 projections (O'Brien & Nolan, 2023). **Ensemble mean** files, meaning the average of several climate models. Sea level comes separately from Met Office UKCP18. See [DATA_SOURCES.md](../DATA_SOURCES.md).
 
 | | |
 |---|---|
@@ -51,7 +51,7 @@ data/raw/
 data/boundaries/ie_county_26.json   # county polygons (27 features incl. Northern Ireland)
 ```
 
-Raw files are **not committed** to Git (large and re-downloadable). Record where and when you downloaded them in `docs/data-sources.md`.
+Raw files are **not committed** to Git (large and re-downloadable). Record where and when you downloaded them in [`DATA_SOURCES.md`](../DATA_SOURCES.md).
 
 ---
 
@@ -174,7 +174,7 @@ The baseline is always the **same county, same season, 1976–2005**.
         "rcp85": { "temperature_change": 2.63, "rainfall_change_pct": 22.0 } } }
   ]},
   "commentary": ["By 2071–2100, Cork's average annual temperature is projected to rise by 0.7°C under RCP2.6 and 2.7°C under RCP8.5, compared with 1976–2005."],
-  "source": "EPA Research 471 / Climate Ireland, CMIP5 ensemble mean, county-averaged grid cells"
+  "source": "Met Éireann TRANSLATE via EPA Climate Ireland, CMIP5 ensemble mean, county-averaged grid cells"
 }
 ```
 
