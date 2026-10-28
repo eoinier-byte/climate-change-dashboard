@@ -1,0 +1,57 @@
+erDiagram
+    County ||--|{ ClimateProjection : "has 70"
+    County ||--o{ SeaLevelProjection : "has 0 or 27"
+    DataSource ||--|{ ClimateProjection : "provides"
+    DataSource ||--|{ SeaLevelProjection : "provides"
+
+    County {
+        integer id PK
+        varchar(50) name UK
+        varchar(50) slug UK
+        boolean has_coastline
+    }
+
+    ClimateProjection {
+        bigint id PK
+        integer county_id FK
+        integer data_source_id FK
+        varchar(20) variable "temperature, precipitation"
+        varchar(10) scenario "baseline, rcp26, rcp45, rcp85"
+        varchar(9) period "1976-2005, 2021-2050, 2071-2100"
+        varchar(10) season "annual, winter, spring, summer, autumn"
+        numeric value "numeric(8,3)"
+        varchar(10) unit "degC, mm"
+    }
+
+    SeaLevelProjection {
+        bigint id PK
+        integer county_id FK
+        integer data_source_id FK
+        varchar(10) scenario "rcp26, rcp45, rcp85"
+        smallint year "2020 to 2100, every 10"
+        varchar(10) season "annual"
+        numeric value "numeric(6,3), rise since 1981-2000"
+        varchar(10) unit "cm"
+        varchar(50) provenance
+    }
+
+    DataSource {
+        integer id PK
+        varchar(20) code UK "translate, ukcp18"
+        varchar(200) name
+        varchar(200) organisation
+        varchar(9) baseline_period "1976-2005, 1981-2000"
+        varchar(200) licence
+        text attribution
+        varchar(500) url
+        date accessed_on
+    }
+
+    User["User (planned Sprint 3)"] {
+        integer id PK
+        varchar(254) email UK
+        varchar(128) password "Django hash"
+        varchar(150) first_name
+        varchar(150) last_name
+        boolean email_reports
+    }
