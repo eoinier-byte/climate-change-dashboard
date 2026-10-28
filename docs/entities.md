@@ -2,7 +2,7 @@
 
 Owner: Artur Romanov · CCD-38 · 28 Oct 2026 · input: climate_data.csv, sea_level.csv @ 7fe7a1e
 
-The entities the database stores, built from the two pipeline outputs in `pipeline/data/processed/`. It replaces the draft in [data-model.md](data-model.md) for CCD-33. The load rules follow [data-flow.md](data-flow.md) Stage 3. Sources and licences are in [DATA_SOURCES.md](../DATA_SOURCES.md).
+The entities the database stores, built from the two pipeline outputs in `pipeline/data/processed/`. [data-model.md](data-model.md) is the summary of this design; this file has the detail. The load rules follow [data-flow.md](data-flow.md) Stage 3. Sources and licences are in [DATA_SOURCES.md](../DATA_SOURCES.md).
 
 **Why:** the dashboard must always show scenario, baseline, period, season and unit next to a number (data-flow.md, Risk R8). So each one is stored with every projection value, or reached through a single foreign key. Nothing is left to the frontend to work out.
 
@@ -73,10 +73,10 @@ One row per county × variable × scenario × period × season. Stores absolute 
 | `scenario` | `varchar(10)` | – | never | `baseline`, `rcp26`, `rcp45`, `rcp85` | `climate_data.csv.scenario` |
 | `period` | `varchar(9)` | – | never | `1976-2005` (only with `baseline`), `2021-2050`, `2071-2100` (only with an RCP) | `climate_data.csv.period` |
 | `season` | `varchar(10)` | – | never | `annual`, `winter`, `spring`, `summer`, `autumn` | `climate_data.csv.season` (stored lower case) |
-| `value` | `numeric(8,3)` | `unit` of the row | never | temperature 4–18, precipitation 170–1,950 (CCD-239 ranges, upper bound raised; see §8) | `climate_data.csv.value` |
+| `value` | `numeric(8,3)` | `unit` of the row | never | temperature 4–18, precipitation 170–1,950 (CCD-239 ranges, upper bound raised; see §12 #7) | `climate_data.csv.value` |
 | `unit` | `varchar(10)` | – | never | `degC` with `temperature`, `mm` with `precipitation` | `climate_data.csv.unit` |
 
-Constraints:
+Constraints (full list, with the rows each one rejects, in §10):
 
 - UNIQUE (`county_id`, `variable`, `scenario`, `period`, `season`), so the `update_or_create` loader can't create duplicates.
 - CHECK (`scenario` = `baseline`) = (`period` = `1976-2005`).
@@ -98,7 +98,7 @@ One row per coastal county × scenario × decade. The value is already a change:
 | `unit` | `varchar(10)` | – | never | `cm` | derived at load (constant: from the `_cm` suffix of `rise_cm`) |
 | `provenance` | `varchar(50)` | – | never | `UKCP18`, `UKCP18, estimated from Sligo`, `UKCP18, estimated from Clare` | `sea_level.csv.source` |
 
-Constraints:
+Constraints (full list, with the rows each one rejects, in §10):
 
 - UNIQUE (`county_id`, `scenario`, `year`).
 - CHECK `season` = `annual`, CHECK `unit` = `cm`, CHECK `year` % 10 = 0.
@@ -123,7 +123,7 @@ Lookup table, seeded once from DATA_SOURCES.md. It holds the baseline period for
 
 County boundaries (Tailte Éireann) are not a DataSource row: no projection points to them, and they have no baseline. Their attribution stays in the footer text.
 
-## 7. User (planned, Sprint 3)
+## 7. Users
 
 Django's built-in user model (`AbstractUser`), with one added field. Only what the app needs is stored (data-model.md). No CSV input.
 
@@ -171,7 +171,63 @@ Every column of both CSVs maps to exactly one attribute (CCD-38 done-when).
 
 The baseline period is the only one of the five that isn't a column on the projection itself. It is a property of the dataset, so storing it on 2,225 rows would only create a chance for them to disagree. It is one join away, and the API returns it with every response.
 
-## 10. Design decisions
+## 10. Relationships and rules
+
+### Relationships
+
+| Parent | Child | Cardinality | At `7fe7a1e` |
+|---|---|---|---|
+| County | ClimateProjection | 1–N; each projection has exactly 1 county | 70 rows per county (2 variables × 7 scenario/periods × 5 seasons), 1,820 in total |
+| County | SeaLevelProjection | 1–N, where N can be 0; each projection has exactly 1 county | 27 rows per coastal county (3 scenarios × 9 years). **Inland counties have 0 rows** (11 counties) |
+| DataSource | ClimateProjection | 1–N; each projection has exactly 1 source | `translate` → 1,820 rows |
+| DataSource | SeaLevelProjection | 1–N; each projection has exactly 1 source | `ukcp18` → 405 rows |
+
+User has no relationships yet (§7).
+
+### Sea level: per county, not national
+
+- **Decision:** sea level is stored **per county** (`SeaLevelProjection.county_id`), not as one national series.
+- **Reason:** on 27 Oct 2026 (CCD-19), Eoin replaced IPCC AR6, which gives global figures only, with Met Office UKCP18. UKCP18 has location-specific values along the Irish coast, and the pipeline turns them into values for the 15 coastal counties (DATA_SOURCES.md §2, §5).
+- **Consequence:** the 11 inland counties have no rows, and `County.has_coastline = false`. The API and dashboard show **"No coastline"** for them, never 0 cm (variables.md §5.3). The draft's national `/api/sea-level/` becomes a per-county field.
+
+### Uniqueness rules
+
+| Rule | Rejects |
+|---|---|
+| `County` UNIQUE (`name`) | a second `Cork` county row |
+| `County` UNIQUE (`slug`) | a second county with slug `cork`, so `/api/counties/cork/` can't match two counties |
+| `DataSource` UNIQUE (`code`) | a second `ukcp18` source row |
+| `ClimateProjection` UNIQUE (`county_id`, `variable`, `scenario`, `period`, `season`) | a second Cork / temperature / rcp85 / 2071-2100 / annual row |
+| `SeaLevelProjection` UNIQUE (`county_id`, `scenario`, `year`) | a second Cork / rcp85 / 2100 row |
+| `User` UNIQUE (`email`) | a second account for the same email address |
+
+### CHECK constraints
+
+| Table | CHECK | Rejects |
+|---|---|---|
+| ClimateProjection | `variable` IN (`temperature`, `precipitation`) | a `sea_level` or `Temperature` row (sea level has its own table) |
+| ClimateProjection | `scenario` IN (`baseline`, `rcp26`, `rcp45`, `rcp85`) | a `rcp60` or `unknown` scenario |
+| ClimateProjection | `period` IN (`1976-2005`, `2021-2050`, `2071-2100`) | a `2041-2070` row (available from the source but out of scope) |
+| ClimateProjection | `season` IN (`annual`, `winter`, `spring`, `summer`, `autumn`) | an `Annual` or `DJF` row the loader forgot to convert |
+| ClimateProjection | (`scenario` = `baseline`) = (`period` = `1976-2005`) | a baseline / 2071-2100 row, or an rcp45 / 1976-2005 row |
+| ClimateProjection | (`variable`, `unit`) IN ((`temperature`, `degC`), (`precipitation`, `mm`)) | a temperature row in `mm`, or a precipitation row in `degC` |
+| SeaLevelProjection | `scenario` IN (`rcp26`, `rcp45`, `rcp85`) | a `baseline` sea level row (the baseline is 0 cm by definition) |
+| SeaLevelProjection | `year` BETWEEN 2020 AND 2100 AND `year` % 10 = 0 | a 2045 or 2150 row |
+| SeaLevelProjection | `season` = `annual` | a `winter` sea level row |
+| SeaLevelProjection | `unit` = `cm` | a row in `m`, e.g. a 0.67 that should be 67 cm |
+
+Not database constraints:
+
+- **Coastal counties only.** "A SeaLevelProjection's county has `has_coastline = true`" spans two tables, so a CHECK can't enforce it. The loader enforces it instead, and rejects e.g. an `Offaly` sea level row.
+- **Plausible value ranges** (§4, §5) are validation checks (CCD-239), not CHECKs, so a real extreme value raises a warning rather than blocking the load.
+
+### Delete behaviour
+
+Every foreign key is **RESTRICT / PROTECT** (Django `on_delete=models.PROTECT`): ClimateProjection → County, ClimateProjection → DataSource, SeaLevelProjection → County and SeaLevelProjection → DataSource.
+
+**Why:** a County or DataSource can't be deleted while projections point to it. CASCADE would silently remove 70+ projection rows, or a dataset's attribution, and the dashboard would show gaps with no error. The data only changes when the pipeline re-runs, and the loader's `update_or_create` handles that, so nothing in normal use ever needs to delete a parent. A real removal has to delete the projections first, on purpose.
+
+## 11. Design decisions
 
 1. **Two projection tables, not one.** Climate rows are keyed by `period` + `season`, sea level by `year`. Their baselines and sources also differ. One table would need nullable columns, which this design forbids.
 2. **Absolute values only.** The change from baseline is calculated in the API (data-flow.md Stage 4). Sea level is already a change, so `value` is stored as given.
@@ -181,13 +237,13 @@ The baseline period is the only one of the five that isn't a column on the proje
 6. **No NULLs.** "Not applicable" is a constant (`season = annual`) or a missing row (inland counties), never NULL.
 7. **Text with CHECK constraints instead of lookup tables** for `variable`, `scenario`, `period` and `season`. The value sets are small and fixed, and this keeps the loader 1:1 with the CSV. They can be promoted to tables later if labels or colours need storing.
 
-## 11. Contradictions found (resolved here)
+## 12. Contradictions found (resolved here)
 
 | # | Where | Says | Data at `7fe7a1e` / this doc |
 |---|---|---|---|
-| 1 | data-model.md SeaLevelProjection | `rise_m`, metres, years `2050`, `2100`, no county | `rise_cm` in cm, 9 decades 2020–2100, per county. Followed the data |
+| 1 | data-model.md draft, SeaLevelProjection | `rise_m`, metres, years `2050`, `2100`, no county | `rise_cm` in cm, 9 decades 2020–2100, per county. Followed the data |
 | 2 | variables.md §1–3 | `sea_level` is a `variable` row in `climate_data.csv`, with 30-year periods, ≤ 90 rows | Separate `sea_level.csv`, decade years, 405 rows. Separate entity |
-| 3 | data-model.md, data-flow.md Stage 3 | `unit` is derived at load as `°C` / `mm` | CSV now has a `unit` column with `degC`. Loaded from the CSV as-is (decision 3) |
+| 3 | data-model.md draft, data-flow.md Stage 3 | `unit` is derived at load as `°C` / `mm` | CSV now has a `unit` column with `degC`. Loaded from the CSV as-is (decision 3) |
 | 4 | data-flow.md Stage 2 example | CSV has no `unit` column | CSV has 7 columns, including `unit` |
 | 5 | DATA_SOURCES.md §3, data-flow.md Stage 1 | Boundaries are CSO `ie_county_26.json` | pipeline/README.md: the Tailte Éireann file is used. DATA_SOURCES.md needs an update (not a DB change) |
 | 6 | variables.md §2 | File names use `ensmid` | pipeline/README.md and data-flow.md use `ensmean`. No DB impact; flag to the pipeline owner |
