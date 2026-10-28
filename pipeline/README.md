@@ -1,36 +1,92 @@
 # pipeline/: climate data processing
 
-Turns raw EPA / Climate Ireland projections into county-level values the backend can serve.
+Turns the raw climate downloads into two county-level files the backend can load:
 
-**Jira:** CCD-16 Research datasets · CCD-25 Process raw data · CCD-31 Aggregate by county · CCD-40 Automated pipeline · CCD-67 Populate database · CCD-239 Data validation
+- `data/processed/climate_data.csv`: temperature and rainfall
+- `data/processed/sea_level.csv`: sea level rise every 10 years
 
-## What it produces
+Each has a `.json` copy with the same rows.
 
-For every county, variable (temperature, precipitation), season (annual, winter, spring, summer, autumn), scenario (baseline, RCP2.6, RCP4.5, RCP8.5) and period (1976–2005, 2021–2050, 2071–2100):
+**Jira:** CCD-25 Process raw data · CCD-31 Aggregate by county
 
-| county | variable | season | scenario | period | value | unit |
+## The steps
+
+Run each one from this `pipeline/` folder. Steps 01–07 only **look** at the data; 08 and `process_climate_data.py` write files.
+
+| Step | Script | What it does | What we found |
+|---|---|---|---|
+| 01 | `01_inspect_temperature_baseline.py` | Prints each temperature baseline file and its attributes | Variable `tmean`, °C, grid 451 × 351 (about 1 km cells), one time step, sea cells empty |
+| 02 | `02_inspect_temperature_rcp.py` | Same, for the 30 temperature RCP files | Same grid and units; time labelled 2035 / 2085 (middle of each period) |
+| 03 | `03_inspect_precipitation_baseline.py` | Same, for the rainfall baseline files | Variable `tot_prec`, mm, same grid. A different product ("Seamus Gridded Rainfall") with a wider land mask that includes a strip of sea |
+| 04 | `04_inspect_precipitation_rcp.py` | Same, for the 30 rainfall RCP files | Same grid, mm |
+| 05 | `05_inspect_county_boundaries.py` | Tests which coordinate system the CSO county file really uses | It says nothing, so Python assumes lat/lon, but it's really **EPSG:29903 (Irish Grid)** |
+| 06 | `06_inspect_tailte_eireann_boundaries.py` | Compares the Tailte Éireann county file with the CSO one | Same 26 counties, already in lat/lon, much more detailed coastline: matches 255 more land cells. **We use this file** |
+| 07 | `07_inspect_sea_level_json.py` | Prints the UKCP18 sea level file's layout, a sample row, the number of points and the X/Y ranges | 212 sea points (not counties), 3 scenarios × 3 percentiles, rise in cm since 1981–2000. The file says 27700 (British National Grid), but that's only for shapes it doesn't include: **X and Y are lat/lon** || 08 | `08_sea_level_json_to_csv.py` | Turns the sea level JSON into a smaller CSV | 842 KB JSON → 230 KB CSV |
+| 09 | `process_climate_data.py` | Builds the two outputs | 1,820 + 405 rows (see below) |
+
+`filename_info.py` is a helper: `get_file_details()` reads the variable, scenario, period and season from a file name. It's used by `process_climate_data.py`.
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+python 08_sea_level_json_to_csv.py
+python process_climate_data.py
+```
+
+The inspection steps (01–07) are optional; run them to see the data for yourself.
+
+## Raw data (not committed to git)
+
+```
+data/
+├── raw/
+│   ├── temperature/
+│   │   ├── baseline/   tmean_CMIP5_baseline_1976-2005_<SEASON>.nc            (5 files)
+│   │   ├── rcp26/      tmean_CMIP5_rcp26_<PERIOD>_ensmean_final_<SEASON>.nc  (10 files)
+│   │   ├── rcp45/      (10 files)
+│   │   └── rcp85/      (10 files)
+│   ├── precipitation/  the same layout, tot_prec_... files                    (35 files)
+│   └── sea_level/
+│       ├── ukcp18_sea_level_ireland.json   downloaded by hand from the Met Office
+│       └── ukcp18_sea_level_ireland.csv    made by step 08
+├── boundaries/
+│   ├── counties_tailte_eireann_2019.geojson   used (Tailte Éireann, CC BY 4.0)
+│   └── ie_county_26.json                      old CSO file, kept for steps 05 and 06
+└── processed/
+    ├── climate_data.csv / .json
+    └── sea_level.csv / .json
+```
+
+`<SEASON>` is ANNUAL, DJF (winter), MAM (spring), JJA (summer) or SON (autumn). `<PERIOD>` is 2021-2050 or 2071-2100.
+
+Where the data comes from, and the licences, are in [`DATA_SOURCES.md`](../DATA_SOURCES.md).
+
+## Output
+
+**`climate_data.csv`**: 26 counties × 35 files = **910 rows each** for temperature and rainfall (1,820 in total).
+
+| county | variable | scenario | period | season | value | unit |
 |---|---|---|---|---|---|---|
+| Cork | temperature | baseline | 1976-2005 | Annual | 9.815 | degC |
+| Cork | precipitation | rcp85 | 2071-2100 | Winter | 528.778 | mm |
 
-- Temperature change is shown in °C; rainfall change as % of the 1976–2005 baseline.
-- Sea-level rise is national (2050, 2100), not per county.
+**`sea_level.csv`**: 15 coastal counties × 3 scenarios × 9 decades (2020–2100) = **405 rows**. Inland counties have no rows. `rise_cm` is the rise since the 1981–2000 average, so the baseline is 0 cm (about 1990) and has no row.
 
-## Layout (to be filled in during Sprint 1)
+| county | scenario | year | rise_cm | source |
+|---|---|---|---|---|
+| Sligo | rcp85 | 2100 | 67.371 | UKCP18 |
+| Leitrim | rcp85 | 2100 | 67.371 | UKCP18, estimated from Sligo |
 
-```
-pipeline/
-  data/raw/         # downloaded source files - NOT committed (see .gitignore)
-  data/processed/   # climate_data.csv and dashboard JSON outputs
-  process.py        # raw -> tidy CSV
-  aggregate.py      # grid cells -> county averages
-  load_db.py        # processed CSV -> PostgreSQL
-  tests/
-  requirements.txt  # pandas, numpy, xarray, geopandas, netCDF4
-```
+## How it works
 
-## Getting the raw data
+- **Grid cells → counties:** all 70 files share the same grid, so the land cells are matched to counties **once**, using the temperature baseline's land cells. Each file's values are then read for those same cells **by row and column**. This means temperature and rainfall are averaged over exactly the same land, and rainfall's sea strip is ignored.
+- **County value:** the plain average of the cells inside the county.
+- **Change from baseline** is worked out by the app: projection − baseline for °C, and (projection − baseline) ÷ baseline × 100 for rainfall %.
+- **Sea level → counties:** each sea point goes to its **nearest** county within 15 km; points off Northern Ireland, Scotland and Wales are too far and are dropped. We use the 50th percentile (middle estimate). A county's value for each decade is the average of its points.
 
-Download from the Climate Ireland Data Explorer into `data/raw/`. The URL pattern and file list are in `docs/data-review.md`. Sea level comes from Met Office UKCP18 (`data/raw/sea_level/`). Record the exact file names, download date and licence/attribution in [`DATA_SOURCES.md`](../DATA_SOURCES.md).
+## Known limitations
 
-## Method notes
-
-Document how grid cells are assigned to counties (cell centre inside boundary vs. area-weighted) and any limitations. This is checked in CCD-239.
+- **Leitrim and Limerick** have coastline but no UKCP18 sea point near it. Leitrim uses **Sligo's** sea level values (Donegal Bay) and Limerick uses **Clare's** (Shannon Estuary). These are estimates.
+- A small number of coastal land cells fall just outside the county outlines and aren't counted.
+- Baselines differ: temperature and rainfall use 1976–2005; sea level uses 1981–2000. Both are centred on about 1990.

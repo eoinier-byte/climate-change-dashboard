@@ -1,0 +1,406 @@
+county,scenario,year,rise_cm,source
+Clare,rcp26,2020,8.623,UKCP18
+Clare,rcp26,2030,12.651,UKCP18
+Clare,rcp26,2040,16.719,UKCP18
+Clare,rcp26,2050,20.725,UKCP18
+Clare,rcp26,2060,24.584,UKCP18
+Clare,rcp26,2070,28.327,UKCP18
+Clare,rcp26,2080,31.904,UKCP18
+Clare,rcp26,2090,35.377,UKCP18
+Clare,rcp26,2100,38.691,UKCP18
+Clare,rcp45,2020,8.604,UKCP18
+Clare,rcp45,2030,12.77,UKCP18
+Clare,rcp45,2040,17.295,UKCP18
+Clare,rcp45,2050,22.299,UKCP18
+Clare,rcp45,2060,27.45,UKCP18
+Clare,rcp45,2070,32.825,UKCP18
+Clare,rcp45,2080,38.218,UKCP18
+Clare,rcp45,2090,43.288,UKCP18
+Clare,rcp45,2100,48.452,UKCP18
+Clare,rcp85,2020,9.351,UKCP18
+Clare,rcp85,2030,14.151,UKCP18
+Clare,rcp85,2040,19.859,UKCP18
+Clare,rcp85,2050,26.461,UKCP18
+Clare,rcp85,2060,33.9,UKCP18
+Clare,rcp85,2070,42.233,UKCP18
+Clare,rcp85,2080,51.149,UKCP18
+Clare,rcp85,2090,60.623,UKCP18
+Clare,rcp85,2100,70.538,UKCP18
+Cork,rcp26,2020,9.614,UKCP18
+Cork,rcp26,2030,14.007,UKCP18
+Cork,rcp26,2040,18.447,UKCP18
+Cork,rcp26,2050,22.827,UKCP18
+Cork,rcp26,2060,27.069,UKCP18
+Cork,rcp26,2070,31.196,UKCP18
+Cork,rcp26,2080,35.152,UKCP18
+Cork,rcp26,2090,39.003,UKCP18
+Cork,rcp26,2100,42.702,UKCP18
+Cork,rcp45,2020,9.594,UKCP18
+Cork,rcp45,2030,14.125,UKCP18
+Cork,rcp45,2040,19.026,UKCP18
+Cork,rcp45,2050,24.419,UKCP18
+Cork,rcp45,2060,29.966,UKCP18
+Cork,rcp45,2070,35.758,UKCP18
+Cork,rcp45,2080,41.572,UKCP18
+Cork,rcp45,2090,47.07,UKCP18
+Cork,rcp45,2100,52.676,UKCP18
+Cork,rcp85,2020,10.34,UKCP18
+Cork,rcp85,2030,15.516,UKCP18
+Cork,rcp85,2040,21.618,UKCP18
+Cork,rcp85,2050,28.634,UKCP18
+Cork,rcp85,2060,36.525,UKCP18
+Cork,rcp85,2070,45.355,UKCP18
+Cork,rcp85,2080,54.809,UKCP18
+Cork,rcp85,2090,64.857,UKCP18
+Cork,rcp85,2100,75.404,UKCP18
+Donegal,rcp26,2020,7.293,UKCP18
+Donegal,rcp26,2030,10.829,UKCP18
+Donegal,rcp26,2040,14.397,UKCP18
+Donegal,rcp26,2050,17.892,UKCP18
+Donegal,rcp26,2060,21.246,UKCP18
+Donegal,rcp26,2070,24.496,UKCP18
+Donegal,rcp26,2080,27.562,UKCP18
+Donegal,rcp26,2090,30.524,UKCP18
+Donegal,rcp26,2100,33.332,UKCP18
+Donegal,rcp45,2020,7.271,UKCP18
+Donegal,rcp45,2030,10.953,UKCP18
+Donegal,rcp45,2040,14.969,UKCP18
+Donegal,rcp45,2050,19.456,UKCP18
+Donegal,rcp45,2060,24.068,UKCP18
+Donegal,rcp45,2070,28.887,UKCP18
+Donegal,rcp45,2080,33.717,UKCP18
+Donegal,rcp45,2090,38.209,UKCP18
+Donegal,rcp45,2100,42.795,UKCP18
+Donegal,rcp85,2020,8.022,UKCP18
+Donegal,rcp85,2030,12.322,UKCP18
+Donegal,rcp85,2040,17.51,UKCP18
+Donegal,rcp85,2050,23.552,UKCP18
+Donegal,rcp85,2060,30.38,UKCP18
+Donegal,rcp85,2070,38.058,UKCP18
+Donegal,rcp85,2080,46.276,UKCP18
+Donegal,rcp85,2090,54.986,UKCP18
+Donegal,rcp85,2100,64.046,UKCP18
+Dublin,rcp26,2020,7.028,UKCP18
+Dublin,rcp26,2030,10.5,UKCP18
+Dublin,rcp26,2040,14.017,UKCP18
+Dublin,rcp26,2050,17.467,UKCP18
+Dublin,rcp26,2060,20.787,UKCP18
+Dublin,rcp26,2070,24.01,UKCP18
+Dublin,rcp26,2080,27.03,UKCP18
+Dublin,rcp26,2090,29.952,UKCP18
+Dublin,rcp26,2100,32.726,UKCP18
+Dublin,rcp45,2020,6.999,UKCP18
+Dublin,rcp45,2030,10.616,UKCP18
+Dublin,rcp45,2040,14.589,UKCP18
+Dublin,rcp45,2050,19.046,UKCP18
+Dublin,rcp45,2060,23.653,UKCP18
+Dublin,rcp45,2070,28.481,UKCP18
+Dublin,rcp45,2080,33.326,UKCP18
+Dublin,rcp45,2090,37.858,UKCP18
+Dublin,rcp45,2100,42.467,UKCP18
+Dublin,rcp85,2020,7.753,UKCP18
+Dublin,rcp85,2030,12.004,UKCP18
+Dublin,rcp85,2040,17.171,UKCP18
+Dublin,rcp85,2050,23.236,UKCP18
+Dublin,rcp85,2060,30.135,UKCP18
+Dublin,rcp85,2070,37.953,UKCP18
+Dublin,rcp85,2080,46.364,UKCP18
+Dublin,rcp85,2090,55.347,UKCP18
+Dublin,rcp85,2100,64.777,UKCP18
+Galway,rcp26,2020,8.691,UKCP18
+Galway,rcp26,2030,12.732,UKCP18
+Galway,rcp26,2040,16.813,UKCP18
+Galway,rcp26,2050,20.828,UKCP18
+Galway,rcp26,2060,24.695,UKCP18
+Galway,rcp26,2070,28.444,UKCP18
+Galway,rcp26,2080,32.032,UKCP18
+Galway,rcp26,2090,35.508,UKCP18
+Galway,rcp26,2100,38.833,UKCP18
+Galway,rcp45,2020,8.674,UKCP18
+Galway,rcp45,2030,12.853,UKCP18
+Galway,rcp45,2040,17.39,UKCP18
+Galway,rcp45,2050,22.399,UKCP18
+Galway,rcp45,2060,27.555,UKCP18
+Galway,rcp45,2070,32.92,UKCP18
+Galway,rcp45,2080,38.306,UKCP18
+Galway,rcp45,2090,43.367,UKCP18
+Galway,rcp45,2100,48.516,UKCP18
+Galway,rcp85,2020,9.416,UKCP18
+Galway,rcp85,2030,14.23,UKCP18
+Galway,rcp85,2040,19.94,UKCP18
+Galway,rcp85,2050,26.538,UKCP18
+Galway,rcp85,2060,33.958,UKCP18
+Galway,rcp85,2070,42.254,UKCP18
+Galway,rcp85,2080,51.122,UKCP18
+Galway,rcp85,2090,60.521,UKCP18
+Galway,rcp85,2100,70.343,UKCP18
+Kerry,rcp26,2020,9.622,UKCP18
+Kerry,rcp26,2030,14.002,UKCP18
+Kerry,rcp26,2040,18.429,UKCP18
+Kerry,rcp26,2050,22.799,UKCP18
+Kerry,rcp26,2060,27.014,UKCP18
+Kerry,rcp26,2070,31.122,UKCP18
+Kerry,rcp26,2080,35.057,UKCP18
+Kerry,rcp26,2090,38.893,UKCP18
+Kerry,rcp26,2100,42.57,UKCP18
+Kerry,rcp45,2020,9.604,UKCP18
+Kerry,rcp45,2030,14.127,UKCP18
+Kerry,rcp45,2040,19.01,UKCP18
+Kerry,rcp45,2050,24.387,UKCP18
+Kerry,rcp45,2060,29.91,UKCP18
+Kerry,rcp45,2070,35.664,UKCP18
+Kerry,rcp45,2080,41.431,UKCP18
+Kerry,rcp45,2090,46.88,UKCP18
+Kerry,rcp45,2100,52.438,UKCP18
+Kerry,rcp85,2020,10.344,UKCP18
+Kerry,rcp85,2030,15.506,UKCP18
+Kerry,rcp85,2040,21.58,UKCP18
+Kerry,rcp85,2050,28.554,UKCP18
+Kerry,rcp85,2060,36.389,UKCP18
+Kerry,rcp85,2070,45.135,UKCP18
+Kerry,rcp85,2080,54.494,UKCP18
+Kerry,rcp85,2090,64.406,UKCP18
+Kerry,rcp85,2100,74.789,UKCP18
+Leitrim,rcp26,2020,7.842,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2030,11.577,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2040,15.346,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2050,19.042,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2060,22.599,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2070,26.043,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2080,29.317,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2090,32.483,"UKCP18, estimated from Sligo"
+Leitrim,rcp26,2100,35.485,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2020,7.821,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2030,11.699,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2040,15.917,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2050,20.61,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2060,25.427,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2070,30.467,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2080,35.516,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2090,40.228,"UKCP18, estimated from Sligo"
+Leitrim,rcp45,2100,45.023,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2020,8.572,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2030,13.073,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2040,18.464,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2050,24.718,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2060,31.779,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2070,39.696,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2080,48.159,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2090,57.146,"UKCP18, estimated from Sligo"
+Leitrim,rcp85,2100,66.5,"UKCP18, estimated from Sligo"
+Limerick,rcp26,2020,8.623,"UKCP18, estimated from Clare"
+Limerick,rcp26,2030,12.651,"UKCP18, estimated from Clare"
+Limerick,rcp26,2040,16.719,"UKCP18, estimated from Clare"
+Limerick,rcp26,2050,20.725,"UKCP18, estimated from Clare"
+Limerick,rcp26,2060,24.584,"UKCP18, estimated from Clare"
+Limerick,rcp26,2070,28.327,"UKCP18, estimated from Clare"
+Limerick,rcp26,2080,31.904,"UKCP18, estimated from Clare"
+Limerick,rcp26,2090,35.377,"UKCP18, estimated from Clare"
+Limerick,rcp26,2100,38.691,"UKCP18, estimated from Clare"
+Limerick,rcp45,2020,8.604,"UKCP18, estimated from Clare"
+Limerick,rcp45,2030,12.77,"UKCP18, estimated from Clare"
+Limerick,rcp45,2040,17.295,"UKCP18, estimated from Clare"
+Limerick,rcp45,2050,22.299,"UKCP18, estimated from Clare"
+Limerick,rcp45,2060,27.45,"UKCP18, estimated from Clare"
+Limerick,rcp45,2070,32.825,"UKCP18, estimated from Clare"
+Limerick,rcp45,2080,38.218,"UKCP18, estimated from Clare"
+Limerick,rcp45,2090,43.288,"UKCP18, estimated from Clare"
+Limerick,rcp45,2100,48.452,"UKCP18, estimated from Clare"
+Limerick,rcp85,2020,9.351,"UKCP18, estimated from Clare"
+Limerick,rcp85,2030,14.151,"UKCP18, estimated from Clare"
+Limerick,rcp85,2040,19.859,"UKCP18, estimated from Clare"
+Limerick,rcp85,2050,26.461,"UKCP18, estimated from Clare"
+Limerick,rcp85,2060,33.9,"UKCP18, estimated from Clare"
+Limerick,rcp85,2070,42.233,"UKCP18, estimated from Clare"
+Limerick,rcp85,2080,51.149,"UKCP18, estimated from Clare"
+Limerick,rcp85,2090,60.623,"UKCP18, estimated from Clare"
+Limerick,rcp85,2100,70.538,"UKCP18, estimated from Clare"
+Louth,rcp26,2020,6.441,UKCP18
+Louth,rcp26,2030,9.704,UKCP18
+Louth,rcp26,2040,13.003,UKCP18
+Louth,rcp26,2050,16.24,UKCP18
+Louth,rcp26,2060,19.342,UKCP18
+Louth,rcp26,2070,22.35,UKCP18
+Louth,rcp26,2080,25.159,UKCP18
+Louth,rcp26,2090,27.849,UKCP18
+Louth,rcp26,2100,30.416,UKCP18
+Louth,rcp45,2020,6.413,UKCP18
+Louth,rcp45,2030,9.818,UKCP18
+Louth,rcp45,2040,13.578,UKCP18
+Louth,rcp45,2050,17.82,UKCP18
+Louth,rcp45,2060,22.2,UKCP18
+Louth,rcp45,2070,26.794,UKCP18
+Louth,rcp45,2080,31.415,UKCP18
+Louth,rcp45,2090,35.705,UKCP18
+Louth,rcp45,2100,40.089,UKCP18
+Louth,rcp85,2020,7.166,UKCP18
+Louth,rcp85,2030,11.202,UKCP18
+Louth,rcp85,2040,16.151,UKCP18
+Louth,rcp85,2050,21.986,UKCP18
+Louth,rcp85,2060,28.641,UKCP18
+Louth,rcp85,2070,36.198,UKCP18
+Louth,rcp85,2080,44.334,UKCP18
+Louth,rcp85,2090,53.027,UKCP18
+Louth,rcp85,2100,62.141,UKCP18
+Mayo,rcp26,2020,8.791,UKCP18
+Mayo,rcp26,2030,12.854,UKCP18
+Mayo,rcp26,2040,16.956,UKCP18
+Mayo,rcp26,2050,20.984,UKCP18
+Mayo,rcp26,2060,24.866,UKCP18
+Mayo,rcp26,2070,28.628,UKCP18
+Mayo,rcp26,2080,32.231,UKCP18
+Mayo,rcp26,2090,35.713,UKCP18
+Mayo,rcp26,2100,39.059,UKCP18
+Mayo,rcp45,2020,8.777,UKCP18
+Mayo,rcp45,2030,12.979,UKCP18
+Mayo,rcp45,2040,17.532,UKCP18
+Mayo,rcp45,2050,22.551,UKCP18
+Mayo,rcp45,2060,27.705,UKCP18
+Mayo,rcp45,2070,33.069,UKCP18
+Mayo,rcp45,2080,38.442,UKCP18
+Mayo,rcp45,2090,43.485,UKCP18
+Mayo,rcp45,2100,48.612,UKCP18
+Mayo,rcp85,2020,9.518,UKCP18
+Mayo,rcp85,2030,14.347,UKCP18
+Mayo,rcp85,2040,20.066,UKCP18
+Mayo,rcp85,2050,26.653,UKCP18
+Mayo,rcp85,2060,34.044,UKCP18
+Mayo,rcp85,2070,42.289,UKCP18
+Mayo,rcp85,2080,51.081,UKCP18
+Mayo,rcp85,2090,60.385,UKCP18
+Mayo,rcp85,2100,70.064,UKCP18
+Meath,rcp26,2020,6.668,UKCP18
+Meath,rcp26,2030,10.012,UKCP18
+Meath,rcp26,2040,13.395,UKCP18
+Meath,rcp26,2050,16.715,UKCP18
+Meath,rcp26,2060,19.902,UKCP18
+Meath,rcp26,2070,22.991,UKCP18
+Meath,rcp26,2080,25.878,UKCP18
+Meath,rcp26,2090,28.663,UKCP18
+Meath,rcp26,2100,31.309,UKCP18
+Meath,rcp45,2020,6.64,UKCP18
+Meath,rcp45,2030,10.127,UKCP18
+Meath,rcp45,2040,13.967,UKCP18
+Meath,rcp45,2050,18.294,UKCP18
+Meath,rcp45,2060,22.76,UKCP18
+Meath,rcp45,2070,27.441,UKCP18
+Meath,rcp45,2080,32.149,UKCP18
+Meath,rcp45,2090,36.538,UKCP18
+Meath,rcp45,2100,41.002,UKCP18
+Meath,rcp85,2020,7.393,UKCP18
+Meath,rcp85,2030,11.511,UKCP18
+Meath,rcp85,2040,16.544,UKCP18
+Meath,rcp85,2050,22.47,UKCP18
+Meath,rcp85,2060,29.216,UKCP18
+Meath,rcp85,2070,36.876,UKCP18
+Meath,rcp85,2080,45.111,UKCP18
+Meath,rcp85,2090,53.919,UKCP18
+Meath,rcp85,2100,63.146,UKCP18
+Sligo,rcp26,2020,7.842,UKCP18
+Sligo,rcp26,2030,11.577,UKCP18
+Sligo,rcp26,2040,15.346,UKCP18
+Sligo,rcp26,2050,19.042,UKCP18
+Sligo,rcp26,2060,22.599,UKCP18
+Sligo,rcp26,2070,26.043,UKCP18
+Sligo,rcp26,2080,29.317,UKCP18
+Sligo,rcp26,2090,32.483,UKCP18
+Sligo,rcp26,2100,35.485,UKCP18
+Sligo,rcp45,2020,7.821,UKCP18
+Sligo,rcp45,2030,11.699,UKCP18
+Sligo,rcp45,2040,15.917,UKCP18
+Sligo,rcp45,2050,20.61,UKCP18
+Sligo,rcp45,2060,25.427,UKCP18
+Sligo,rcp45,2070,30.467,UKCP18
+Sligo,rcp45,2080,35.516,UKCP18
+Sligo,rcp45,2090,40.228,UKCP18
+Sligo,rcp45,2100,45.023,UKCP18
+Sligo,rcp85,2020,8.572,UKCP18
+Sligo,rcp85,2030,13.073,UKCP18
+Sligo,rcp85,2040,18.464,UKCP18
+Sligo,rcp85,2050,24.718,UKCP18
+Sligo,rcp85,2060,31.779,UKCP18
+Sligo,rcp85,2070,39.696,UKCP18
+Sligo,rcp85,2080,48.159,UKCP18
+Sligo,rcp85,2090,57.146,UKCP18
+Sligo,rcp85,2100,66.5,UKCP18
+Waterford,rcp26,2020,8.826,UKCP18
+Waterford,rcp26,2030,12.945,UKCP18
+Waterford,rcp26,2040,17.107,UKCP18
+Waterford,rcp26,2050,21.207,UKCP18
+Waterford,rcp26,2060,25.178,UKCP18
+Waterford,rcp26,2070,29.026,UKCP18
+Waterford,rcp26,2080,32.706,UKCP18
+Waterford,rcp26,2090,36.286,UKCP18
+Waterford,rcp26,2100,39.699,UKCP18
+Waterford,rcp45,2020,8.802,UKCP18
+Waterford,rcp45,2030,13.062,UKCP18
+Waterford,rcp45,2040,17.678,UKCP18
+Waterford,rcp45,2050,22.786,UKCP18
+Waterford,rcp45,2060,28.044,UKCP18
+Waterford,rcp45,2070,33.565,UKCP18
+Waterford,rcp45,2080,39.103,UKCP18
+Waterford,rcp45,2090,44.324,UKCP18
+Waterford,rcp45,2100,49.628,UKCP18
+Waterford,rcp85,2020,9.556,UKCP18
+Waterford,rcp85,2030,14.455,UKCP18
+Waterford,rcp85,2040,20.277,UKCP18
+Waterford,rcp85,2050,27.015,UKCP18
+Waterford,rcp85,2060,34.622,UKCP18
+Waterford,rcp85,2070,43.171,UKCP18
+Waterford,rcp85,2080,52.328,UKCP18
+Waterford,rcp85,2090,62.087,UKCP18
+Waterford,rcp85,2100,72.345,UKCP18
+Wexford,rcp26,2020,8.437,UKCP18
+Wexford,rcp26,2030,12.418,UKCP18
+Wexford,rcp26,2040,16.447,UKCP18
+Wexford,rcp26,2050,20.404,UKCP18
+Wexford,rcp26,2060,24.238,UKCP18
+Wexford,rcp26,2070,27.96,UKCP18
+Wexford,rcp26,2080,31.503,UKCP18
+Wexford,rcp26,2090,34.944,UKCP18
+Wexford,rcp26,2100,38.221,UKCP18
+Wexford,rcp45,2020,8.414,UKCP18
+Wexford,rcp45,2030,12.534,UKCP18
+Wexford,rcp45,2040,17.016,UKCP18
+Wexford,rcp45,2050,21.984,UKCP18
+Wexford,rcp45,2060,27.109,UKCP18
+Wexford,rcp45,2070,32.488,UKCP18
+Wexford,rcp45,2080,37.881,UKCP18
+Wexford,rcp45,2090,42.964,UKCP18
+Wexford,rcp45,2100,48.122,UKCP18
+Wexford,rcp85,2020,9.166,UKCP18
+Wexford,rcp85,2030,13.928,UKCP18
+Wexford,rcp85,2040,19.615,UKCP18
+Wexford,rcp85,2050,26.215,UKCP18
+Wexford,rcp85,2060,33.684,UKCP18
+Wexford,rcp85,2070,42.085,UKCP18
+Wexford,rcp85,2080,51.109,UKCP18
+Wexford,rcp85,2090,60.738,UKCP18
+Wexford,rcp85,2100,70.848,UKCP18
+Wicklow,rcp26,2020,7.61,UKCP18
+Wicklow,rcp26,2030,11.291,UKCP18
+Wicklow,rcp26,2040,15.024,UKCP18
+Wicklow,rcp26,2050,18.681,UKCP18
+Wicklow,rcp26,2060,22.217,UKCP18
+Wicklow,rcp26,2070,25.651,UKCP18
+Wicklow,rcp26,2080,28.884,UKCP18
+Wicklow,rcp26,2090,32.021,UKCP18
+Wicklow,rcp26,2100,35.001,UKCP18
+Wicklow,rcp45,2020,7.582,UKCP18
+Wicklow,rcp45,2030,11.406,UKCP18
+Wicklow,rcp45,2040,15.593,UKCP18
+Wicklow,rcp45,2050,20.264,UKCP18
+Wicklow,rcp45,2060,25.085,UKCP18
+Wicklow,rcp45,2070,30.146,UKCP18
+Wicklow,rcp45,2080,35.222,UKCP18
+Wicklow,rcp45,2090,39.982,UKCP18
+Wicklow,rcp45,2100,44.818,UKCP18
+Wicklow,rcp85,2020,8.337,UKCP18
+Wicklow,rcp85,2030,12.8,UKCP18
+Wicklow,rcp85,2040,18.184,UKCP18
+Wicklow,rcp85,2050,24.472,UKCP18
+Wicklow,rcp85,2060,31.607,UKCP18
+Wicklow,rcp85,2070,39.675,UKCP18
+Wicklow,rcp85,2080,48.351,UKCP18
+Wicklow,rcp85,2090,57.621,UKCP18
+Wicklow,rcp85,2100,67.34,UKCP18
