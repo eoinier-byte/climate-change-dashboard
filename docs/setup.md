@@ -74,6 +74,70 @@ Expected (the minor version may differ):
 
 Django connects with the `POSTGRES_*` values in `.env` (`POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`).
 
+## App role and development database
+
+The app doesn't use the admin user `ccd`. [`db/create_dev.sql`](../db/create_dev.sql) creates:
+
+| Object | Settings | Why |
+|---|---|---|
+| Role `climate_app` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE` | Django only needs to log in and manage its own tables |
+| Database `climate_dev` | `OWNER climate_app` | Since PostgreSQL 15, only the database owner can create tables in the `public` schema. Owning the database is what lets Django migrations run |
+| `CONNECT` on `climate_dev` | revoked from `PUBLIC`, granted to `climate_app` | Other roles can't connect to the app database |
+| `CONNECT` on `ccd` | revoked from `PUBLIC` | `climate_app` can't connect to the admin database |
+
+The script is safe to re-run. It never drops anything. On every run, it resets the role's settings and password, the database owner and the `CONNECT` rights.
+
+**1. Choose the app password and keep it in a shell variable.** It is passed to psql as a variable, so it never appears in the SQL file or on screen.
+
+```bash
+read -rs -p "climate_app password: " DB_PASSWORD; echo
+```
+
+```powershell
+# Windows PowerShell
+$DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString 'climate_app password')).Password
+```
+
+**2. Run the script** with the database running (step 3 above). It goes in through stdin, so `docker-compose.yml` doesn't change:
+
+```bash
+docker compose exec -T db psql -U ccd -d postgres -v ON_ERROR_STOP=1 -v app_password="$DB_PASSWORD" < db/create_dev.sql
+```
+
+```powershell
+# Windows PowerShell
+Get-Content db/create_dev.sql | docker compose exec -T db psql -U ccd -d postgres -v ON_ERROR_STOP=1 -v app_password="$DB_PASSWORD"
+```
+
+Expected output, first run:
+
+```
+CREATE ROLE
+ALTER ROLE
+CREATE DATABASE
+ALTER DATABASE
+REVOKE
+GRANT
+REVOKE
+climate_app and climate_dev are ready.
+```
+
+On later runs, the `CREATE ROLE` and `CREATE DATABASE` lines are missing, because both already exist. If `app_password` is missing or empty, the script stops with `ERROR: ...` before it changes anything.
+
+**3. Check it.** `climate_app` can create a table in `climate_dev`:
+
+```bash
+docker compose exec -e PGPASSWORD="$DB_PASSWORD" db psql -h 127.0.0.1 -U climate_app -d climate_dev -c "CREATE TABLE t(x int); DROP TABLE t;"
+```
+
+Expected: `CREATE TABLE` then `DROP TABLE`. The same role can't connect to `ccd`:
+
+```bash
+docker compose exec -e PGPASSWORD="$DB_PASSWORD" db psql -h 127.0.0.1 -U climate_app -d ccd -c "SELECT 1;"
+```
+
+Expected: `FATAL:  permission denied for database "ccd"` and `DETAIL:  User does not have CONNECT privilege.`
+
 ## Stop, restart and reset
 
 | Goal | Command | Data |
