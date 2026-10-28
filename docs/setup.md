@@ -72,7 +72,7 @@ Expected (the minor version may differ):
 
 `-U ccd -d ccd` are the defaults from `.env`. If you changed `POSTGRES_USER` or `POSTGRES_DB`, use your values.
 
-Django connects with the `POSTGRES_*` values in `.env` (`POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`).
+`POSTGRES_*` in `.env` is the container admin. The app connects with the separate `DB_*` values (see "Connecting from Python" below).
 
 ## App role and development database
 
@@ -183,6 +183,62 @@ docker compose exec -e PGPASSWORD="$STAGING_PASSWORD" db psql -h 127.0.0.1 -U cl
 ```
 
 Expected: `FATAL:  permission denied for database "climate_staging"` and then `"climate_dev"`, each followed by `DETAIL:  User does not have CONNECT privilege.`
+
+## Connecting from Python
+
+`.env` has two sets of credentials:
+
+| Variables | Who | Used by |
+|---|---|---|
+| `POSTGRES_*` | Container admin (`ccd`, superuser) | `docker-compose.yml`, CI, and running `db/create_*.sql` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | App user (`climate_app` or `climate_staging_app`) | Django, `db/check_connection.py` |
+
+If your `.env` was created before the `DB_*` block existed, copy that block from `.env.example`. Set `DB_PASSWORD` to the password you gave `create_dev.sql`, and keep `DB_PORT` the same as `POSTGRES_PORT`.
+
+[`db/connection.py`](../db/connection.py) turns the `DB_*` values into a connection URL (`build_database_url`) or Django's `DATABASES["default"]` dict (`django_database_config`). It raises `ValueError` naming every missing or empty variable, and rejects a port that isn't a number from 1 to 65535. Special characters in the password (`@`, `/`, `:`) are URL-encoded.
+
+**1. Install** (in a virtual environment):
+
+```bash
+pip install -r db/requirements.txt
+```
+
+**2. Check the dev connection:**
+
+```bash
+python db/check_connection.py
+```
+
+Expected:
+
+```
+current_database: climate_dev
+current_user:     climate_app
+version:          PostgreSQL 16.x (Debian 16.x-1.pgdg120+1) on x86_64-pc-linux-gnu, ...
+```
+
+**3. Check staging** by overriding only the environment variables. Values set in the shell win over `.env`:
+
+```bash
+DB_NAME=climate_staging DB_USER=climate_staging_app DB_PASSWORD="$STAGING_PASSWORD" python db/check_connection.py
+```
+
+```powershell
+# Windows PowerShell
+$env:DB_NAME="climate_staging"; $env:DB_USER="climate_staging_app"; $env:DB_PASSWORD=$STAGING_PASSWORD
+python db/check_connection.py
+Remove-Item Env:DB_NAME, Env:DB_USER, Env:DB_PASSWORD
+```
+
+Expected: `current_database: climate_staging` and `current_user: climate_staging_app`.
+
+Exit codes: `0` connected, `1` connection failed (server down, wrong password, no `CONNECT` right), `2` missing or invalid `DB_*` settings.
+
+**4. Unit tests** (no database needed):
+
+```bash
+pytest db -q
+```
 
 ## Stop, restart and reset
 
