@@ -138,6 +138,52 @@ docker compose exec -e PGPASSWORD="$DB_PASSWORD" db psql -h 127.0.0.1 -U climate
 
 Expected: `FATAL:  permission denied for database "ccd"` and `DETAIL:  User does not have CONNECT privilege.`
 
+## Staging database
+
+
+[`db/create_staging.sql`](../db/create_staging.sql) is the same script as `create_dev.sql`, but for `climate_staging` / `climate_staging_app`, and the password comes from the psql variable `staging_password`. It is safe to re-run in the same way.
+
+| Name | User | Location | Purpose | Who uses it |
+|---|---|---|---|---|
+| `ccd` | `ccd` (superuser) | Docker container `db`, your machine | Admin database, created by the image. Used only to run the setup scripts | Whoever sets up the container |
+| `climate_dev` | `climate_app` | Docker container `db`, your machine | Day-to-day development: migrations, loading the CSVs, running the API locally | Each developer, on their own machine |
+| `climate_staging` | `climate_staging_app` | Docker container `db`, your machine (hosted later: Epic 8) | A clean copy for testing migrations and full data loads before a demo or merge, without touching dev data | Each developer before a demo or merge; later the deployment pipeline |
+
+Each user can only connect to its own database: `climate_app` can't open `climate_staging`, and `climate_staging_app` can't open `climate_dev` or `ccd`.
+
+**1. Choose the staging password** (different from the dev one):
+
+```bash
+read -rs -p "climate_staging_app password: " STAGING_PASSWORD; echo
+```
+
+```powershell
+# Windows PowerShell
+$STAGING_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString 'climate_staging_app password')).Password
+```
+
+**2. Run the script:**
+
+```bash
+docker compose exec -T db psql -U ccd -d postgres -v ON_ERROR_STOP=1 -v staging_password="$STAGING_PASSWORD" < db/create_staging.sql
+```
+
+```powershell
+# Windows PowerShell
+Get-Content db/create_staging.sql | docker compose exec -T db psql -U ccd -d postgres -v ON_ERROR_STOP=1 -v staging_password="$STAGING_PASSWORD"
+```
+
+The expected output is the same as for dev, ending with `climate_staging_app and climate_staging are ready.`
+
+**3. Check that the two are independent.** Both commands must fail:
+
+```bash
+docker compose exec -e PGPASSWORD="$DB_PASSWORD" db psql -h 127.0.0.1 -U climate_app -d climate_staging -c "SELECT 1;"
+docker compose exec -e PGPASSWORD="$STAGING_PASSWORD" db psql -h 127.0.0.1 -U climate_staging_app -d climate_dev -c "SELECT 1;"
+```
+
+Expected: `FATAL:  permission denied for database "climate_staging"` and then `"climate_dev"`, each followed by `DETAIL:  User does not have CONNECT privilege.`
+
 ## Stop, restart and reset
 
 | Goal | Command | Data |
@@ -147,7 +193,7 @@ Expected: `FATAL:  permission denied for database "ccd"` and `DETAIL:  User does
 | Remove the container | `docker compose down` | kept (the `pgdata` volume stays) |
 | **Wipe everything** | `docker compose down -v` | **deleted** |
 
-> ⚠️ **`docker compose down -v` deletes the `pgdata` volume, which means every table and row in the database.** The data can't be recovered. Only use it when you want a clean database, e.g. after changing the password or user. Then reload the data with the loader.
+> ⚠️ **`docker compose down -v` deletes the `pgdata` volume, which means every table and row in every database (`ccd`, `climate_dev` and `climate_staging`), plus the roles.** The data can't be recovered. Only use it when you want a clean database, e.g. after changing the password or user. Then reload the data with the loader.
 
 The service uses `restart: unless-stopped`, so after `up` it starts again with Docker until you stop it.
 
