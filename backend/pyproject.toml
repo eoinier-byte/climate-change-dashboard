@@ -1,0 +1,11 @@
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["migrations"]
+force-exclude = true
