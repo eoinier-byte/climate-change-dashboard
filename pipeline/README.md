@@ -21,7 +21,8 @@ Run each one from this `pipeline/` folder. Steps 01–07 only **look** at the da
 | 04 | `04_inspect_precipitation_rcp.py` | Same, for the 30 rainfall RCP files | Same grid, mm |
 | 05 | `05_inspect_county_boundaries.py` | Tests which coordinate system the CSO county file really uses | It says nothing, so Python assumes lat/lon, but it's really **EPSG:29903 (Irish Grid)** |
 | 06 | `06_inspect_tailte_eireann_boundaries.py` | Compares the Tailte Éireann county file with the CSO one | Same 26 counties, already in lat/lon, much more detailed coastline: matches 255 more land cells. **We use this file** |
-| 07 | `07_inspect_sea_level_json.py` | Prints the UKCP18 sea level file's layout, a sample row, the number of points and the X/Y ranges | 212 sea points (not counties), 3 scenarios × 3 percentiles, rise in cm since 1981–2000. The file says 27700 (British National Grid), but that's only for shapes it doesn't include: **X and Y are lat/lon** || 08 | `08_sea_level_json_to_csv.py` | Turns the sea level JSON into a smaller CSV | 842 KB JSON → 230 KB CSV |
+| 07 | `07_inspect_sea_level_json.py` | Prints the UKCP18 sea level file's layout, a sample row, the number of points and the X/Y ranges | 212 sea points (not counties), 3 scenarios × 3 percentiles, rise in cm since 1981–2000. The file says 27700 (British National Grid), but that's only for shapes it doesn't include: **X and Y are lat/lon** |
+| 08 | `08_sea_level_json_to_csv.py` | Turns the sea level JSON into a smaller CSV | 842 KB JSON → 230 KB CSV |
 | 09 | `process_climate_data.py` | Builds the two outputs | 1,820 + 405 rows (see below) |
 
 `filename_info.py` is a helper: `get_file_details()` reads the variable, scenario, period and season from a file name. It's used by `process_climate_data.py`.

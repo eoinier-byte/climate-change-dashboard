@@ -37,24 +37,26 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 
 **Footer attribution:** Contains Met Office data licensed under the Open Government Licence v3.0.
 
-## 3. CSO — County boundaries
+## 3. Tailte Éireann — County boundaries
 
 | | |
 |---|---|
-| **Organisation** | Central Statistics Office (CSO), Ireland |
-| **Dataset** | `ie_county_26.json`, the 26 county boundaries |
-| **Used for** | `county`, and the spatial join of grid cells to counties |
-| **URL** | https://cdn.cso.ie/static/map/en/ie_county_26.json |
-| **Date accessed** | 27 October 2026 |
-| **Format** | GeoJSON. Declares EPSG:4326 but the coordinates are actually **EPSG:29903 (Irish Grid)**; override the CRS before reprojecting. |
-| **Licence / reuse terms** | **CC BY 4.0** for CSO statistical information, per the [CSO copyright policy](https://www.cso.ie/en/aboutus/whoweare/copyrightpolicy/). That page doesn't mention boundary or map data specifically, so terms for this file are **not stated** beyond that. Confirm with information@cso.ie if the dashboard is published publicly. |
-| **Why chosen** | Official county boundaries, matching the 26 counties the dashboard reports on |
+| **Organisation** | Tailte Éireann (formerly Ordnance Survey Ireland) |
+| **Dataset** | Counties – National Statutory Boundaries – 2019 – Generalised 20m, saved as `pipeline/data/boundaries/counties_tailte_eireann_2019.geojson` |
+| **Used for** | `county`, and the spatial join of grid cells and sea points to counties |
+| **URL** | https://data.gov.ie/dataset/counties-national-statutory-boundaries-2019-generalised-20m1 |
+| **Date accessed** | 28 October 2026 |
+| **Format** | GeoJSON, EPSG:4326 (lat/lon). 26 counties; names in the `ENGLISH` column, in capitals |
+| **Licence / reuse terms** | **CC BY 4.0**. Credit Tailte Éireann |
+| **Why chosen** | Official statutory boundaries with a more detailed coastline than the CSO file: matches 63,611 climate land cells to a county, against 63,356 for the CSO file (pipeline step 06) |
 
-**Footer attribution:** County boundaries: Central Statistics Office (CSO), CC BY 4.0.
+**Footer attribution:** County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0.
+
+**Replaced:** CSO `ie_county_26.json` (https://cdn.cso.ie/static/map/en/ie_county_26.json), used until 28 October 2026. It declares no coordinate system (it is really EPSG:29903, Irish Grid) and has a coarser coastline. It is kept in the repo only for pipeline steps 05–06.
 
 ## 4. Footer text (combined)
 
-> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: Central Statistics Office (CSO), CC BY 4.0.
+> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0.
 
 ## 5. Considered and not used
 
