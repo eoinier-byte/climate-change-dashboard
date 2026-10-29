@@ -33,12 +33,16 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    # Same keys as the root .env (there is no .env on the runner)
     env:
+      DEBUG: "False"
+      SECRET_KEY: ci-only-not-secret
       POSTGRES_DB: ccd
       POSTGRES_USER: ccd
       POSTGRES_PASSWORD: ccd
-      POSTGRES_HOST: localhost
-      DJANGO_SECRET_KEY: ci-only-not-secret
+      DATABASE_HOST: localhost
+      POSTGRES_PORT: "5432"
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
     defaults:
       run:
         working-directory: backend
