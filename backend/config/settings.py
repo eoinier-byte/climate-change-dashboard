@@ -10,21 +10,20 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
-import os
 import sys
 from pathlib import Path
 
 import environ
 
 env = environ.Env(
-    SECRET_KEY=(str),
-    DEBUG=(bool, False),
+    DJANGO_SECRET_KEY=(str),
+    DJANGO_DEBUG=(bool, False),
     DOMAIN_NAME=(str, 'localhost'),
-    POSTGRES_DB=(str),
-    POSTGRES_USER=(str),
-    POSTGRES_PASSWORD=(str),
-    DATABASE_HOST=(str, 'postgres'),
-    POSTGRES_PORT=(int, 5432),
+    DB_NAME=(str),
+    DB_USER=(str),
+    DB_PASSWORD=(str),
+    DB_HOST=(str, 'localhost'),
+    DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
 )
 
@@ -38,10 +37,10 @@ TESTING = 'test' in sys.argv or 'test_coverage' in sys.argv or 'pytest' in sys.m
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = env('DJANGO_DEBUG')
 
 ALLOWED_HOSTS = ['*']
 
@@ -103,20 +102,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASE_NAME = env('POSTGRES_DB')
-DATABASE_USER = env('POSTGRES_USER')
-DATABASE_PASSWORD = env('POSTGRES_PASSWORD')
-DATABASE_HOST = env('DATABASE_HOST')
-DATABASE_PORT = env('POSTGRES_PORT')
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': DATABASE_NAME,
-        'USER': DATABASE_USER,
-        'PASSWORD': DATABASE_PASSWORD,
-        'HOST': DATABASE_HOST,
-        'PORT': DATABASE_PORT,
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
     }
 }
 

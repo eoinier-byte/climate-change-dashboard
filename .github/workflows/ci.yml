@@ -35,13 +35,13 @@ jobs:
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     # Same keys as the root .env (there is no .env on the runner)
     env:
-      DEBUG: "False"
-      SECRET_KEY: ci-only-not-secret
-      POSTGRES_DB: ccd
-      POSTGRES_USER: ccd
-      POSTGRES_PASSWORD: ccd
-      DATABASE_HOST: localhost
-      POSTGRES_PORT: "5432"
+      DJANGO_DEBUG: "False"
+      DJANGO_SECRET_KEY: ci-only-not-secret
+      DB_NAME: ccd
+      DB_USER: ccd
+      DB_PASSWORD: ccd
+      DB_HOST: localhost
+      DB_PORT: "5432"
       CORS_ALLOWED_ORIGINS: http://localhost:5173
     defaults:
       run:
