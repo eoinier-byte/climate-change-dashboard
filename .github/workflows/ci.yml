@@ -75,6 +75,8 @@ jobs:
       - if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm ci
       - if: ${{ hashFiles('frontend/package.json') != '' }}
+        run: npm run lint
+      - if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm run build
       - if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm test --if-present
