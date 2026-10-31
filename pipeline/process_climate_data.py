@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from aggregate import county_averages
 from filename_info import get_file_details
 
 # ---------------------------------------------------------------
@@ -115,17 +116,12 @@ for path in files:
     grid = ds[details["nc_variable"]].values[0]
     ds.close()
 
-    # values: each matched cell's county, and this file's value at that cell.
-    # We look up by row and column, not by lat/lon (Step 03 showed the
+    # averages: the mean value for each county (see aggregate.py).
+    # Cells are looked up by row and column, not by lat/lon (Step 03 showed the
     # rainfall baseline stores lat/lon very slightly differently).
-    values = cells[["county"]].copy()
-    values["value"] = grid[cells["row"], cells["col"]]
-
-    # A few land cells have no rainfall value - drop them
-    values = values.dropna()
-
-    # averages: the mean value for each county
-    averages = values.groupby("county")["value"].mean()
+    # Bad values are removed first (CCD-275); report says how many.
+    averages, report = county_averages(cells, grid, details["variable"])
+    print(f"    {report}")
 
     for county, average in averages.items():
         all_rows.append({
@@ -234,6 +230,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # climate: temperature and rainfall rows, sorted
 climate = pd.DataFrame(all_rows)
 climate = climate.sort_values(["county", "variable", "scenario", "period", "season"])
+print(f"Empty values in the output: {climate['value'].isna().sum()}")
 climate.to_csv(os.path.join(OUTPUT_DIR, "climate_data.csv"), index=False)
 climate.to_json(os.path.join(OUTPUT_DIR, "climate_data.json"), orient="records", indent=2)
 
