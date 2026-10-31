@@ -24,7 +24,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('climate/', include('climate.urls')),
+    path('api/', include('climate.urls')),
 ]
 
 if settings.DEBUG:
