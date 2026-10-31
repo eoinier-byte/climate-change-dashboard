@@ -78,7 +78,7 @@ Values outside these ranges should be flagged during cleaning (CCD-275).
 |---|---|---|
 | `temperature` | Annual | 5 to 16 °C |
 | `temperature` | seasonal | −2 to 22 °C |
-| `precipitation` | Annual | 500 to 3,000 mm |
+| `precipitation` | Annual | 500 to 5,000 mm (raised from 3,000 on 31 Oct 2026: single mountain cells reach 3,577 mm) |
 | `precipitation` | seasonal | 50 to 1,200 mm |
 | sea level `rise_cm` | — | 0 to 150 cm (current data: 6.4 to 75.4) |
 

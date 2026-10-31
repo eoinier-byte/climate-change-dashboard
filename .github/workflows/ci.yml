@@ -20,6 +20,8 @@ jobs:
       - run: pip install -r requirements.txt
       # Check every script has no syntax errors (the data files aren't on GitHub, so we can't run them)
       - run: python -m compileall -q .
+      # Run the pipeline tests (CCD-100, CCD-275, CCD-36)
+      - run: python -m pytest tests -v
 
   backend:
     runs-on: ubuntu-latest

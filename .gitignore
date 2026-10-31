@@ -29,6 +29,10 @@ npm-debug.log*
 pipeline/data/raw/
 *.nc
 
+# test .nc file
+!pipeline/tests/data/*.nc
+
+
 # Editors / OS
 .vscode/
 .idea/
