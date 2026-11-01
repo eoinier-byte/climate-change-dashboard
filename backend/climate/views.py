@@ -31,7 +31,7 @@ class MetaView(APIView):
             'periods': distinct('period', ClimateProjection),
             'seasons': distinct('season', ClimateProjection),
             'variables': distinct('variable', ClimateProjection),
-            'sea-level-years': distinct('year', SeaLevelProjection),
+            'sea_level_years': distinct('year', SeaLevelProjection),
             'sources': DataSource.objects.order_by('code').values(
                 'code', 'name', 'organisation', 'baseline_period', 'licence', 'url'
             ),
