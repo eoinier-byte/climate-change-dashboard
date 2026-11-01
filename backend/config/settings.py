@@ -171,3 +171,8 @@ AUTH_USER_MODEL = 'users.User'
 
 # REST
 REST_FRAMEWORK = {'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'}
+
+# County summary (present-day climate)
+SUMMARY_SCENARIO = 'baseline'
+SUMMARY_PERIOD = '1976-2005'
+SUMMARY_SEASON = 'annual'

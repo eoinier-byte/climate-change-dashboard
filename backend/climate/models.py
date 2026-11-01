@@ -8,8 +8,8 @@ from common.validators import validate_period
 
 
 class County(models.Model):
-    name = models.CharField(max_length=50, unique=True, null=False, blank=False)
-    slug = models.SlugField(unique=True, null=False, blank=False)
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(unique=True)
     has_coastline = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
@@ -22,13 +22,13 @@ class County(models.Model):
 
 
 class DataSource(models.Model):
-    code = models.CharField(max_length=20, unique=True, null=False, blank=False)
-    name = models.CharField(max_length=200, null=False, blank=False)
-    organisation = models.CharField(max_length=200)
+    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=200)
+    organisation = models.CharField(max_length=200, blank=True)
     baseline_period = models.CharField(max_length=9, validators=[validate_period])
-    licence = models.CharField(max_length=200)
-    attribution = models.TextField()
-    url = models.URLField(max_length=500, null=False, blank=False)
+    licence = models.CharField(max_length=200, blank=True)
+    attribution = models.TextField(blank=True)
+    url = models.URLField(max_length=500)
     accessed_on = models.DateField()
 
     def __str__(self):
