@@ -1,7 +1,8 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from climate.models import SeaLevelProjection, County
-from common.models import Scenario, Season
+from common.models import Unit
 from common.serializers import ProjectionSerializer, CountySerializer
 
 
@@ -11,8 +12,20 @@ class CountyDetailSerializer(CountySerializer):
     @staticmethod
     def get_summary(obj):
         rows = (obj.climateprojections
-                .filter(scenario=Scenario.RCP45.value, period='2071-2100', season=Season.ANNUAL.value))
-        return {p.variable: {'value': p.value, 'units': p.unit} for p in rows}
+                .select_related('data_source')
+                .filter(scenario=settings.SUMMARY_SCENARIO,
+                        period=settings.SUMMARY_PERIOD,
+                        season=settings.SUMMARY_SEASON))
+        summary = {
+            'scenario': settings.SUMMARY_SCENARIO,
+            'period': settings.SUMMARY_PERIOD,
+            'season': settings.SUMMARY_SEASON,
+            'source': None,
+        }
+        for p in rows:
+            summary[p.variable] = {'value': p.value, 'unit': Unit(p.unit).label}
+            summary['source'] = p.data_source.code
+        return summary
 
     class Meta:
         model = County

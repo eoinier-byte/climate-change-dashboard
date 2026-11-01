@@ -142,7 +142,7 @@ class MetaViewTestCase(ProjectionTestCase, APITestCase):
         response = self.client.get(reverse('climate:meta'))
         self.assertEqual(response.status_code, HTTPStatus.OK)
         data = response.json()
-        for key in ('scenarios', 'periods', 'seasons', 'variables'):
+        for key in ('scenarios', 'periods', 'seasons', 'variables', 'sea_level_years'):
             with self.subTest(key=key):
                 self.assertEqual(data[key], [])
 
@@ -160,6 +160,12 @@ class MetaViewTestCase(ProjectionTestCase, APITestCase):
         self.assertEqual(data['seasons'], ['annual', 'winter'])
         self.assertEqual(data['variables'], ['precipitation', 'temperature'])
 
+    def test_sea_level_years(self):
+        for scenario, year in ((Scenario.RCP85, 2100), (Scenario.RCP85, 2050), (Scenario.RCP26, 2050)):
+            self.create_sea_level_projection(scenario=scenario, year=year)
+        response = self.client.get(reverse('climate:meta'))
+        self.assertEqual(response.json()['sea_level_years'], [2050, 2100])
+
     def test_sea_level_not_included(self):
         self.create_sea_level_projection(scenario=Scenario.RCP26)
         response = self.client.get(reverse('climate:meta'))
@@ -167,13 +173,14 @@ class MetaViewTestCase(ProjectionTestCase, APITestCase):
 
     def test_sources(self):
         response = self.client.get(reverse('climate:meta'))
-        self.assertCountEqual(
+        self.assertEqual(
             response.json()['sources'],
             [
                 {
                     'code': 'translate',
                     'name': 'TRANSLATE',
                     'organisation': 'Test',
+                    'baseline_period': '1976-2005',
                     'licence': 'CC BY 4.0',
                     'url': 'https://example.com',
                 },
@@ -181,6 +188,7 @@ class MetaViewTestCase(ProjectionTestCase, APITestCase):
                     'code': 'ukcp18',
                     'name': 'UKCP18',
                     'organisation': 'Test',
+                    'baseline_period': '1981-2000',
                     'licence': 'CC BY 4.0',
                     'url': 'https://example.com',
                 },
@@ -193,3 +201,14 @@ class MetaViewTestCase(ProjectionTestCase, APITestCase):
             with self.subTest(method=method):
                 response = getattr(self.client, method)(url, {})
                 self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+class HealthViewTestCase(APITestCase):
+    def test_ok(self):
+        response = self.client.get(reverse('climate:health'))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json(), {'status': 'ok'})
+
+    def test_method_not_allowed(self):
+        response = self.client.post(reverse('climate:health'))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)

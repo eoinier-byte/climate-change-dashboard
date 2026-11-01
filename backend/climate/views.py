@@ -19,6 +19,11 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         return CountyDetailSerializer if self.action == 'retrieve' else CountySerializer
 
 
+class HealthView(APIView):
+    def get(self, request):
+        return Response({'status': 'ok'})
+
+
 class MetaView(APIView):
     def get(self, request):
         return Response({
@@ -26,7 +31,10 @@ class MetaView(APIView):
             'periods': distinct('period', ClimateProjection),
             'seasons': distinct('season', ClimateProjection),
             'variables': distinct('variable', ClimateProjection),
-            'sources': DataSource.objects.values('code', 'name', 'organisation', 'licence', 'url'),
+            'sea-level-years': distinct('year', SeaLevelProjection),
+            'sources': DataSource.objects.order_by('code').values(
+                'code', 'name', 'organisation', 'baseline_period', 'licence', 'url'
+            ),
         })
 
 
