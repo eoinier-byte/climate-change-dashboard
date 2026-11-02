@@ -17,8 +17,7 @@ export default function App() {
       </nav>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/counties" element={<Counties />} />
-        <Route path="/county/:id" element={<CountyDashboard />} />
+        <Route path="/counties" element={<Counties />} /><Route path="/county/:slug" element={<CountyDashboard />} />
         <Route path="/compare" element={<Compare />} />
         <Route path="/sea-level" element={<SeaLevel />} />
         <Route path="/analogue" element={<Analogue />} />
