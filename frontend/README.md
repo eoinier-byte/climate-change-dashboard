@@ -8,14 +8,16 @@ County selector, temperature and rainfall charts (one line per scenario), season
 
 React (Vite) · Chart.js (react-chartjs-2) · Bootstrap / CSS · fetch / axios to the Django API
 
-## Set-up (filled in by CCD-126)
+## Set-up
 
 ```bash
-npm create vite@latest . -- --template react
-npm install
-npm run dev        # http://localhost:5173
+cd frontend
+npm ci
+cp .env.example .env   # Windows PowerShell: Copy-Item .env.example .env
+npm run dev            # http://localhost:5173
 ```
 
+Other commands: `npm run lint`, `npm test`, `npm run build`, `npm run preview`.
 Set the API base URL in `frontend/.env` (`VITE_API_URL=http://localhost:8000/api`).
 
 ## Rules
