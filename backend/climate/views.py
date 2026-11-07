@@ -1,9 +1,14 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.mixins import RetrieveModelMixin
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet
 
 from climate.models import County, DataSource, ClimateProjection, SeaLevelProjection
-from climate.serializers import CountyDetailSerializer, SeaLevelProjectionSerializer
+from climate.serializers import CountyDetailSerializer, SeaLevelProjectionSerializer, CountySeaLevelSerializer
+from common.models import Scenario
 from common.serializers import CountySerializer
 from common.utils import distinct
 
@@ -38,8 +43,8 @@ class MetaView(APIView):
         })
 
 
-class SeaLevelViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = (SeaLevelProjection.objects
-                .select_related('county', 'data_source')
-                .order_by('county__name', 'scenario', 'year'))
-    serializer_class = SeaLevelProjectionSerializer
+class SeaLevelView(RetrieveAPIView):
+    queryset = County.objects.prefetch_related('sealevelprojections__data_source')
+    serializer_class = CountySeaLevelSerializer
+    lookup_field = 'slug'
+

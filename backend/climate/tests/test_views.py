@@ -2,6 +2,7 @@ from decimal import Decimal
 from http import HTTPStatus
 
 from django.shortcuts import reverse
+from django.urls import NoReverseMatch
 from rest_framework.test import APITestCase
 
 from climate.models import County, SeaLevelProjection
@@ -54,87 +55,106 @@ class CountyViewSetTestCase(APITestCase):
                     self.assertEqual(County.objects.get(id=self.county.id).name, self.county.name)
 
 
-class SeaLevelViewSetTestCase(ProjectionTestCase, APITestCase):
+class SeaLevelViewTestCase(ProjectionTestCase, APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        kerry = County.objects.create(name='Kerry', has_coastline=True)
-        cls.projections = [
+        for scenario, year, value in (
+            (Scenario.RCP85, 2100, '80.000'),
+            (Scenario.RCP26, 2100, '40.000'),
+            (Scenario.RCP85, 2050, '30.000'),
+            (Scenario.RCP26, 2050, '20.000'),
+        ):
             SeaLevelProjection.objects.create(
-                county=county,
+                county=cls.county,
                 data_source=cls.ukcp18,
                 scenario=scenario,
                 year=year,
                 season=Season.ANNUAL,
-                value=Decimal('10.000'),
+                value=Decimal(value),
                 unit=Unit.CM,
                 provenance='UKCP18',
             )
-            for county, scenario, year in (
-                (kerry, Scenario.RCP26, 2050),
-                (cls.county, Scenario.RCP85, 2100),
-                (cls.county, Scenario.RCP26, 2100),
-                (cls.county, Scenario.RCP26, 2050),
-            )
-        ]
-        cls.projection = cls.projections[0]
-
-    def test_list(self):
-        response = self.client.get(reverse('climate:sea_level-list'))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        rows = [(p['county'], p['scenario'], p['year']) for p in response.json()]
-        self.assertEqual(
-            rows,
-            [
-                ('cork', 'rcp26', 2050),
-                ('cork', 'rcp26', 2100),
-                ('cork', 'rcp85', 2100),
-                ('kerry', 'rcp26', 2050),
-            ],
+        cls.inland = County.objects.create(name='Offaly', has_coastline=False)
+        cls.leitrim = County.objects.create(name='Leitrim', has_coastline=True)
+        SeaLevelProjection.objects.create(
+            county=cls.leitrim,
+            data_source=cls.ukcp18,
+            scenario=Scenario.RCP45,
+            year=2050,
+            season=Season.ANNUAL,
+            value=Decimal('25.000'),
+            unit=Unit.CM,
+            provenance='UKCP18, estimated from Sligo',
         )
 
-    def test_list_fields(self):
-        response = self.client.get(reverse('climate:sea_level-list'))
+    @staticmethod
+    def url(slug):
+        return reverse('climate:sea_level', args=[slug])
+
+    def test_coastal_county(self):
+        response = self.client.get(self.url(self.county.slug))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(
-            response.json()[0],
+            response.json(),
             {
-                'scenario': 'rcp26',
-                'baseline': '1981-2000',
-                'units': 'cm',
-                'source': 'ukcp18',
-                'county': 'cork',
-                'year': 2050,
-                'provenance': 'UKCP18',
-                'value': '10.000',
+                'county': 'Cork',
+                'slug': 'cork',
+                'has_coastline': True,
+                'unit': 'cm',
+                'baseline_period': '1981-2000',
+                'years': [2050, 2100],
+                'series': {
+                    'rcp26': {'values': [20.0, 40.0], 'provenance': 'UKCP18', 'source': 'ukcp18'},
+                    'rcp85': {'values': [30.0, 80.0], 'provenance': 'UKCP18', 'source': 'ukcp18'},
+                },
             },
         )
 
-    def test_detail(self):
-        response = self.client.get(reverse('climate:sea_level-detail', args=[self.projection.id]))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(response.json()['county'], 'kerry')
-        self.assertEqual(response.json()['year'], 2050)
+    def test_only_requested_county(self):
+        response = self.client.get(self.url(self.county.slug))
+        self.assertNotIn('rcp45', response.json()['series'])
 
-    def test_detail_unknown_id(self):
-        response = self.client.get(reverse('climate:sea_level-detail', args=[999999]))
+    def test_inland_county(self):
+        response = self.client.get(self.url(self.inland.slug))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(
+            response.json(),
+            {
+                'county': 'Offaly',
+                'slug': 'offaly',
+                'has_coastline': False,
+                'unit': None,
+                'baseline_period': None,
+                'years': [],
+                'series': {},
+            },
+        )
+
+    def test_estimated_provenance(self):
+        response = self.client.get(self.url(self.leitrim.slug))
+        self.assertEqual(
+            response.json()['series']['rcp45']['provenance'],
+            'UKCP18, estimated from Sligo',
+        )
+
+    def test_unknown_county(self):
+        response = self.client.get(self.url('atlantis'))
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertIn('detail', response.json())
 
-    def test_method_not_allowed(self):
-        cases = (
-            ('climate:sea_level-list', [], ('post', 'put', 'patch', 'delete')),
-            ('climate:sea_level-detail', [self.projection.id], ('put', 'patch', 'delete')),
-        )
-        initial_count = SeaLevelProjection.objects.count()
+    def test_num_queries(self):
+        with self.assertNumQueries(3):
+            self.client.get(self.url(self.county.slug))
 
-        for url_name, args, methods in cases:
-            url = reverse(url_name, args=args)
-            for method in methods:
-                with self.subTest(url=url_name, method=method):
-                    response = getattr(self.client, method)(url, {'year': 1999})
-                    self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
-                    self.assertEqual(SeaLevelProjection.objects.count(), initial_count)
-                    self.assertEqual(SeaLevelProjection.objects.get(id=self.projection.id).year, 2050)
+    def test_method_not_allowed(self):
+        initial_count = SeaLevelProjection.objects.count()
+        for method in ('post', 'put', 'patch', 'delete'):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.url(self.county.slug), {'has_coastline': False})
+                self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+                self.assertEqual(SeaLevelProjection.objects.count(), initial_count)
+                self.assertTrue(County.objects.get(id=self.county.id).has_coastline)
 
 
 class MetaViewTestCase(ProjectionTestCase, APITestCase):
