@@ -20,7 +20,9 @@ import pandas as pd
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # JSON_FILE: the sea level file we downloaded
-JSON_FILE = os.path.join(BASE_DIR, "data", "raw", "sea_level", "ukcp18_sea_level_ireland.json")
+JSON_FILE = os.path.join(
+    BASE_DIR, "data", "raw", "sea_level", "ukcp18_sea_level_ireland.json"
+)
 
 # ---------------------------------------------------------------
 # Part 1: how is the file laid out?

@@ -21,7 +21,6 @@ FOLDER = os.path.join(BASE_DIR, "data", "raw", "precipitation", "baseline")
 
 # Go through every file in the folder, in alphabetical order
 for filename in sorted(os.listdir(FOLDER)):
-
     # Skip anything that isn't a NetCDF (.nc) file
     if not filename.endswith(".nc"):
         continue

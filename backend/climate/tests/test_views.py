@@ -2,7 +2,6 @@ from decimal import Decimal
 from http import HTTPStatus
 
 from django.shortcuts import reverse
-from django.urls import NoReverseMatch
 from rest_framework.test import APITestCase
 
 from climate.models import County, SeaLevelProjection

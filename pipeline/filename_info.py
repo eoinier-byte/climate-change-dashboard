@@ -21,10 +21,10 @@ PERIODS = ["1976-2005", "2021-2050", "2071-2100"]
 # SEASONS: the code in the file name -> the season name we use
 SEASONS = {
     "ANNUAL": "Annual",
-    "DJF": "Winter",    # December, January, February
-    "MAM": "Spring",    # March, April, May
-    "JJA": "Summer",    # June, July, August
-    "SON": "Autumn",    # September, October, November
+    "DJF": "Winter",  # December, January, February
+    "MAM": "Spring",  # March, April, May
+    "JJA": "Summer",  # June, July, August
+    "SON": "Autumn",  # September, October, November
 }
 
 
@@ -37,8 +37,8 @@ def get_file_details(filename):
     # details: what we found. None means "not found in the name".
     details = {
         "file": filename,
-        "nc_variable": None,   # name inside the file, e.g. "tmean"
-        "variable": None,      # name for our CSV, e.g. "temperature"
+        "nc_variable": None,  # name inside the file, e.g. "tmean"
+        "variable": None,  # name for our CSV, e.g. "temperature"
         "scenario": None,
         "period": None,
         "season": None,

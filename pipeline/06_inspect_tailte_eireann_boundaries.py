@@ -24,14 +24,22 @@ import xarray as xr
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # NEW_FILE: the Tailte Eireann county boundaries
-NEW_FILE = os.path.join(BASE_DIR, "data", "boundaries", "counties_tailte_eireann_2019.geojson")
+NEW_FILE = os.path.join(
+    BASE_DIR, "data", "boundaries", "counties_tailte_eireann_2019.geojson"
+)
 
 # CSO_FILE: the old CSO county boundaries
 CSO_FILE = os.path.join(BASE_DIR, "data", "boundaries", "ie_county_26.json")
 
 # TEMPERATURE_FILE: one climate file, to get the land cells from
-TEMPERATURE_FILE = os.path.join(BASE_DIR, "data", "raw", "temperature", "baseline",
-                                "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc")
+TEMPERATURE_FILE = os.path.join(
+    BASE_DIR,
+    "data",
+    "raw",
+    "temperature",
+    "baseline",
+    "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc",
+)
 
 # ---------------------------------------------------------------
 # Part 1: the county names in the new file
@@ -77,7 +85,7 @@ points = gpd.GeoDataFrame(
 cso_matched = gpd.sjoin(points, cso_counties, how="inner", predicate="intersects")
 new_matched = gpd.sjoin(points, new_counties, how="inner", predicate="intersects")
 
-print(f"\nLand cells matched to a county:")
+print("\nLand cells matched to a county:")
 print(f"  CSO file:            {len(cso_matched)}")
 print(f"  Tailte Eireann file: {len(new_matched)}")
 print(f"  Difference:          {len(new_matched) - len(cso_matched):+}")

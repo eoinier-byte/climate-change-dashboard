@@ -9,7 +9,6 @@ import os
 
 import pytest
 import xarray as xr
-
 from filename_info import get_file_details
 
 # ---------------------------------------------------------------
@@ -20,7 +19,9 @@ from filename_info import get_file_details
 TESTS_DIR = os.path.dirname(__file__)
 
 # SAMPLE_FILE: the small sample file in pipeline/tests/data
-SAMPLE_FILE = os.path.join(TESTS_DIR, "data", "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc")
+SAMPLE_FILE = os.path.join(
+    TESTS_DIR, "data", "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc"
+)
 
 # RAW_DIR: the real downloaded files in pipeline/data/raw
 RAW_DIR = os.path.join(TESTS_DIR, "..", "data", "raw")
@@ -67,6 +68,7 @@ def check_file(path):
 
     ds.close()
 
+
 # ---------------------------------------------------------------
 # The tests
 # ---------------------------------------------------------------
@@ -79,6 +81,8 @@ def test_sample_file():
 # @pytest.mark.parametrize runs this test once for EACH file in RAW_FILES,
 # so 70 files = 70 tests. ids=... names each test after its file, so if one
 # fails you can see which file it was.
-@pytest.mark.parametrize("path", RAW_FILES, ids=[os.path.basename(p) for p in RAW_FILES])
+@pytest.mark.parametrize(
+    "path", RAW_FILES, ids=[os.path.basename(p) for p in RAW_FILES]
+)
 def test_raw_file(path):
     check_file(path)
