@@ -70,14 +70,12 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
         )
 
     def to_representation(self, obj):
-        # Load the county's rows once; every get_* method below reads this list, not the database.
         self._rows = self._load(obj)
         return super().to_representation(obj)
 
     def _load(self, obj) -> list[ClimateProjection]:
         variable, season = self.get_variable(obj), self.get_season(obj)
         if 'climateprojections' in getattr(obj, '_prefetched_objects_cache', {}):
-            # The view prefetched every row: filter in Python, no query.
             rows = [p for p in obj.climateprojections.all() if p.variable == variable and p.season == season]
         else:
             rows = obj.climateprojections.select_related('data_source').filter(variable=variable, season=season)

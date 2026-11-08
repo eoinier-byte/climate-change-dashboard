@@ -25,7 +25,7 @@ env = environ.Env(
     DB_HOST=(str, 'localhost'),
     DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
-    ANTHROPIC_API_KEY=(str),
+    ANTHROPIC_API_KEY=(str, ''),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
