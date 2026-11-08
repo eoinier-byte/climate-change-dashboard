@@ -41,10 +41,10 @@ CSV_FILE = os.path.join(SEA_LEVEL_DIR, "ukcp18_sea_level_ireland.csv")
 
 # COLUMNS_TO_KEEP: the columns we keep (Step 07 showed what each one means)
 COLUMNS_TO_KEEP = [
-    "X",                    # longitude of the sea point
-    "Y",                    # latitude of the sea point
-    "rcp_percentile",       # e.g. "rcp45_50"
-    "seaLevelAnom_2010",    # sea level rise in cm for each decade
+    "X",  # longitude of the sea point
+    "Y",  # latitude of the sea point
+    "rcp_percentile",  # e.g. "rcp45_50"
+    "seaLevelAnom_2010",  # sea level rise in cm for each decade
     "seaLevelAnom_2020",
     "seaLevelAnom_2030",
     "seaLevelAnom_2040",

@@ -22,3 +22,4 @@ ruff==0.16.10
 sqlparse==0.6.0
 tzdata==2026.5
 virtualenv==21.14.5
+django-filter==26.2

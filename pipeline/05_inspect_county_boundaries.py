@@ -34,7 +34,6 @@ print("Lat/lon would be about -10 to -5 and 51 to 55, so these are NOT lat/lon.\
 
 # Try each Irish coordinate system
 for crs in ["EPSG:2157", "EPSG:29903"]:
-
     # test: a fresh copy of the file, told "your numbers are really in <crs>"
     # and then converted to lat/lon
     test = gpd.read_file(BOUNDARY_FILE)
@@ -42,6 +41,8 @@ for crs in ["EPSG:2157", "EPSG:29903"]:
     test = test.to_crs("EPSG:4326")
 
     west, south, east, north = test.total_bounds
-    print(f"If it's {crs}: lon {west:.2f} to {east:.2f}, lat {south:.2f} to {north:.2f}")
+    print(
+        f"If it's {crs}: lon {west:.2f} to {east:.2f}, lat {south:.2f} to {north:.2f}"
+    )
 
 print("\nThe one that matches Ireland is the file's real coordinate system.")

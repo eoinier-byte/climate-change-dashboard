@@ -11,7 +11,6 @@
 
 import numpy as np
 import pandas as pd
-
 from clean import clean_values
 
 
@@ -40,7 +39,7 @@ def test_good_values_are_kept():
     values = pd.DataFrame({"value": [900.0, 1200.0, 1500.0]})
 
     # 2. Run our function
-    clean, report = clean_values(values, "precipitation")
+    _, report = clean_values(values, "precipitation")
 
     # 3. Check nothing was removed (3 rows went in, 3 came out)
     assert report["rows_out"] == 3

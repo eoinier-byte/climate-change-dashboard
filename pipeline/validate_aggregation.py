@@ -21,9 +21,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
-from shapely.geometry import Point   # Point = one spot on the map (longitude, latitude)
-
 from clean import clean_values
+from shapely.geometry import Point  # Point = one spot on the map (longitude, latitude)
 
 # ---------------------------------------------------------------
 # Settings
@@ -32,8 +31,12 @@ from clean import clean_values
 COUNTIES_TO_CHECK = ["Cork", "Dublin"]
 
 # The two files we check
-TEMPERATURE_FILE = "data/raw/temperature/baseline/tmean_CMIP5_baseline_1976-2005_ANNUAL.nc"
-RAINFALL_FILE = "data/raw/precipitation/baseline/tot_prec_CMIP5_baseline_1976-2005_ANNUAL.nc"
+TEMPERATURE_FILE = (
+    "data/raw/temperature/baseline/tmean_CMIP5_baseline_1976-2005_ANNUAL.nc"
+)
+RAINFALL_FILE = (
+    "data/raw/precipitation/baseline/tot_prec_CMIP5_baseline_1976-2005_ANNUAL.nc"
+)
 
 # The pipeline rounds to 3 decimal places, so a difference this small is just rounding
 TOLERANCE = 0.0005
@@ -47,13 +50,13 @@ climate = pd.read_csv("data/processed/climate_data.csv")
 
 # counties: the county outlines (same file the pipeline uses)
 counties = gpd.read_file("data/boundaries/counties_tailte_eireann_2019.geojson")
-counties["county"] = counties["ENGLISH"].str.title()   # "CORK" -> "Cork"
+counties["county"] = counties["ENGLISH"].str.title()  # "CORK" -> "Cork"
 
 # The temperature file: a grid of temperatures, plus the lat/lon of each row and column
 ds = xr.open_dataset(TEMPERATURE_FILE)
 temperature = ds["tmean"].values[0]
-lats = ds["lat"].values    # the latitude of each row
-lons = ds["lon"].values    # the longitude of each column
+lats = ds["lat"].values  # the latitude of each row
+lons = ds["lon"].values  # the longitude of each column
 ds.close()
 
 # The rainfall file: same grid
@@ -81,7 +84,6 @@ print("Check 1: recompute Cork and Dublin")
 check_1_problems = 0
 
 for county in COUNTIES_TO_CHECK:
-
     # outline: this county's shape on the map
     outline = counties[counties["county"] == county].geometry.iloc[0]
 
@@ -92,7 +94,6 @@ for county in COUNTIES_TO_CHECK:
     # Go through every cell in the grid, one row and one column at a time
     for row in range(len(lats)):
         for col in range(len(lons)):
-
             # Skip sea cells (the pipeline only uses cells that have a temperature)
             if np.isnan(temperature[row, col]):
                 continue
@@ -103,9 +104,10 @@ for county in COUNTIES_TO_CHECK:
                 rainfall_values.append(rainfall[row, col])
 
     # Clean the values the same way the pipeline does, then average them
-    for variable, cell_values in [("temperature", temperature_values),
-                                  ("precipitation", rainfall_values)]:
-
+    for variable, cell_values in [
+        ("temperature", temperature_values),
+        ("precipitation", rainfall_values),
+    ]:
         table = pd.DataFrame({"value": cell_values})
         table, report = clean_values(table, variable)
         my_value = table["value"].mean()
@@ -113,8 +115,10 @@ for county in COUNTIES_TO_CHECK:
         pipeline_value = get_pipeline_value(county, variable)
         difference = abs(my_value - pipeline_value)
 
-        print(f"  {county} {variable}: mine = {my_value:.3f}, "
-              f"pipeline = {pipeline_value:.3f}, difference = {difference:.4f}")
+        print(
+            f"  {county} {variable}: mine = {my_value:.3f}, "
+            f"pipeline = {pipeline_value:.3f}, difference = {difference:.4f}"
+        )
 
         if difference > TOLERANCE:
             check_1_problems = check_1_problems + 1
@@ -128,7 +132,6 @@ print("\nCheck 2: every county is inside the file's range")
 check_2_problems = 0
 
 for variable, grid in [("temperature", temperature), ("precipitation", rainfall)]:
-
     # nanmin / nanmax: the lowest and highest value, ignoring empty cells
     lowest = np.nanmin(grid)
     highest = np.nanmax(grid)

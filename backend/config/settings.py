@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'rest_framework',
     'drf_spectacular',
+    'django_filters',
     'users',
     'climate',
 ]
@@ -170,7 +171,10 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 AUTH_USER_MODEL = 'users.User'
 
 # REST
-REST_FRAMEWORK = {'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'}
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}
 
 # County summary (present-day climate)
 SUMMARY_SCENARIO = 'baseline'

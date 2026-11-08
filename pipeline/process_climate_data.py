@@ -16,7 +16,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
-
 from aggregate import county_averages
 from filename_info import get_file_details
 
@@ -31,10 +30,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RAW_DIR = os.path.join(BASE_DIR, "data", "raw")
 
 # BOUNDARY_FILE: Tailte Eireann county boundaries (Step 06), CC BY 4.0
-BOUNDARY_FILE = os.path.join(BASE_DIR, "data", "boundaries", "counties_tailte_eireann_2019.geojson")
+BOUNDARY_FILE = os.path.join(
+    BASE_DIR, "data", "boundaries", "counties_tailte_eireann_2019.geojson"
+)
 
 # LAND_MASK_FILE: the temperature file whose land cells we use for every file
-LAND_MASK_FILE = os.path.join(RAW_DIR, "temperature", "baseline", "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc")
+LAND_MASK_FILE = os.path.join(
+    RAW_DIR, "temperature", "baseline", "tmean_CMIP5_baseline_1976-2005_ANNUAL.nc"
+)
 
 # SEA_LEVEL_FILE: the CSV made by Step 08
 SEA_LEVEL_FILE = os.path.join(RAW_DIR, "sea_level", "ukcp18_sea_level_ireland.csv")
@@ -66,9 +69,9 @@ counties = counties[["county", "geometry"]]
 # row and column is the same place in every file.
 
 ds = xr.open_dataset(LAND_MASK_FILE)
-grid = ds["tmean"].values[0]    # grid: the temperatures, 451 rows x 351 columns
-lats = ds["lat"].values         # lats: the latitude of each row
-lons = ds["lon"].values         # lons: the longitude of each column
+grid = ds["tmean"].values[0]  # grid: the temperatures, 451 rows x 351 columns
+lats = ds["lat"].values  # lats: the latitude of each row
+lons = ds["lon"].values  # lons: the longitude of each column
 ds.close()
 
 # rows, cols: the row and column number of every land cell
@@ -107,7 +110,6 @@ if len(files) != 70:
     print("WARNING: expected 70 files - check data/raw for missing or extra files")
 
 for path in files:
-
     # details: variable, scenario, period and season read from the file name
     details = get_file_details(path)
     print("  " + details["file"])
@@ -124,15 +126,17 @@ for path in files:
     print(f"    {report}")
 
     for county, average in averages.items():
-        all_rows.append({
-            "county": county,
-            "variable": details["variable"],
-            "scenario": details["scenario"],
-            "period": details["period"],
-            "season": details["season"],
-            "value": round(float(average), 3),
-            "unit": UNITS[details["variable"]],
-        })
+        all_rows.append(
+            {
+                "county": county,
+                "variable": details["variable"],
+                "scenario": details["scenario"],
+                "period": details["period"],
+                "season": details["season"],
+                "value": round(float(average), 3),
+                "unit": UNITS[details["variable"]],
+            }
+        )
 
 # ===============================================================
 # 4. Sea level for coastal counties, every 10 years
@@ -160,7 +164,7 @@ nearest = gpd.sjoin_nearest(
     sea_points,
     counties.to_crs("EPSG:2157"),
     how="inner",
-    max_distance=15000,     # metres
+    max_distance=15000,  # metres
 )
 nearest = nearest[~nearest.index.duplicated()]
 
@@ -190,7 +194,6 @@ YEARS = [2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100]
 sea_rows = []
 
 for county, source_county in sea_counties.items():
-
     # points: the sea points that belong to the source county
     points = nearest[nearest["county"] == source_county]
 
@@ -201,25 +204,27 @@ for county, source_county in sea_counties.items():
         source = f"UKCP18, estimated from {source_county}"
 
     for scenario in ["rcp26", "rcp45", "rcp85"]:
-
         # scenario_points: this county's points for this scenario only
         scenario_points = points[points["scenario"] == scenario]
 
         for year in YEARS:
-
             # rise: the average rise in cm over this county's points
             rise = scenario_points[f"seaLevelAnom_{year}"].mean()
 
-            sea_rows.append({
-                "county": county,
-                "scenario": scenario,
-                "year": year,
-                "rise_cm": round(float(rise), 3),
-                "source": source,
-            })
+            sea_rows.append(
+                {
+                    "county": county,
+                    "scenario": scenario,
+                    "year": year,
+                    "rise_cm": round(float(rise), 3),
+                    "source": source,
+                }
+            )
 
-print(f"Sea level for {len(sea_counties)} counties "
-      f"(Leitrim uses Sligo's values, Limerick uses Clare's)")
+print(
+    f"Sea level for {len(sea_counties)} counties "
+    f"(Leitrim uses Sligo's values, Limerick uses Clare's)"
+)
 
 # ===============================================================
 # 5. Save the two outputs
@@ -232,13 +237,17 @@ climate = pd.DataFrame(all_rows)
 climate = climate.sort_values(["county", "variable", "scenario", "period", "season"])
 print(f"Empty values in the output: {climate['value'].isna().sum()}")
 climate.to_csv(os.path.join(OUTPUT_DIR, "climate_data.csv"), index=False)
-climate.to_json(os.path.join(OUTPUT_DIR, "climate_data.json"), orient="records", indent=2)
+climate.to_json(
+    os.path.join(OUTPUT_DIR, "climate_data.json"), orient="records", indent=2
+)
 
 # sea_level: sea level rows, sorted
 sea_level = pd.DataFrame(sea_rows)
 sea_level = sea_level.sort_values(["county", "scenario", "year"])
 sea_level.to_csv(os.path.join(OUTPUT_DIR, "sea_level.csv"), index=False)
-sea_level.to_json(os.path.join(OUTPUT_DIR, "sea_level.json"), orient="records", indent=2)
+sea_level.to_json(
+    os.path.join(OUTPUT_DIR, "sea_level.json"), orient="records", indent=2
+)
 
 print(f"\nclimate_data: {len(climate)} rows")
 print(climate.groupby("variable").size().to_string())
