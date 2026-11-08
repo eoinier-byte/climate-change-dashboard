@@ -9,6 +9,7 @@
 | [`../DATA_SOURCES.md`](../DATA_SOURCES.md) | Datasets, download dates, licences, attribution (CCD-22) |
 | `data-review.md` | Climate Ireland and sea level dataset review (CCD-17, CCD-19) |
 | `variables.md` | Column specification for `climate_data.csv` (CCD-20) |
+| `ai-assistant-spike.md` | AI assistant spike: cost, response time, model choice and Sprint 3 tools (CCD-343, CCD-346) |
 | `sprints/` | Sprint goal, planning, review and retrospective notes |
 
 Project-management documents (Product Goal, Assumptions, Scope, Stakeholders, Risk Assessment) live in **Confluence**. Link to them rather than copying them here.
