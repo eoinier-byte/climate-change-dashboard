@@ -8,7 +8,6 @@
 # Bad values are removed. We never replace them with a made-up number.
 
 import numpy as np
-
 from cleaning_ranges import FILL_VALUE, RANGES
 
 
@@ -37,7 +36,6 @@ def clean_values(values, variable):
 
     # Look at every value, once
     for value in values["value"]:
-
         if np.isnan(value):
             # Empty value
             nulls = nulls + 1

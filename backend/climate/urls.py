@@ -1,16 +1,16 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from climate.views import CountyViewSet, HealthView, MetaView, SeaLevelViewSet
+from climate.views import CountyViewSet, HealthView, MetaView, SeaLevelView
 
 app_name = 'climate'
 
 router = SimpleRouter()
 router.register('counties', CountyViewSet, basename='county')
-router.register('sea-level', SeaLevelViewSet, basename='sea_level')
 
 urlpatterns = [
     path('health/', HealthView.as_view(), name='health'),
     path('meta/', MetaView.as_view(), name='meta'),
+    path('sea-level/<slug:slug>/', SeaLevelView.as_view(), name='sea_level'),
     *router.urls,
 ]

@@ -72,5 +72,11 @@ class CountyDetailSerializerTestCase(ProjectionTestCase):
         data = CountyDetailSerializer(self.county).data
         self.assertEqual(
             data,
-            {'id': self.county.id, 'name': 'Cork', 'slug': 'cork', 'has_coastline': True, 'summary': self.EMPTY_SUMMARY},
+            {
+                'id': self.county.id,
+                'name': 'Cork',
+                'slug': 'cork',
+                'has_coastline': True,
+                'summary': self.EMPTY_SUMMARY,
+            },
         )

@@ -23,13 +23,11 @@ TEMPERATURE_DIR = os.path.join(BASE_DIR, "data", "raw", "temperature")
 SCENARIOS = ["rcp26", "rcp45", "rcp85"]
 
 for scenario in SCENARIOS:
-
     # folder: e.g. data/raw/temperature/rcp45
     folder = os.path.join(TEMPERATURE_DIR, scenario)
 
     # Go through every file in the folder, in alphabetical order
     for filename in sorted(os.listdir(folder)):
-
         # Skip anything that isn't a NetCDF (.nc) file
         if not filename.endswith(".nc"):
             continue

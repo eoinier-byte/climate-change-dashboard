@@ -23,8 +23,8 @@
 
 # RANGES: variable name -> (lowest allowed, highest allowed)
 RANGES = {
-    "temperature": (-2, 22),       # degC
-    "precipitation": (50, 5000),   # mm
+    "temperature": (-2, 22),  # degC
+    "precipitation": (50, 5000),  # mm
 }
 
 # FILL_VALUE: a number some climate files use to mean "no data here".

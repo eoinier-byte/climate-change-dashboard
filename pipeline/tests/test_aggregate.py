@@ -22,30 +22,33 @@
 
 import numpy as np
 import pandas as pd
-
 from aggregate import county_averages
 
 
 def test_county_averages_on_a_tiny_grid():
 
     # The pretend climate file (np.nan = an empty cell)
-    grid = np.array([
-        [10.0, 12.0, 5.0],      # row 0
-        [14.0, np.nan, 7.0],    # row 1
-    ])
+    grid = np.array(
+        [
+            [10.0, 12.0, 5.0],  # row 0
+            [14.0, np.nan, 7.0],  # row 1
+        ]
+    )
 
     # Which county each cell belongs to. Read it down the columns:
     # the first cell is row 0, col 0, in county A, and so on.
-    cells = pd.DataFrame({
-        "row":    [0, 0, 1, 1, 0, 1],
-        "col":    [0, 1, 0, 1, 2, 2],
-        "county": ["A", "A", "A", "A", "B", "B"],
-    })
+    cells = pd.DataFrame(
+        {
+            "row": [0, 0, 1, 1, 0, 1],
+            "col": [0, 1, 0, 1, 2, 2],
+            "county": ["A", "A", "A", "A", "B", "B"],
+        }
+    )
 
     # Run our function
     averages, report = county_averages(cells, grid, "temperature")
 
     # assert = "this must be true, or the test fails"
-    assert averages["A"] == 12     # the answer we worked out by hand
+    assert averages["A"] == 12  # the answer we worked out by hand
     assert averages["B"] == 6
-    assert report["nulls"] == 1    # the one empty cell was found and removed
+    assert report["nulls"] == 1  # the one empty cell was found and removed
