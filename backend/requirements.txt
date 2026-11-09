@@ -1,3 +1,4 @@
+anthropic==2.6.0
 asgiref==3.12.1
 cfgv==3.5.0
 distlib==0.4.3

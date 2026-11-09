@@ -3,7 +3,7 @@ from django.test import TestCase
 
 from climate.models import County
 from climate.tests.base import ProjectionTestCase
-from common.models import Scenario, Season, Variable
+from common.enums import Scenario, Season, Variable
 
 
 class CountyTestCase(TestCase):

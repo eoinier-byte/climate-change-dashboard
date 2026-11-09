@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
-from common.models import Scenario, Season, Unit, Variable
+from common.enums import Scenario, Season, Unit, Variable
 
 
 class ProjectionTestCase(TestCase):

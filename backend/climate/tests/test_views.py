@@ -6,7 +6,7 @@ from rest_framework.test import APITestCase
 
 from climate.models import County, SeaLevelProjection
 from climate.tests.base import ProjectionTestCase
-from common.models import Scenario, Season, Unit, Variable
+from common.enums import Scenario, Season, Unit, Variable
 
 
 class CountyViewSetTestCase(APITestCase):

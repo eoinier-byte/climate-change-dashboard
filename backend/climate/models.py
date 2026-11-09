@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils.text import slugify
 
-from common.models import BaseProjection, Variable
+from common.enums import Variable
+from common.models import BaseProjection
 from common.validators import validate_period
 
 # Create your models here.
