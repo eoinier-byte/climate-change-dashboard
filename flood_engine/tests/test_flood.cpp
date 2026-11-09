@@ -353,10 +353,19 @@ TEST_CASE("any non-zero is_sea value counts as sea", "[valid]") {
     check_flood(in, 1.0, {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {3, 2}});
 }
 
+TEST_CASE("the elevation of a sea cell is ignored, even NaN or infinite", "[valid]") {
+    // docs §3: for sea cells the elevation value is ignored (pending Artur's confirmation).
+    FloodInput in = make_table_grid();
+    in.elevation_m[0 * in.width] = kNaN;   // sea cell (0,0)
+    in.elevation_m[2 * in.width] = kInf;   // sea cell (2,0)
+    in.elevation_m[4 * in.width] = -kInf;  // sea cell (4,0)
+    check_flood(in, 1.0, {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {3, 2}});
+}
+
 TEST_CASE("a cell exactly at the sea level floods, at every level step", "[valid]") {
     // The elevation is the float nearest to k/10 (as stored in a float GeoTIFF), the sea level is
     // the double k/10. Many of these are not equal as numbers (1.2f > 1.2), so this pins down that
-    // the comparison is done in float precision (see report, open question 1).
+    // the comparison is done in float precision (docs §5, pending Artur's confirmation).
     for (int k = 0; k <= kLevelSteps; ++k) {
         FloodInput in;
         in.width = 2;
