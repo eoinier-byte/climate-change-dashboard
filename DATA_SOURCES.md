@@ -65,4 +65,26 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 | IPCC AR6 Synthesis Report (sea level) | Global figures only, on SSP scenarios that don't match the RCPs used elsewhere. Replaced by UKCP18 on 27 Oct 2026 (Jira CCD-19). |
 | EPA Research 471, Updated High-resolution Climate Projections for Ireland (2025) | Newer CMIP6/SSP projections. The Climate Ireland Data Explorer still serves the CMIP5/RCP TRANSLATE data, so we use that for consistency. Revisit when TRANSLATE moves to CMIP6. |
 | EPA Climate Ireland coastal flooding maps | Images only, no downloadable data, and no RCP4.5 |
+<<<<<<< HEAD
 | Climate Ireland max/min temperature, 2041–2070, global warming levels | Available but out of scope for the current dashboard |
+=======
+| Climate Ireland max/min temperature, 2041–2070, global warming levels | Available but out of scope for the current dashboard |
+
+## 6. Proposed, pending team agreement: Copernicus DEM (flood engine, CCD-396)
+
+> **Not agreed yet.** Proposed by Artur Romanov on 9 November 2026 for the flood engine (CCD-395). Move it into the numbered list above, and add its credit to the footer (§4), only after the team agrees. Format details: [docs/flood-engine.md](docs/flood-engine.md).
+
+| | |
+|---|---|
+| **Organisation** | European Space Agency (ESA), Copernicus Contributing Missions; data © DLR e.V. and Airbus Defence and Space GmbH |
+| **Dataset** | Copernicus DEM, GLO-90 (3 arc-seconds, ~90 m) or GLO-30 (1 arc-second, ~30 m). Digital Surface Model (includes buildings and vegetation) |
+| **Used for** | Elevation grid for the flood engine (land below a given sea level) |
+| **URL** | https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM (free account required) |
+| **Date accessed** | 9 November 2026 (licence read; no data downloaded yet) |
+| **Format** | GeoTIFF, 32-bit float, 1° × 1° tiles. WGS84 (EPSG:4326), heights in metres above EGM2008 (EPSG:3855) |
+| **Licence / reuse terms** | **ESA Copernicus Contributing Mission Data Access Licence** (issue 21/02/2025, linked from the page above). General-public users: **non-commercial use only** (cl. 3.4.3), no reselling (cl. 3.4.4). Raw or resampled DEM may only be shared with people who accepted the licence (cl. 3.8.1.9), so **do not commit the DEM** to the repo. Derived flood masks are "Value Added Products" (cl. 1.12.3) and may be published under our own terms (cl. 3.8.2). Not yet read: the DEM "Mission Specific Annex" linked from the page. |
+| **Required citation** | DOI requested by ESA: https://doi.org/10.5270/ESA-c5d3d65 |
+| **Why proposed** | Free, covers all of Ireland in one consistent dataset, documented accuracy (< 4 m absolute vertical, 90 %) |
+
+**Credit for published flood layers (licence cl. 4.2.4, Value Added Products):** "produced using data © CCME (year of acquisition), provided under COPERNICUS by the European Union and ESA". The page gives a DEM-specific wording ("produced using Copernicus WorldDEM-90 …", naming DLR e.V. and Airbus Defence and Space GmbH); copy it exactly from the page before using it.
+>>>>>>> 0556d7d (CCD-396: define flood engine input/output format and record elevation source decision)
