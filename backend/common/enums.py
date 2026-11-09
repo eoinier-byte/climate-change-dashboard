@@ -1,0 +1,27 @@
+from django.db import models
+
+
+class Variable(models.TextChoices):
+    TEMPERATURE = 'temperature', 'Temperature'
+    PRECIPITATION = 'precipitation', 'Precipitation'
+
+
+class Season(models.TextChoices):
+    ANNUAL = 'annual', 'Annual'
+    WINTER = 'winter', 'Winter'
+    SPRING = 'spring', 'Spring'
+    SUMMER = 'summer', 'Summer'
+    AUTUMN = 'autumn', 'Autumn'
+
+
+class Scenario(models.TextChoices):
+    BASELINE = 'baseline', 'Baseline'
+    RCP26 = 'rcp26', 'RCP2.6'
+    RCP45 = 'rcp45', 'RCP4.5'
+    RCP85 = 'rcp85', 'RCP8.5'
+
+
+class Unit(models.TextChoices):
+    DEG_C = 'degC', '°C'
+    MM = 'mm', 'mm'
+    CM = 'cm', 'cm'

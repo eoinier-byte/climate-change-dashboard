@@ -2,10 +2,10 @@ from decimal import Decimal
 
 from django.test import override_settings
 
-from climate.models import ClimateProjection
-from climate.serializers import CountyDetailSerializer
+from climate.models import ClimateProjection, County
+from climate.serializers import CountyDetailSerializer, CountyProjectionsSerializer, CountySeaLevelSerializer
 from climate.tests.base import ProjectionTestCase
-from common.models import Scenario, Season, Unit, Variable
+from common.enums import Scenario, Season, Unit, Variable
 from common.serializers import ProjectionSerializer
 
 
@@ -78,5 +78,232 @@ class CountyDetailSerializerTestCase(ProjectionTestCase):
                 'slug': 'cork',
                 'has_coastline': True,
                 'summary': self.EMPTY_SUMMARY,
+            },
+        )
+
+
+class CountyProjectionsSerializerTestCase(ProjectionTestCase):
+    PERIODS = ['1976-2005', '2021-2050', '2071-2100']
+
+    def create_series(self, variable, unit, baseline, scenarios, season=Season.ANNUAL, county=None):
+        """One baseline row plus a mid- and end-century row per scenario."""
+        extra = {'variable': variable, 'unit': unit, 'season': season}
+        if county:
+            extra['county'] = county
+        self.create_climate_projection(scenario=Scenario.BASELINE, period='1976-2005', value=Decimal(baseline), **extra)
+        for scenario, (mid, end) in scenarios.items():
+            self.create_climate_projection(scenario=scenario, period='2021-2050', value=Decimal(mid), **extra)
+            self.create_climate_projection(scenario=scenario, period='2071-2100', value=Decimal(end), **extra)
+
+    def create_temperature(self, **kwargs):
+        self.create_series(
+            Variable.TEMPERATURE,
+            Unit.DEG_C,
+            '9.810',
+            {
+                Scenario.RCP26: ('10.520', '10.540'),
+                Scenario.RCP45: ('10.620', '11.280'),
+                Scenario.RCP85: ('10.710', '12.520'),
+            },
+            **kwargs,
+        )
+
+    def create_precipitation(self):
+        self.create_series(Variable.PRECIPITATION, Unit.MM, '1366.160', {Scenario.RCP85: ('1402.490', '1474.710')})
+
+    def serialize(self, **context):
+        return CountyProjectionsSerializer(self.county, context=context).data
+
+    def test_temperature(self):
+        self.create_temperature()
+        data = self.serialize(variable='temperature', season='annual')
+        self.assertEqual(
+            {**data, 'periods': list(data['periods'])},
+            {
+                'county': 'Cork',
+                'slug': 'cork',
+                'variable': 'temperature',
+                'season': 'annual',
+                'unit': '°C',
+                'change_unit': '°C',
+                'baseline_period': '1976-2005',
+                'baseline': Decimal('9.810'),
+                'periods': self.PERIODS,
+                'scenarios': {
+                    'rcp26': {
+                        'label': 'RCP2.6',
+                        'values': [Decimal('9.810'), Decimal('10.520'), Decimal('10.540')],
+                        'change': [0, Decimal('0.71'), Decimal('0.73')],
+                    },
+                    'rcp45': {
+                        'label': 'RCP4.5',
+                        'values': [Decimal('9.810'), Decimal('10.620'), Decimal('11.280')],
+                        'change': [0, Decimal('0.81'), Decimal('1.47')],
+                    },
+                    'rcp85': {
+                        'label': 'RCP8.5',
+                        'values': [Decimal('9.810'), Decimal('10.710'), Decimal('12.520')],
+                        'change': [0, Decimal('0.90'), Decimal('2.71')],
+                    },
+                },
+                'source': 'TRANSLATE',
+            },
+        )
+
+    def test_precipitation_change_is_percent_of_baseline(self):
+        self.create_precipitation()
+        data = self.serialize(variable='precipitation')
+        self.assertEqual((data['unit'], data['change_unit']), ('mm', '%'))
+        self.assertEqual(data['baseline'], Decimal('1366.160'))
+        self.assertEqual(
+            data['scenarios'],
+            {
+                'rcp85': {
+                    'label': 'RCP8.5',
+                    'values': [Decimal('1366.160'), Decimal('1402.490'), Decimal('1474.710')],
+                    'change': [0, Decimal('2.7'), Decimal('7.9')],
+                }
+            },
+        )
+
+    def test_defaults_to_annual_temperature(self):
+        self.create_temperature()
+        self.create_precipitation()
+        data = self.serialize()
+        self.assertEqual((data['variable'], data['season'], data['unit']), ('temperature', 'annual', '°C'))
+        self.assertEqual(data['baseline'], Decimal('9.810'))
+
+    def test_periods_are_unique_and_in_order(self):
+        self.create_temperature()
+        self.assertEqual(list(self.serialize()['periods']), self.PERIODS)
+
+    def test_filters_by_variable(self):
+        self.create_temperature()
+        self.create_precipitation()
+        data = self.serialize(variable='precipitation')
+        self.assertEqual(list(data['scenarios']), ['rcp85'])
+        self.assertEqual(data['baseline'], Decimal('1366.160'))
+
+    def test_filters_by_season(self):
+        self.create_temperature(season=Season.ANNUAL)
+        self.create_series(
+            Variable.TEMPERATURE, Unit.DEG_C, '6.000', {Scenario.RCP85: ('6.500', '8.000')}, season=Season.WINTER
+        )
+        data = self.serialize(season='winter')
+        self.assertEqual(data['season'], 'winter')
+        self.assertEqual(data['baseline'], Decimal('6.000'))
+        self.assertEqual(list(data['scenarios']), ['rcp85'])
+        self.assertEqual(data['scenarios']['rcp85']['change'], [0, Decimal('0.50'), Decimal('2.00')])
+
+    def test_ignores_other_counties(self):
+        kerry = County.objects.create(name='Kerry', has_coastline=True)
+        self.create_series(
+            Variable.TEMPERATURE, Unit.DEG_C, '10.000', {Scenario.RCP85: ('11.000', '13.000')}, county=kerry
+        )
+        self.create_temperature()
+        self.assertEqual(self.serialize()['baseline'], Decimal('9.810'))
+
+    def test_no_data(self):
+        data = self.serialize(variable='precipitation', season='summer')
+        self.assertEqual(
+            {**data, 'periods': list(data['periods'])},
+            {
+                'county': 'Cork',
+                'slug': 'cork',
+                'variable': 'precipitation',
+                'season': 'summer',
+                'unit': None,
+                'change_unit': '%',
+                'baseline_period': None,
+                'baseline': None,
+                'periods': [],
+                'scenarios': {},
+                'source': None,
+            },
+        )
+
+    def test_num_queries(self):
+        self.create_temperature()
+        self.create_precipitation()
+        for variable in ('temperature', 'precipitation'):
+            with self.subTest(variable=variable), self.assertNumQueries(1):
+                self.serialize(variable=variable)
+
+    def test_num_queries_with_prefetch(self):
+        self.create_temperature()
+        county = County.objects.prefetch_related('climateprojections__data_source').get(pk=self.county.pk)
+        with self.assertNumQueries(0):
+            data = CountyProjectionsSerializer(county, context={'variable': 'temperature'}).data
+        self.assertEqual(data['baseline'], Decimal('9.810'))
+        self.assertEqual(list(data['scenarios']), ['rcp26', 'rcp45', 'rcp85'])
+
+    def test_no_baseline_gives_empty_scenarios(self):
+        self.create_climate_projection(scenario=Scenario.RCP85, period='2071-2100', season=Season.ANNUAL)
+        data = self.serialize()
+        self.assertIsNone(data['baseline'])
+        self.assertEqual(data['scenarios'], {})
+
+
+class CountySeaLevelSerializerTestCase(ProjectionTestCase):
+    def test_coastal_county(self):
+        # Created out of order on purpose: the response must still be sorted.
+        for scenario, year, value in [
+            (Scenario.RCP85, 2100, '75.400'),
+            (Scenario.RCP26, 2050, '22.830'),
+            (Scenario.RCP85, 2050, '28.630'),
+            (Scenario.RCP26, 2100, '42.700'),
+        ]:
+            self.create_sea_level_projection(scenario=scenario, year=year, value=Decimal(value))
+        data = CountySeaLevelSerializer(self.county).data
+        self.assertEqual(
+            {**data, 'years': list(data['years'])},
+            {
+                'county': 'Cork',
+                'slug': 'cork',
+                'has_coastline': True,
+                'unit': 'cm',
+                'baseline_period': '1981-2000',
+                'years': [2050, 2100],
+                'series': {
+                    'rcp26': {
+                        'values': [Decimal('22.830'), Decimal('42.700')],
+                        'provenance': 'UKCP18',
+                        'source': 'ukcp18',
+                    },
+                    'rcp85': {
+                        'values': [Decimal('28.630'), Decimal('75.400')],
+                        'provenance': 'UKCP18',
+                        'source': 'ukcp18',
+                    },
+                },
+            },
+        )
+
+    def test_years_are_unique_and_in_order(self):
+        for scenario in (Scenario.RCP26, Scenario.RCP45, Scenario.RCP85):
+            for year in (2100, 2050):
+                self.create_sea_level_projection(scenario=scenario, year=year)
+        self.assertEqual(list(CountySeaLevelSerializer(self.county).data['years']), [2050, 2100])
+
+    def test_provenance_for_estimated_county(self):
+        leitrim = County.objects.create(name='Leitrim', has_coastline=True)
+        self.create_sea_level_projection(county=leitrim, provenance='estimated from Sligo')
+        series = CountySeaLevelSerializer(leitrim).data['series']
+        self.assertEqual(series['rcp85']['provenance'], 'estimated from Sligo')
+
+    def test_inland_county(self):
+        offaly = County.objects.create(name='Offaly', has_coastline=False)
+        self.create_sea_level_projection()  # data for Cork must not leak into Offaly
+        data = CountySeaLevelSerializer(offaly).data
+        self.assertEqual(
+            {**data, 'years': list(data['years'])},
+            {
+                'county': 'Offaly',
+                'slug': 'offaly',
+                'has_coastline': False,
+                'unit': None,
+                'baseline_period': None,
+                'years': [],
+                'series': {},
             },
         )
