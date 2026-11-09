@@ -1,3 +1,5 @@
+import ComingSoon from '../components/ComingSoon';
+
 export default function SeaLevel() {
-  return <h1>Sea level</h1>;
+  return <ComingSoon title="Flooding" />;
 }
