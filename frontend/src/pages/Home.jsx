@@ -1,3 +1,5 @@
+import ComingSoon from '../components/ComingSoon';
+
 export default function Home() {
-  return <h1>Home</h1>;
+  return <ComingSoon title="Map" />;
 }

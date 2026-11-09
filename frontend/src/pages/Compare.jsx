@@ -1,3 +1,5 @@
+import ComingSoon from '../components/ComingSoon';
+
 export default function Compare() {
-  return <h1>Compare scenarios</h1>;
+  return <ComingSoon title="Compare" />;
 }
