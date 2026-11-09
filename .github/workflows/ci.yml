@@ -98,19 +98,19 @@ jobs:
         run: npm test --if-present
 
   # C++ flood module (CCD-277): only runs once the module exists.
-  # Change "flood" to the folder the team actually uses for the C++ code.
+  # The C++ code lives in flood_engine/ (CCD-396); the tests use Catch2, which CMake downloads.
   cpp:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # Configure and build with CMake (cmake and g++ come pre-installed on the runner)
-      - if: ${{ hashFiles('flood/CMakeLists.txt') != '' }}
-        run: cmake -S flood -B flood/build
-      - if: ${{ hashFiles('flood/CMakeLists.txt') != '' }}
-        run: cmake --build flood/build
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        run: cmake -S flood_engine -B flood_engine/build
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        run: cmake --build flood_engine/build
       # Run the C++ tests registered with CTest
-      - if: ${{ hashFiles('flood/CMakeLists.txt') != '' }}
-        run: ctest --test-dir flood/build --output-on-failure
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        run: ctest --test-dir flood_engine/build --output-on-failure
 
   # Failure alerts (CCD-279): post to the team's Discord channel if any job above fails.
   # Needs a repo secret called DISCORD_WEBHOOK_URL (see docs/ci-cd.md).
