@@ -65,9 +65,6 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 | IPCC AR6 Synthesis Report (sea level) | Global figures only, on SSP scenarios that don't match the RCPs used elsewhere. Replaced by UKCP18 on 27 Oct 2026 (Jira CCD-19). |
 | EPA Research 471, Updated High-resolution Climate Projections for Ireland (2025) | Newer CMIP6/SSP projections. The Climate Ireland Data Explorer still serves the CMIP5/RCP TRANSLATE data, so we use that for consistency. Revisit when TRANSLATE moves to CMIP6. |
 | EPA Climate Ireland coastal flooding maps | Images only, no downloadable data, and no RCP4.5 |
-<<<<<<< HEAD
-| Climate Ireland max/min temperature, 2041–2070, global warming levels | Available but out of scope for the current dashboard |
-=======
 | Climate Ireland max/min temperature, 2041–2070, global warming levels | Available but out of scope for the current dashboard |
 
 ## 6. Proposed, pending team agreement: Copernicus DEM (flood engine, CCD-396)
@@ -87,7 +84,6 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 | **Why proposed** | Free, covers all of Ireland in one consistent dataset, documented accuracy (< 4 m absolute vertical, 90 %) |
 
 **Credit for published flood layers (licence cl. 4.2.4, Value Added Products):** "produced using data © CCME (year of acquisition), provided under COPERNICUS by the European Union and ESA". The page gives a DEM-specific wording ("produced using Copernicus WorldDEM-90 …", naming DLR e.V. and Airbus Defence and Space GmbH); copy it exactly from the page before using it.
->>>>>>> 0556d7d (CCD-396: define flood engine input/output format and record elevation source decision)
 
 ## 7. Copernicus GLO-90 DEM download (CCD-420)
 
