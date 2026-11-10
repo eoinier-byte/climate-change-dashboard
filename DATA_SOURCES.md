@@ -93,9 +93,10 @@ Last updated: 27 October 2026 · Owner: Eoin Ryan
 | **Date accessed** | 10 November 2026 (27 tiles, lat 51–55 N, lon 11–6 W; N51 W007, N55 W011 and N55 W010 are all sea and do not exist) |
 | **How to get it** | `scripts/fetch_dem.sh [output_dir]` (default `data/dem/glo90`), then `gdalbuildvrt data/dem/glo90/ireland_glo90.vrt data/dem/glo90/Copernicus_DSM_COG_30_*_DEM.tif`. `data/dem/` is git-ignored: never commit the tiles (licence, see §6). |
 | **What gdalinfo shows** | WGS84 (EPSG:4326), Float32, one band, pixel 0.00125° × 0.000833° (4.5″ × 3″ at this latitude), no nodata value set, no vertical datum in the metadata |
+| **Vertical datum** | EGM2008 geoid (EPSG:3855), heights in metres, same as §6. Stated in the official Copernicus DEM collection description (https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM, checked 10 November 2026). The AWS copy is made from the official GLO-90 DGED tiles (bucket readme), and its maintainers confirm it keeps EGM2008 (https://forum.sentinel-hub.com/t/copernicus-dem-data-available-on-aws/3027). The GeoTIFF metadata does not record the datum, so code must assume it explicitly. |
 | **Required attribution** | "produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved" |
 
 Limitations:
 
 - **Surface model, not terrain.** Heights include buildings and vegetation, so towns and forests look higher than the ground.
-- **Vertical datum not confirmed.** The tiles do not record it. Confirm it from the official product documentation before comparing heights with sea-level figures.
+- **EGM2008 height 0 is not exactly local mean sea level.** The offset from Irish mean sea level along the coast has not been measured yet. UKCP18 (§2) gives sea-level *change* relative to a baseline, not heights on a datum, so the flood engine must state which present-day sea level it adds that change to.
