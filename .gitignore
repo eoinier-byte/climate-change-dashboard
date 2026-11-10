@@ -38,3 +38,6 @@ pipeline/data/raw/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Copernicus DEM tiles: licence forbids redistribution, never commit
+data/dem/
