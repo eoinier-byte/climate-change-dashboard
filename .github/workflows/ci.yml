@@ -103,14 +103,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Configure and build with CMake (cmake and g++ come pre-installed on the runner)
+      # Python for the pybind11 binding (CCD-399): headers to build it, numpy + pytest to test it
+      - uses: actions/setup-python@v5
+        if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        with:
+          python-version: "3.12"
       - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
-        run: cmake -S flood_engine -B flood_engine/build
+        run: pip install numpy pytest
+      # Configure and build with CMake (cmake and g++ come pre-installed on the runner).
+      # Python_EXECUTABLE makes CMake use the setup-python interpreter, not the system one.
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        run: >-
+          cmake -S flood_engine -B flood_engine/build
+          -DFLOOD_ENGINE_BUILD_PYTHON=ON -DPython_EXECUTABLE="$(which python)"
       - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
         run: cmake --build flood_engine/build
       # Run the C++ tests registered with CTest
       - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
         run: ctest --test-dir flood_engine/build --output-on-failure
+      # Run the Python binding tests against the module just built
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        env:
+          FLOOD_ENGINE_PY_DIR: ${{ github.workspace }}/flood_engine/build/python
+        run: python -m pytest flood_engine/tests/python -v
 
   # Failure alerts (CCD-279): post to the team's Discord channel if any job above fails.
   # Needs a repo secret called DISCORD_WEBHOOK_URL (see docs/ci-cd.md).
