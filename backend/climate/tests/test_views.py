@@ -4,7 +4,7 @@ from http import HTTPStatus
 from django.shortcuts import reverse
 from rest_framework.test import APITestCase
 
-from climate.models import County, SeaLevelProjection
+from climate.models import ClimateProjection, County, SeaLevelProjection
 from climate.tests.base import ProjectionTestCase
 from common.enums import Scenario, Season, Unit, Variable
 
@@ -231,3 +231,197 @@ class HealthViewTestCase(APITestCase):
     def test_method_not_allowed(self):
         response = self.client.post(reverse('climate:health'))
         self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+class ClimateProjectionListViewTestCase(ProjectionTestCase, APITestCase):
+    url = reverse('climate:projections')
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+        base = {
+            'county': cls.county,
+            'data_source': cls.translate,
+            'variable': Variable.TEMPERATURE,
+            'scenario': Scenario.RCP45,
+            'period': '2021-2050',
+            'season': Season.WINTER,
+            'value': Decimal('6.000'),
+            'unit': Unit.DEG_C,
+        }
+        ClimateProjection.objects.create(**base)
+        ClimateProjection.objects.create(
+            **{**base, 'scenario': Scenario.RCP85, 'period': '2071-2100', 'season': Season.ANNUAL}
+        )
+        ClimateProjection.objects.create(
+            **{
+                **base,
+                'variable': Variable.PRECIPITATION,
+                'scenario': Scenario.BASELINE,
+                'period': '1976-2005',
+                'season': Season.ANNUAL,
+                'value': Decimal('950.000'),
+                'unit': Unit.MM,
+            }
+        )
+        ClimateProjection.objects.create(**{**base, 'county': cls.kerry})
+
+    def get(self, **params):
+        return self.client.get(self.url, params)
+
+    def test_no_filters_returns_all(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(len(response.json()), 4)
+
+    def test_row_shape(self):
+        row = self.get(county='kerry').json()[0]
+        self.assertEqual(
+            row,
+            {
+                'scenario': 'rcp45',
+                'baseline_period': '1976-2005',
+                'units': 'degC',
+                'source': 'translate',
+                'value': '6.000',
+                'county': 'kerry',
+                'variable': 'temperature',
+                'period': '2021-2050',
+                'season': 'winter',
+                'baseline_value': None,
+                'projected_value': '6.000',
+                'change': None,
+            },
+        )
+
+    def test_each_filter(self):
+        cases = (
+            ('county', 'kerry', 1),
+            ('variable', 'precipitation', 1),
+            ('scenario', 'rcp85', 1),
+            ('period', '2021-2050', 2),
+            ('season', 'annual', 2),
+        )
+        for field, value, expected in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                rows = response.json()
+                self.assertEqual(len(rows), expected)
+                self.assertTrue(all(row[field] == value for row in rows))
+
+    def test_filters_combine(self):
+        rows = self.get(county='cork', variable='temperature', season='winter').json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['scenario'], 'rcp45')
+
+    def test_no_match_returns_empty_list(self):
+        response = self.get(county='kerry', scenario='rcp85')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json(), [])
+
+    def test_unknown_county_returns_400(self):
+        cases = (
+            ('county', 'atlantis'),
+            ('variable', 'wind'),
+            ('scenario', 'rcp60'),
+            ('period', '2000-2001'),
+            ('season', 'monsoon'),
+        )
+        for field, value in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(field, response.json())
+
+    def test_num_queries(self):
+        with self.assertNumQueries(1):
+            self.get()
+
+    def test_method_not_allowed(self):
+        initial_count = ClimateProjection.objects.count()
+        for method in ('post', 'put', 'patch', 'delete'):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.url, {})
+                self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+                self.assertEqual(ClimateProjection.objects.count(), initial_count)
+
+
+class ClimateProjectionChangeTestCase(ProjectionTestCase, APITestCase):
+    url = reverse('climate:projections')
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+        temperature = {
+            'county': cls.county,
+            'data_source': cls.translate,
+            'variable': Variable.TEMPERATURE,
+            'season': Season.ANNUAL,
+            'unit': Unit.DEG_C,
+        }
+        precipitation = {**temperature, 'variable': Variable.PRECIPITATION, 'unit': Unit.MM}
+        for fields, scenario, period, value in (
+            (temperature, Scenario.BASELINE, '1976-2005', '9.810'),
+            (temperature, Scenario.RCP45, '2021-2050', '10.520'),
+            (temperature, Scenario.RCP85, '2071-2100', '12.400'),
+            (precipitation, Scenario.BASELINE, '1976-2005', '1366.160'),
+            (precipitation, Scenario.RCP85, '2071-2100', '1474.710'),
+        ):
+            ClimateProjection.objects.create(**fields, scenario=scenario, period=period, value=Decimal(value))
+        ClimateProjection.objects.create(
+            **{**temperature, 'county': cls.kerry},
+            scenario=Scenario.RCP85,
+            period='2071-2100',
+            value=Decimal('12.000'),
+        )
+
+    def get_row(self, **params):
+        rows = self.client.get(self.url, params).json()
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def values(self, row):
+        return row['baseline_value'], row['projected_value'], row['change']
+
+    def test_temperature_change_in_degrees(self):
+        row = self.get_row(county='cork', variable='temperature', scenario='rcp85')
+        self.assertEqual(self.values(row), ('9.810', '12.400', 2.59))
+
+    def test_each_period_uses_same_baseline(self):
+        row = self.get_row(county='cork', variable='temperature', scenario='rcp45')
+        self.assertEqual(self.values(row), ('9.810', '10.520', 0.71))
+
+    def test_precipitation_change_in_percent(self):
+        row = self.get_row(county='cork', variable='precipitation', scenario='rcp85')
+        self.assertEqual(self.values(row), ('1366.160', '1474.710', 7.9))
+
+    def test_baseline_row_has_zero_change(self):
+        row = self.get_row(county='cork', variable='temperature', scenario='baseline')
+        self.assertEqual(self.values(row), ('9.810', '9.810', 0))
+
+    def test_missing_baseline_gives_none(self):
+        row = self.get_row(county='kerry')
+        self.assertEqual(self.values(row), (None, '12.000', None))
+
+    def test_baseline_from_same_county_variable_and_season(self):
+        rows = self.client.get(self.url, {'scenario': 'rcp85'}).json()
+        baselines = {(row['county'], row['variable']): row['baseline_value'] for row in rows}
+        self.assertEqual(
+            baselines,
+            {
+                ('cork', 'temperature'): '9.810',
+                ('cork', 'precipitation'): '1366.160',
+                ('kerry', 'temperature'): None,
+            },
+        )
+
+    def test_units_and_source_present(self):
+        row = self.get_row(county='cork', variable='precipitation', scenario='rcp85')
+        self.assertEqual((row['units'], row['source']), ('mm', 'translate'))
+
+    def test_num_queries(self):
+        with self.assertNumQueries(1):
+            self.client.get(self.url)
