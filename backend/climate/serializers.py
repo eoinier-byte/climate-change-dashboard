@@ -42,10 +42,27 @@ class SeaLevelProjectionSerializer(ProjectionSerializer):
 
 class ClimateProjectionSerializer(ProjectionSerializer):
     county = serializers.SlugRelatedField(slug_field='slug', read_only=True)
+    baseline_value = serializers.DecimalField(max_digits=8, decimal_places=3, read_only=True)
+    projected_value = serializers.DecimalField(source='value', max_digits=8, decimal_places=3, read_only=True)
+    change = serializers.SerializerMethodField()
 
     class Meta:
         model = ClimateProjection
-        fields = (*ProjectionSerializer.Meta.fields, 'variable', 'period', 'season')
+        fields = (
+            *ProjectionSerializer.Meta.fields,
+            'variable',
+            'period',
+            'season',
+            'baseline_value',
+            'projected_value',
+            'change',
+        )
+
+    @staticmethod
+    def get_change(obj) -> Decimal | None:
+        if obj.baseline_value is None:
+            return None
+        return change_from_baseline(obj.value, obj.baseline_value, obj.variable)
 
 
 class ClimateSeriesSerializer(serializers.ModelSerializer):
