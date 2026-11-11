@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db.models import Model
 
+from climate.models import ClimateProjection
 from common.enums import Variable
 
 
@@ -13,3 +14,7 @@ def change_from_baseline(value: Decimal, base: Decimal, variable: str) -> Decima
     if variable == Variable.PRECIPITATION.value:
         return round((value - base) / base * 100, 1)
     return round(value - base, 2)
+
+
+def get_period_choices():
+    return [(period, period) for period in distinct('period', ClimateProjection)]
