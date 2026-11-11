@@ -270,3 +270,80 @@ Reason: one fixed layout lets the precompute script, the API and the map be buil
 - Area figures come from the engine (computed on the ITM grid), not from the PNG.
 - The layers are "Value Added Products" under the licence (§8), so they may be committed and served.
 - CCD-360 serves `index.json` and the PNGs; a county that is not in the folder returns 404.
+
+---
+
+## 10. Python binding (CCD-399)
+
+The pybind11 module `flood_engine_py` calls the engine from Python (for the precompute script, CCD-420).
+It is built only when `FLOOD_ENGINE_BUILD_PYTHON=ON` (default `OFF`). CMake downloads pybind11 **v3.1.0** on the
+first configure. It needs Python 3 with its development headers (`python3-dev` on Debian/Ubuntu).
+
+**Build and test** (from the repository root; `numpy` and `pytest` must be installed in that Python):
+
+```bash
+cmake -S flood_engine -B flood_engine/build -DFLOOD_ENGINE_BUILD_PYTHON=ON
+cmake --build flood_engine/build -j
+ctest --test-dir flood_engine/build --output-on-failure
+FLOOD_ENGINE_PY_DIR=flood_engine/build/python python -m pytest flood_engine/tests/python -v
+```
+
+If several Pythons are installed, choose one with `-DPython_EXECUTABLE=$(which python)`; the module only imports in
+that Python version. Add `-DFLOOD_ENGINE_BUILD_TESTS=OFF` to build the module without Catch2.
+
+**Import.** The module is the file `flood_engine/build/python/flood_engine_py.cpython-<version>-<platform>.so`.
+There is no package to install: put its directory on `sys.path` (or `PYTHONPATH`). The tests read the directory from
+the environment variable `FLOOD_ENGINE_PY_DIR` and skip if it is not set.
+
+```python
+import numpy as np
+import flood_engine_py  # with flood_engine/build/python on sys.path or PYTHONPATH
+
+elev = np.array([[0.0, 0.5, 3.0], [0.0, 0.8, 0.3]])  # metres, shape (rows, cols)
+sea = np.array([[1, 0, 0], [1, 0, 0]], dtype=bool)  # column 0 is sea
+r = flood_engine_py.compute_flood(elev, sea, cell_size_m=1000.0, sea_level_m=1.0)
+print(r["flooded"], r["flooded_cells"], r["flooded_area_km2"])
+# [[0 1 0]
+#  [0 1 1]] 3 3.0
+```
+
+**Signature:** `compute_flood(elevation_m, is_sea, cell_size_m, sea_level_m, nodata=-9999.0) -> dict`
+
+| Argument | Python value | Passed to the engine as |
+|---|---|---|
+| `elevation_m` | 2-D array-like, metres | `float32`, C-contiguous (row-major), copied into `FloodInput.elevation_m` |
+| `is_sea` | 2-D array-like, same shape (bool or int) | `is_sea != 0` as `uint8`, copied into `FloodInput.is_sea` |
+| `cell_size_m` | float, metres | `cell_size_m` |
+| `sea_level_m` | float, metres, 0.0 to 2.0 | `sea_level_m` |
+| `nodata` | float | `nodata` (as `float`) |
+
+Shape `(rows, cols)` gives `height = rows` and `width = cols`. A C-contiguous numpy array is row-major, so
+`array[r, c]` is at index `r * width + c`, the layout in §2.
+
+**Return value:** a `dict` with
+
+| Key | Type | Meaning |
+|---|---|---|
+| `flooded` | `numpy.ndarray`, `uint8`, shape `(rows, cols)` | `1` = flooded land cell, `0` = not flooded (§4) |
+| `flooded_cells` | `int` | number of `1` values in `flooded` |
+| `flooded_area_km2` | `float` | flooded area in km² |
+
+**Errors.** The binding checks the shapes itself and raises `ValueError` (before calling the engine) if an input is
+not 2-D or the two shapes differ. Engine errors (§6) become Python exceptions with the message
+`"<Code>: <engine message>"`, for example `ValueError: InvalidSeaLevel: sea_level_m = 2.5 is outside [0.0, 2]`.
+
+| Engine `FloodErrorCode` | Python exception |
+|---|---|
+| `EmptyGrid` | `ValueError` |
+| `SizeOverflow` | `ValueError` |
+| `ElevationSizeMismatch` | `ValueError` |
+| `SeaMaskSizeMismatch` | `ValueError` |
+| `InvalidCellSize` | `ValueError` |
+| `InvalidSeaLevel` | `ValueError` |
+| `NonFiniteElevation` | `ValueError` |
+| `AllocationFailed` | `MemoryError` |
+
+An input numpy cannot convert to a float array (for example strings) raises `TypeError`.
+
+**GIL.** The input is copied into the engine's own vectors while the GIL is held; the GIL is released only while
+the engine computes, so other Python threads can run meanwhile.

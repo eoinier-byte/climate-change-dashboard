@@ -12,6 +12,9 @@ cmake --build flood_engine/build -j
 ctest --test-dir flood_engine/build --output-on-failure
 ```
 
+Python binding (CCD-399): configure with `-DFLOOD_ENGINE_BUILD_PYTHON=ON` to also build the pybind11 module
+`flood_engine_py`. Build, import, usage and error mapping: [docs/flood-engine.md §10](../docs/flood-engine.md#10-python-binding-ccd-399).
+
 With AddressSanitizer and UndefinedBehaviorSanitizer (GCC/Clang, Debug only):
 
 ```bash
