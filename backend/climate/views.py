@@ -1,10 +1,11 @@
 from rest_framework import viewsets
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from climate.filters import ClimateProjectionFilterSet
 from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
-from climate.serializers import CountyDetailSerializer, CountySeaLevelSerializer
+from climate.serializers import ClimateProjectionSerializer, CountyDetailSerializer, SeaLevelSeriesSerializer
 from common.serializers import CountySerializer
 from common.utils import distinct
 
@@ -42,5 +43,11 @@ class MetaView(APIView):
 
 class SeaLevelView(RetrieveAPIView):
     queryset = County.objects.prefetch_related('sealevelprojections__data_source')
-    serializer_class = CountySeaLevelSerializer
+    serializer_class = SeaLevelSeriesSerializer
     lookup_field = 'slug'
+
+
+class ClimateProjectionListView(ListAPIView):
+    queryset = ClimateProjection.objects.select_related('county', 'data_source')
+    serializer_class = ClimateProjectionSerializer
+    filterset_class = ClimateProjectionFilterSet

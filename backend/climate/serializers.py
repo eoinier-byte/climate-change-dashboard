@@ -7,6 +7,7 @@ from rest_framework import serializers
 from climate.models import ClimateProjection, County, SeaLevelProjection
 from common.enums import Scenario, Season, Unit, Variable
 from common.serializers import CountySerializer, ProjectionSerializer
+from common.utils import change_from_baseline
 
 
 class CountyDetailSerializer(CountySerializer):
@@ -34,14 +35,20 @@ class CountyDetailSerializer(CountySerializer):
 
 
 class SeaLevelProjectionSerializer(ProjectionSerializer):
+    class Meta:
+        model = SeaLevelProjection
+        fields = (*ProjectionSerializer.Meta.fields, 'year', 'provenance')
+
+
+class ClimateProjectionSerializer(ProjectionSerializer):
     county = serializers.SlugRelatedField(slug_field='slug', read_only=True)
 
     class Meta:
-        model = SeaLevelProjection
-        fields = (*ProjectionSerializer.Meta.fields, 'county', 'year', 'provenance', 'value')
+        model = ClimateProjection
+        fields = (*ProjectionSerializer.Meta.fields, 'variable', 'period', 'season')
 
 
-class CountyProjectionsSerializer(serializers.ModelSerializer):
+class ClimateSeriesSerializer(serializers.ModelSerializer):
     county = serializers.CharField(source='name')
     variable = serializers.SerializerMethodField()
     season = serializers.SerializerMethodField()
@@ -70,10 +77,10 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
         )
 
     def to_representation(self, obj):
-        self._rows = self._load(obj)
+        self._projections = self._load_projections(obj)
         return super().to_representation(obj)
 
-    def _load(self, obj) -> list[ClimateProjection]:
+    def _load_projections(self, obj) -> list[ClimateProjection]:
         variable, season = self.get_variable(obj), self.get_season(obj)
         if 'climateprojections' in getattr(obj, '_prefetched_objects_cache', {}):
             rows = [p for p in obj.climateprojections.all() if p.variable == variable and p.season == season]
@@ -81,11 +88,11 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
             rows = obj.climateprojections.select_related('data_source').filter(variable=variable, season=season)
         return sorted(rows, key=lambda p: (p.scenario, p.period))
 
-    def _projections(self, obj) -> list[ClimateProjection]:
-        return self._rows
+    def _get_projections(self, obj) -> list[ClimateProjection]:
+        return self._projections
 
     def _base(self, obj) -> ClimateProjection | None:
-        return next((p for p in self._rows if p.scenario == Scenario.BASELINE), None)
+        return next((proj for proj in self._get_projections(obj) if proj.scenario == Scenario.BASELINE), None)
 
     def get_variable(self, obj) -> str:
         return self.context.get('variable', Variable.TEMPERATURE.value)
@@ -109,14 +116,14 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
         return base.value if base else None
 
     def get_periods(self, obj) -> list[str]:
-        return sorted({p.period for p in self._projections(obj)})
+        return sorted({p.period for p in self._get_projections(obj)})
 
     def get_scenarios(self, obj) -> dict[str, Any]:
         base = self._base(obj)
         if not base:
             return {}
         series = {}
-        for proj in self._projections(obj):
+        for proj in self._get_projections(obj):
             if proj.scenario == Scenario.BASELINE:
                 continue
             scenario = series.setdefault(
@@ -128,10 +135,7 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
                 },
             )
             scenario['values'].append(proj.value)
-            if self.get_variable(obj) == Variable.PRECIPITATION.value:
-                scenario['change'].append(round((proj.value - base.value) / base.value * 100, 1))
-            else:
-                scenario['change'].append(round(proj.value - base.value, 2))
+            scenario['change'].append(change_from_baseline(proj.value, base.value, proj.variable))
         return series
 
     def get_source(self, obj):
@@ -139,7 +143,7 @@ class CountyProjectionsSerializer(serializers.ModelSerializer):
         return base.data_source.name if base else None
 
 
-class CountySeaLevelSerializer(serializers.ModelSerializer):
+class SeaLevelSeriesSerializer(serializers.ModelSerializer):
     county = serializers.CharField(source='name')
     unit = serializers.SerializerMethodField()
     baseline_period = serializers.SerializerMethodField()
@@ -151,23 +155,23 @@ class CountySeaLevelSerializer(serializers.ModelSerializer):
         fields = ('county', 'slug', 'has_coastline', 'unit', 'baseline_period', 'years', 'series')
 
     @staticmethod
-    def _projections(obj) -> list[SeaLevelProjection]:
+    def _get_projections(obj) -> list[SeaLevelProjection]:
         return sorted(obj.sealevelprojections.all(), key=lambda proj: (proj.scenario, proj.year))
 
     def get_unit(self, obj) -> str | None:
-        projections = self._projections(obj)
+        projections = self._get_projections(obj)
         return projections[0].unit if projections else None
 
     def get_baseline_period(self, obj) -> str | None:
-        projections = self._projections(obj)
+        projections = self._get_projections(obj)
         return projections[0].data_source.baseline_period if projections else None
 
     def get_years(self, obj) -> list[int]:
-        return sorted({proj.year for proj in self._projections(obj)})
+        return sorted({proj.year for proj in self._get_projections(obj)})
 
     def get_series(self, obj) -> dict[str, Any]:
         series = {}
-        for proj in self._projections(obj):
+        for proj in self._get_projections(obj):
             scenario = series.setdefault(
                 proj.scenario,
                 {

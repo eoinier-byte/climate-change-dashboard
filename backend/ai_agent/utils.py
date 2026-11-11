@@ -3,7 +3,7 @@ import json
 from anthropic import beta_tool
 
 from climate.models import County
-from climate.serializers import CountyProjectionsSerializer
+from climate.serializers import ClimateSeriesSerializer
 from common.enums import Season, Variable
 
 
@@ -16,5 +16,5 @@ def get_projections(county: str, var: Variable, season: Season = Season.ANNUAL) 
     except County.DoesNotExist:
         slugs = ', '.join(County.objects.values_list('slug', flat=True))
         return f'Unknown county {county}. Valid slugs: {slugs}'
-    data = CountyProjectionsSerializer(obj, context={'variable': var, 'season': season}).data
+    data = ClimateSeriesSerializer(obj, context={'variable': var, 'season': season}).data
     return json.dumps(data, default=str)

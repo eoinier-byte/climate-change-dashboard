@@ -17,7 +17,7 @@
 | Anthropic SDK and `ANTHROPIC_API_KEY` read from `.env` (CCD-344) | `backend/config/settings.py`, `requirements.txt` |
 | Tool `get_projections(county, var, season)` (CCD-345) | `backend/ai_agent/utils.py` |
 | Agent loop with the SDK tool runner and the system prompt | `backend/ai_agent/agent.py` |
-| `CountyProjectionsSerializer`: one county, one variable and season, every scenario and period, change from baseline. Shared with the future `/projections/` endpoint (CCD-84) | `backend/climate/serializers.py` |
+| `ClimateSeriesSerializer`: one county, one variable and season, every scenario and period, change from baseline. Shared with the future `/projections/` endpoint (CCD-84) | `backend/climate/serializers.py` |
 
 How a question is answered:
 
@@ -85,8 +85,8 @@ The same decision answers the "choose the LLM provider" step of the AI commentar
 
 | Tool | Arguments | Returns | Why |
 |---|---|---|---|
-| `get_county_projection` | `county`, `variable`, `season` (default `annual`) | `CountyProjectionsSerializer`: every scenario and period, change from baseline, units, source | Built and tested in the spike. `scenario` and `period` arguments are not needed (finding 4) |
-| `get_sea_level` | `county` | `CountySeaLevelSerializer`: every scenario, 2020–2100, cm, provenance | The serializer already exists. Answers the sea level question that failed in the spike |
+| `get_county_projection` | `county`, `variable`, `season` (default `annual`) | `ClimateSeriesSerializer`: every scenario and period, change from baseline, units, source | Built and tested in the spike. `scenario` and `period` arguments are not needed (finding 4) |
+| `get_sea_level` | `county` | `SeaLevelSeriesSerializer`: every scenario, 2020–2100, cm, provenance | The serializer already exists. Answers the sea level question that failed in the spike |
 | `rank_counties` | `variable`, `season`, `scenario`, `period`, `order`, `limit` | Counties ordered by change from baseline, with units and source | "Which county will warm the most?" would otherwise need 26 tool calls |
 
 **Dropped: `list_metadata()`.** The tool schemas already list the valid variables, seasons and scenarios as `enum` values. The valid county slugs come back in the tool's error message, and they could also go in the system prompt (26 short names). A separate tool would only add a round trip.

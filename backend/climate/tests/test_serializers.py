@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.test import override_settings
 
 from climate.models import ClimateProjection, County
-from climate.serializers import CountyDetailSerializer, CountyProjectionsSerializer, CountySeaLevelSerializer
+from climate.serializers import ClimateSeriesSerializer, CountyDetailSerializer, SeaLevelSeriesSerializer
 from climate.tests.base import ProjectionTestCase
 from common.enums import Scenario, Season, Unit, Variable
 from common.serializers import ProjectionSerializer
@@ -18,14 +18,28 @@ class ProjectionSerializerTestCase(ProjectionTestCase):
         data = self.Dummy(self.create_climate_projection()).data
         self.assertEqual(
             data,
-            {'scenario': 'rcp45', 'baseline': '1976-2005', 'units': 'degC', 'source': 'translate'},
+            {
+                'scenario': 'rcp45',
+                'baseline': '1976-2005',
+                'units': 'degC',
+                'source': 'translate',
+                'value': '6.123',
+                'county': 'cork',
+            },
         )
 
     def test_sea_level_projection(self):
         data = self.Dummy(self.create_sea_level_projection()).data
         self.assertEqual(
             data,
-            {'scenario': 'rcp85', 'baseline': '1981-2000', 'units': 'cm', 'source': 'ukcp18'},
+            {
+                'scenario': 'rcp85',
+                'baseline': '1981-2000',
+                'units': 'cm',
+                'source': 'ukcp18',
+                'value': '21.500',
+                'county': 'cork',
+            },
         )
 
 
@@ -82,11 +96,10 @@ class CountyDetailSerializerTestCase(ProjectionTestCase):
         )
 
 
-class CountyProjectionsSerializerTestCase(ProjectionTestCase):
+class ClimateSeriesSerializerTestCase(ProjectionTestCase):
     PERIODS = ['1976-2005', '2021-2050', '2071-2100']
 
     def create_series(self, variable, unit, baseline, scenarios, season=Season.ANNUAL, county=None):
-        """One baseline row plus a mid- and end-century row per scenario."""
         extra = {'variable': variable, 'unit': unit, 'season': season}
         if county:
             extra['county'] = county
@@ -112,7 +125,7 @@ class CountyProjectionsSerializerTestCase(ProjectionTestCase):
         self.create_series(Variable.PRECIPITATION, Unit.MM, '1366.160', {Scenario.RCP85: ('1402.490', '1474.710')})
 
     def serialize(self, **context):
-        return CountyProjectionsSerializer(self.county, context=context).data
+        return ClimateSeriesSerializer(self.county, context=context).data
 
     def test_temperature(self):
         self.create_temperature()
@@ -233,7 +246,7 @@ class CountyProjectionsSerializerTestCase(ProjectionTestCase):
         self.create_temperature()
         county = County.objects.prefetch_related('climateprojections__data_source').get(pk=self.county.pk)
         with self.assertNumQueries(0):
-            data = CountyProjectionsSerializer(county, context={'variable': 'temperature'}).data
+            data = ClimateSeriesSerializer(county, context={'variable': 'temperature'}).data
         self.assertEqual(data['baseline'], Decimal('9.810'))
         self.assertEqual(list(data['scenarios']), ['rcp26', 'rcp45', 'rcp85'])
 
@@ -244,7 +257,7 @@ class CountyProjectionsSerializerTestCase(ProjectionTestCase):
         self.assertEqual(data['scenarios'], {})
 
 
-class CountySeaLevelSerializerTestCase(ProjectionTestCase):
+class SeaLevelSeriesSerializerTestCase(ProjectionTestCase):
     def test_coastal_county(self):
         # Created out of order on purpose: the response must still be sorted.
         for scenario, year, value in [
@@ -254,7 +267,7 @@ class CountySeaLevelSerializerTestCase(ProjectionTestCase):
             (Scenario.RCP26, 2100, '42.700'),
         ]:
             self.create_sea_level_projection(scenario=scenario, year=year, value=Decimal(value))
-        data = CountySeaLevelSerializer(self.county).data
+        data = SeaLevelSeriesSerializer(self.county).data
         self.assertEqual(
             {**data, 'years': list(data['years'])},
             {
@@ -283,18 +296,18 @@ class CountySeaLevelSerializerTestCase(ProjectionTestCase):
         for scenario in (Scenario.RCP26, Scenario.RCP45, Scenario.RCP85):
             for year in (2100, 2050):
                 self.create_sea_level_projection(scenario=scenario, year=year)
-        self.assertEqual(list(CountySeaLevelSerializer(self.county).data['years']), [2050, 2100])
+        self.assertEqual(list(SeaLevelSeriesSerializer(self.county).data['years']), [2050, 2100])
 
     def test_provenance_for_estimated_county(self):
         leitrim = County.objects.create(name='Leitrim', has_coastline=True)
         self.create_sea_level_projection(county=leitrim, provenance='estimated from Sligo')
-        series = CountySeaLevelSerializer(leitrim).data['series']
+        series = SeaLevelSeriesSerializer(leitrim).data['series']
         self.assertEqual(series['rcp85']['provenance'], 'estimated from Sligo')
 
     def test_inland_county(self):
         offaly = County.objects.create(name='Offaly', has_coastline=False)
         self.create_sea_level_projection()  # data for Cork must not leak into Offaly
-        data = CountySeaLevelSerializer(offaly).data
+        data = SeaLevelSeriesSerializer(offaly).data
         self.assertEqual(
             {**data, 'years': list(data['years'])},
             {

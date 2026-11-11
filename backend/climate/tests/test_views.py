@@ -4,7 +4,7 @@ from http import HTTPStatus
 from django.shortcuts import reverse
 from rest_framework.test import APITestCase
 
-from climate.models import County, SeaLevelProjection
+from climate.models import ClimateProjection, County, SeaLevelProjection
 from climate.tests.base import ProjectionTestCase
 from common.enums import Scenario, Season, Unit, Variable
 
@@ -231,3 +231,115 @@ class HealthViewTestCase(APITestCase):
     def test_method_not_allowed(self):
         response = self.client.post(reverse('climate:health'))
         self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+class ClimateProjectionListViewTestCase(ProjectionTestCase, APITestCase):
+    url = reverse('climate:projections')
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+        base = {
+            'county': cls.county,
+            'data_source': cls.translate,
+            'variable': Variable.TEMPERATURE,
+            'scenario': Scenario.RCP45,
+            'period': '2021-2050',
+            'season': Season.WINTER,
+            'value': Decimal('6.000'),
+            'unit': Unit.DEG_C,
+        }
+        ClimateProjection.objects.create(**base)
+        ClimateProjection.objects.create(
+            **{**base, 'scenario': Scenario.RCP85, 'period': '2071-2100', 'season': Season.ANNUAL}
+        )
+        ClimateProjection.objects.create(
+            **{
+                **base,
+                'variable': Variable.PRECIPITATION,
+                'scenario': Scenario.BASELINE,
+                'period': '1976-2005',
+                'season': Season.ANNUAL,
+                'value': Decimal('950.000'),
+                'unit': Unit.MM,
+            }
+        )
+        ClimateProjection.objects.create(**{**base, 'county': cls.kerry})
+
+    def get(self, **params):
+        return self.client.get(self.url, params)
+
+    def test_no_filters_returns_all(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(len(response.json()), 4)
+
+    def test_row_shape(self):
+        row = self.get(county='kerry').json()[0]
+        self.assertEqual(
+            row,
+            {
+                'scenario': 'rcp45',
+                'baseline': '1976-2005',
+                'units': 'degC',
+                'source': 'translate',
+                'value': '6.000',
+                'county': 'kerry',
+                'variable': 'temperature',
+                'period': '2021-2050',
+                'season': 'winter',
+            },
+        )
+
+    def test_each_filter(self):
+        cases = (
+            ('county', 'kerry', 1),
+            ('variable', 'precipitation', 1),
+            ('scenario', 'rcp85', 1),
+            ('period', '2021-2050', 2),
+            ('season', 'annual', 2),
+        )
+        for field, value, expected in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                rows = response.json()
+                self.assertEqual(len(rows), expected)
+                self.assertTrue(all(row[field] == value for row in rows))
+
+    def test_filters_combine(self):
+        rows = self.get(county='cork', variable='temperature', season='winter').json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['scenario'], 'rcp45')
+
+    def test_no_match_returns_empty_list(self):
+        response = self.get(county='kerry', scenario='rcp85')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json(), [])
+
+    def test_unknown_county_returns_400(self):
+        cases = (
+            ('county', 'atlantis'),
+            ('variable', 'wind'),
+            ('scenario', 'rcp60'),
+            ('period', '2000-2001'),
+            ('season', 'monsoon'),
+        )
+        for field, value in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(field, response.json())
+
+    def test_num_queries(self):
+        with self.assertNumQueries(1):
+            self.get()
+
+    def test_method_not_allowed(self):
+        initial_count = ClimateProjection.objects.count()
+        for method in ('post', 'put', 'patch', 'delete'):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.url, {})
+                self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+                self.assertEqual(ClimateProjection.objects.count(), initial_count)

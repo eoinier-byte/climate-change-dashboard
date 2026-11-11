@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import QuerySet
 from django.utils.text import slugify
 
 from common.enums import Variable
@@ -6,6 +7,15 @@ from common.models import BaseProjection
 from common.validators import validate_period
 
 # Create your models here.
+
+
+class ClimateProjectionQuerySet(models.query.QuerySet):
+    def county_rows(self, slug: str, variable: str, season: str) -> 'QuerySet[ClimateProjection]':
+        return (
+            self.select_related('county', 'data_source')
+            .filter(county__slug=slug, variable=variable, season=season)
+            .order_by('scenario', 'period')
+        )
 
 
 class County(models.Model):
@@ -40,6 +50,8 @@ class ClimateProjection(BaseProjection):
     variable = models.CharField(max_length=20, choices=Variable)
     period = models.CharField(max_length=9, validators=[validate_period])
     value = models.DecimalField(max_digits=8, decimal_places=3)
+
+    objects = ClimateProjectionQuerySet.as_manager()
 
     class Meta:
         constraints = [
