@@ -1,6 +1,6 @@
-# Flood engine: input and output format (CCD-396)
+# Flood engine: format, method and limits (CCD-396, CCD-401)
 
-· Owner: Artur Romanov · Parent story: CCD-395 · Last updated: 8 November 2026
+· Owner: Artur Romanov · Parent story: CCD-395 · Last updated: 12 November 2026
 
 This document is the contract between four parts of the project:
 
@@ -8,10 +8,10 @@ This document is the contract between four parts of the project:
 |---|---|---|
 | C++ flood engine (`flood_engine/`) | CCD-395 | Computes which land cells flood for one sea level |
 | Python binding (pybind11) | CCD-419 | Calls the engine from Python |
-| Precompute script | CCD-420 | Prepares the elevation grid and sea mask per county, calls the engine for every sea level, saves the flood layers |
+| Precompute script (`pipeline/flood_precompute.py`) | CCD-420 (CCD-400) | Prepares one national elevation grid and sea mask, calls the engine for every sea level, cuts out each coastal county and saves the flood layers (§11) |
 | Django endpoint | CCD-360 | Serves the saved flood layers to the frontend |
 
-All three must use the format below. If a change is needed, change this file first.
+All four must use the format below. If a change is needed, change this file first.
 
 ---
 
@@ -194,6 +194,12 @@ These are known simplifications. They should also be stated on the dashboard nex
   (decision D4).
 - **Little land may flood.** With 0–2 m of still water, no tide offset and a 90 m surface model, very little land may
   flood. The precompute script is first run on one pilot county (Cork) to check this (decision D5).
+  **Pilot result: not run yet** (the land polygon for the sea mask, D3, is still to be chosen).
+- **Sea mask from a land polygon.** Which cells count as sea depends on the land/coastline polygon (D3). Its coastline
+  detail limits where the sea starts. Lakes and loughs inside the polygon are treated as land, never as sea.
+- **County totals can miss coastal cells.** A flooded cell is counted for a county only if its centre is inside the
+  county outline (`counties_tailte_eireann_2019.geojson`, generalised to 20 m). Low cells just outside that outline but
+  inside the land polygon flood on the map grid but are not counted, so county areas may be slightly too low.
 
 ---
 
@@ -347,3 +353,57 @@ An input numpy cannot convert to a float array (for example strings) raises `Typ
 
 **GIL.** The input is copied into the engine's own vectors while the GIL is held; the GIL is released only while
 the engine computes, so other Python threads can run meanwhile.
+
+---
+
+## 11. Precompute method and rebuilding the layers (CCD-400)
+
+Script: `pipeline/flood_precompute.py`. Tests: `pipeline/tests/test_flood_precompute.py`.
+
+### Inputs
+
+| Input | Where | Notes |
+|---|---|---|
+| Elevation | `data/dem/glo90/ireland_glo90.vrt` (Copernicus GLO-90 mosaic, §8) | Local only, never committed (D2). How to download: `DATA_SOURCES.md` §7 |
+| Land polygon | path given with `--land` | Whole island incl. Northern Ireland (D3). Outside = sea. **Source not chosen yet**: options are listed in CCD-420 |
+| County boundaries | `pipeline/data/boundaries/counties_tailte_eireann_2019.geojson` | Tailte Éireann, CC BY 4.0; name column `ENGLISH` |
+| Engine | `flood_engine_py` (§10) | Directory given by `FLOOD_ENGINE_PY_DIR` |
+
+### Method
+
+1. **One national grid.** The DEM is reprojected once to an ITM (EPSG:2157) grid with square cells (default 90 m),
+   using **bilinear** resampling because elevation varies smoothly. The grid covers the land polygon plus 3 cells of
+   sea on every side, so the grid edge is always sea (§5). Cells with no DEM value and any NaN become `-9999.0` (§3).
+2. **Sea mask.** The land polygon is rasterised on the same grid (cell centre inside = land). Everything else is sea.
+   Holes in the polygon (enclosed lakes) are filled, so inland lakes are land.
+3. **Engine.** For each level `k / 10.0`, `k = 0..20` (§3), the engine runs **once on the whole national grid**.
+   Running per county would cut off water at the crop edge.
+4. **Per county.** Each coastal county is rasterised on the same grid. Only flooded cells inside it are counted:
+   `flooded_area_km2 = flooded_cells × cell_size² / 1e6`, from the ITM grid, not from the PNG (D6).
+   The county's flooded mask is reprojected to Web Mercator (EPSG:3857) with **nearest** resampling (the mask is 0/1;
+   bilinear would invent half-flooded pixels), cropped to the county and saved as an RGBA PNG.
+5. **Output** (D6) in `pipeline/data/processed/flood/<slug>/`: `level_000.png` … `level_200.png` and `index.json` with
+   `slug`, `bounds` (`[[south, west], [north, east]]`, WGS84, the PNG's own corners), `cell_size_m`, `levels`
+   (`level_m`, `file`, `flooded_cells`, `flooded_area_km2`), `attribution` (`DATA_SOURCES.md` §7) and `model_limits` (§7).
+
+An unknown or non-coastal county slug, or a missing input file, stops the script with a message that names it.
+
+### Rebuilding the layers
+
+From the repository root:
+
+```bash
+cmake -S flood_engine -B flood_engine/build -DFLOOD_ENGINE_BUILD_PYTHON=ON -DPython_EXECUTABLE="$(which python)"
+cmake --build flood_engine/build -j
+pip install -r pipeline/requirements.txt
+FLOOD_ENGINE_PY_DIR=flood_engine/build/python python pipeline/flood_precompute.py \
+    --dem data/dem/glo90/ireland_glo90.vrt --land <land polygon> \
+    --counties pipeline/data/boundaries/counties_tailte_eireann_2019.geojson \
+    --out pipeline/data/processed/flood --county cork
+```
+
+Leave out `--county` to build all 15 coastal counties (only after the Cork pilot, D5). The script prints a table of
+flooded cells and area per level.
+
+**Tests** use tiny synthetic inputs, never the DEM: `cd pipeline && python -m pytest tests/test_flood_precompute.py -v`.
+The real-engine end-to-end test runs only when `FLOOD_ENGINE_PY_DIR` is set (in CI: the `cpp` job).
