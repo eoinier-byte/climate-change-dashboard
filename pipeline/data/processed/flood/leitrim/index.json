@@ -1,0 +1,144 @@
+{
+  "slug": "leitrim",
+  "bounds": [
+    [
+      53.805188657388655,
+      -8.427199546798278
+    ],
+    [
+      54.47425770296805,
+      -7.5788586684930985
+    ]
+  ],
+  "cell_size_m": 90.0,
+  "levels": [
+    {
+      "level_m": 0.0,
+      "file": "level_000.png",
+      "flooded_cells": 1,
+      "flooded_area_km2": 0.0081
+    },
+    {
+      "level_m": 0.1,
+      "file": "level_010.png",
+      "flooded_cells": 2,
+      "flooded_area_km2": 0.0162
+    },
+    {
+      "level_m": 0.2,
+      "file": "level_020.png",
+      "flooded_cells": 2,
+      "flooded_area_km2": 0.0162
+    },
+    {
+      "level_m": 0.3,
+      "file": "level_030.png",
+      "flooded_cells": 2,
+      "flooded_area_km2": 0.0162
+    },
+    {
+      "level_m": 0.4,
+      "file": "level_040.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 0.5,
+      "file": "level_050.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 0.6,
+      "file": "level_060.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 0.7,
+      "file": "level_070.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 0.8,
+      "file": "level_080.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 0.9,
+      "file": "level_090.png",
+      "flooded_cells": 4,
+      "flooded_area_km2": 0.0324
+    },
+    {
+      "level_m": 1.0,
+      "file": "level_100.png",
+      "flooded_cells": 5,
+      "flooded_area_km2": 0.0405
+    },
+    {
+      "level_m": 1.1,
+      "file": "level_110.png",
+      "flooded_cells": 5,
+      "flooded_area_km2": 0.0405
+    },
+    {
+      "level_m": 1.2,
+      "file": "level_120.png",
+      "flooded_cells": 5,
+      "flooded_area_km2": 0.0405
+    },
+    {
+      "level_m": 1.3,
+      "file": "level_130.png",
+      "flooded_cells": 6,
+      "flooded_area_km2": 0.0486
+    },
+    {
+      "level_m": 1.4,
+      "file": "level_140.png",
+      "flooded_cells": 6,
+      "flooded_area_km2": 0.0486
+    },
+    {
+      "level_m": 1.5,
+      "file": "level_150.png",
+      "flooded_cells": 6,
+      "flooded_area_km2": 0.0486
+    },
+    {
+      "level_m": 1.6,
+      "file": "level_160.png",
+      "flooded_cells": 6,
+      "flooded_area_km2": 0.0486
+    },
+    {
+      "level_m": 1.7,
+      "file": "level_170.png",
+      "flooded_cells": 9,
+      "flooded_area_km2": 0.0729
+    },
+    {
+      "level_m": 1.8,
+      "file": "level_180.png",
+      "flooded_cells": 9,
+      "flooded_area_km2": 0.0729
+    },
+    {
+      "level_m": 1.9,
+      "file": "level_190.png",
+      "flooded_cells": 9,
+      "flooded_area_km2": 0.0729
+    },
+    {
+      "level_m": 2.0,
+      "file": "level_200.png",
+      "flooded_cells": 9,
+      "flooded_area_km2": 0.0729
+    }
+  ],
+  "attribution": "produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+  "model_limits": "Indicative only: still-water 'bathtub' model with a connectivity check. No tides, storm surges or flood defences. See docs/flood-engine.md §7."
+}
