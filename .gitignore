@@ -41,3 +41,9 @@ Thumbs.db
 
 # Copernicus DEM tiles: licence forbids redistribution, never commit
 data/dem/
+
+# C++ / CMake local builds (build/ is already ignored above)
+build-*/
+cmake-build-*/
+*.o
+*.so
