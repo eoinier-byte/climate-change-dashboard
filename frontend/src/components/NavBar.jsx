@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { ROUTES } from '../routes';
-import '../../../../Downloads/ccd-135/frontend/src/styles/nav.css';
+import '../styles/nav.css';
 
 // Paths come from routes.js. When accounts exist (CCD-299), show "Account" (ROUTES.profile)
 // instead of "Login" for a signed-in user.

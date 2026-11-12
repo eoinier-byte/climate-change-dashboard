@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import App from '../../../../Downloads/ccd-135/frontend/src/App.jsx';
+import App from '../App.jsx';
 import { ROUTES, countyPath } from '../routes';
 
 // [link text, where it goes, heading of the page it opens]

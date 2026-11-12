@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import NavBar from '../../../../Downloads/ccd-135/frontend/src/components/NavBar.jsx';
+import NavBar from './NavBar';
 
 // The frame around every page: navigation bar, then the page itself.
 export default function Layout() {
