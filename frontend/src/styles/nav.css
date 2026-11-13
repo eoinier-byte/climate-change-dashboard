@@ -1,0 +1,95 @@
+/* Navigation bar (CCD-135). Colours and spacing come from theme.css. */
+.site-nav {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.site-nav__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+}
+
+.site-nav__brand {
+  color: inherit;
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-nav__brand:hover {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.site-nav .site-nav__toggle {
+  display: none;
+  background: transparent;
+  border-color: var(--color-on-primary);
+  color: inherit;
+}
+
+.site-nav .site-nav__toggle:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-on-primary);
+  color: inherit;
+}
+
+.site-nav__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav__links a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-nav__links a:hover {
+  background: var(--color-primary-dark);
+  color: inherit;
+}
+
+/* The page you are on (set by React Router as aria-current="page") */
+.site-nav__links a[aria-current='page'] {
+  background: var(--color-on-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.site-nav :focus-visible {
+  outline-color: var(--color-on-primary);
+}
+
+/* Phones and small tablets: links collapse into a menu */
+@media (max-width: 48rem) {
+  .site-nav .site-nav__toggle {
+    display: inline-block;
+  }
+
+  .site-nav__links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .site-nav__links[data-open='true'] {
+    display: flex;
+  }
+
+  .site-nav__links a {
+    padding: var(--space-3);
+  }
+}

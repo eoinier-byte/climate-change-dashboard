@@ -1,5 +1,6 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from './routes';
+import Layout from './components/Layout';
 import Home from './pages/Home';
 import CountyDashboard from './pages/CountyDashboard';
 import Compare from './pages/Compare';
@@ -12,14 +13,8 @@ import NotFound from './pages/NotFound';
 
 export default function App() {
   return (
-    <>
-      {/* Temporary links so every page can be reached; CCD-135 replaces this with the real navigation bar. */}
-      <nav>
-        <Link to={ROUTES.home}>Map</Link> | <Link to={ROUTES.compare}>Compare</Link> |{' '}
-        <Link to={ROUTES.seaLevel}>Flooding</Link> | <Link to={ROUTES.about}>About</Link> |{' '}
-        <Link to={ROUTES.login}>Login</Link>
-      </nav>
-      <Routes>
+    <Routes>
+      <Route element={<Layout />}>
         <Route path={ROUTES.home} element={<Home />} />
         <Route path={ROUTES.county} element={<CountyDashboard />} />
         <Route path={ROUTES.compare} element={<Compare />} />
@@ -29,7 +24,7 @@ export default function App() {
         <Route path={ROUTES.register} element={<Register />} />
         <Route path={ROUTES.profile} element={<Profile />} />
         <Route path="*" element={<NotFound />} />
-      </Routes>
-    </>
+      </Route>
+    </Routes>
   );
 }
