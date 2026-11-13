@@ -425,3 +425,178 @@ class ClimateProjectionChangeTestCase(ProjectionTestCase, APITestCase):
     def test_num_queries(self):
         with self.assertNumQueries(1):
             self.client.get(self.url)
+
+
+class MapViewTestCase(ProjectionTestCase, APITestCase):
+    url = reverse('climate:map')
+    params = {'variable': 'temperature', 'scenario': 'rcp45', 'period': '2021-2050', 'season': 'annual'}
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+        cls.carlow = County.objects.create(name='Carlow', has_coastline=False)
+        cls.base = {
+            'data_source': cls.translate,
+            'variable': Variable.TEMPERATURE,
+            'scenario': Scenario.RCP45,
+            'period': '2021-2050',
+            'season': Season.ANNUAL,
+            'unit': Unit.DEG_C,
+        }
+        for county, value in ((cls.county, '1.200'), (cls.kerry, '0.900'), (cls.carlow, '1.600')):
+            ClimateProjection.objects.create(**cls.base, county=county, value=Decimal(value))
+        for override in (
+            {'variable': Variable.PRECIPITATION, 'unit': Unit.MM, 'value': Decimal('950.000')},
+            {'scenario': Scenario.RCP85, 'value': Decimal('9.000')},
+            {'period': '2071-2100', 'value': Decimal('9.000')},
+            {'season': Season.WINTER, 'value': Decimal('9.000')},
+        ):
+            ClimateProjection.objects.create(**{**cls.base, 'county': cls.county, **override})
+
+    def get(self, **overrides):
+        return self.client.get(self.url, {**self.params, **overrides})
+
+    def test_response_shape(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(
+            response.json(),
+            {
+                'variable': 'temperature',
+                'scenario': 'rcp45',
+                'period': '2021-2050',
+                'season': 'annual',
+                'unit': 'degC',
+                'min': '0.900',
+                'max': '1.600',
+                'results': [
+                    {
+                        'county': {'name': 'Carlow', 'slug': 'carlow', 'has_coastline': False},
+                        'value': '1.600',
+                        'unit': 'degC',
+                    },
+                    {
+                        'county': {'name': 'Cork', 'slug': 'cork', 'has_coastline': True},
+                        'value': '1.200',
+                        'unit': 'degC',
+                    },
+                    {
+                        'county': {'name': 'Kerry', 'slug': 'kerry', 'has_coastline': True},
+                        'value': '0.900',
+                        'unit': 'degC',
+                    },
+                ],
+            },
+        )
+
+    def test_one_row_per_county_sorted_by_name(self):
+        names = [row['county']['name'] for row in self.get().json()['results']]
+        self.assertEqual(names, ['Carlow', 'Cork', 'Kerry'])
+
+    def test_each_parameter_filters(self):
+        cases = (
+            ('variable', 'precipitation', '950.000'),
+            ('scenario', 'rcp85', '9.000'),
+            ('period', '2071-2100', '9.000'),
+            ('season', 'winter', '9.000'),
+        )
+        for field, value, expected in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                data = response.json()
+                self.assertEqual(data[field], value)
+                self.assertEqual([row['value'] for row in data['results']], [expected])
+
+    def test_valid_combination_without_data(self):
+        response = self.get(variable='precipitation', season='winter')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        data = response.json()
+        self.assertEqual(data['results'], [])
+        self.assertIsNone(data['unit'])
+        self.assertIsNone(data['min'])
+        self.assertIsNone(data['max'])
+
+    def test_invalid_value_returns_400_with_allowed_values(self):
+        cases = (
+            ('variable', 'wind', 'precipitation, temperature'),
+            ('scenario', 'rcp60', 'rcp45, rcp85'),
+            ('period', '2000-2001', '2021-2050, 2071-2100'),
+            ('season', 'monsoon', 'annual, winter'),
+        )
+        for field, value, allowed in cases:
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                errors = response.json()
+                self.assertEqual(list(errors), [field])
+                self.assertIn(value, errors[field])
+                self.assertIn(allowed, errors[field])
+
+    def test_value_valid_in_enum_but_absent_in_database(self):
+        response = self.get(scenario='baseline')
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertIn('scenario', response.json())
+
+    def test_missing_parameters(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertEqual(set(response.json()), {'variable', 'scenario', 'period', 'season'})
+
+    def test_all_errors_reported_together(self):
+        response = self.get(variable='wind', season='monsoon')
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertEqual(set(response.json()), {'variable', 'season'})
+
+    def test_num_queries(self):
+        with self.assertNumQueries(2):
+            self.get()
+
+    def test_cached_response_hits_no_database(self):
+        first = self.get().json()
+        with self.assertNumQueries(0):
+            second = self.get().json()
+        self.assertEqual(first, second)
+
+    def test_rejected_request_is_not_cached(self):
+        self.assertEqual(self.get(season='spring').status_code, HTTPStatus.BAD_REQUEST)
+        ClimateProjection.objects.create(
+            **{**self.base, 'season': Season.SPRING}, county=self.county, value=Decimal('5.000')
+        )
+        response = self.get(season='spring')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual([row['value'] for row in response.json()['results']], ['5.000'])
+
+    def test_cache_invalidated_when_projection_changes(self):
+        self.get()
+        ClimateProjection.objects.get(county=self.kerry).delete()
+        names = [row['county']['name'] for row in self.get().json()['results']]
+        self.assertEqual(names, ['Carlow', 'Cork'])
+
+    def test_method_not_allowed(self):
+        initial_count = ClimateProjection.objects.count()
+        for method in ('post', 'put', 'patch', 'delete'):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.url, {})
+                self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+                self.assertEqual(ClimateProjection.objects.count(), initial_count)
+
+
+class MetaViewCacheTestCase(ProjectionTestCase, APITestCase):
+    url = reverse('climate:meta')
+
+    def test_cached_response_hits_no_database(self):
+        self.client.get(self.url)
+        with self.assertNumQueries(0):
+            self.client.get(self.url)
+
+    def test_cache_invalidated_when_projection_added(self):
+        self.assertEqual(self.client.get(self.url).json()['scenarios'], [])
+        self.create_climate_projection(scenario=Scenario.RCP85)
+        self.assertEqual(self.client.get(self.url).json()['scenarios'], ['rcp85'])
+
+    def test_cache_invalidated_when_sea_level_added(self):
+        self.assertEqual(self.client.get(self.url).json()['sea_level_years'], [])
+        self.create_sea_level_projection(year=2100)
+        self.assertEqual(self.client.get(self.url).json()['sea_level_years'], [2100])
