@@ -1,0 +1,40 @@
+/* County dashboard page (CCD-149). Uses the theme variables from theme.css only. */
+
+.county-page section {
+  margin-top: var(--space-8);
+}
+
+.county-page__intro {
+  color: var(--color-text-muted);
+}
+
+/* Today's climate: cards side by side, wrapping onto new lines on small screens */
+.county-page__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.stat-card {
+  flex: 1 1 12rem;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.stat-card__label {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.stat-card__value {
+  margin: var(--space-1) 0 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+/* Space between the two rainfall charts */
+.county-page .projection-chart {
+  margin: var(--space-6) 0 0;
+}
