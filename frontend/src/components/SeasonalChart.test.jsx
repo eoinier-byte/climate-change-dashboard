@@ -44,6 +44,14 @@ describe('buildSeasonalChartData', () => {
   });
 });
 
+describe('buildSeasonalChartData with hidden scenarios (CCD-158, CCD-165)', () => {
+  it('only makes bars for the scenarios in the rows', () => {
+    const withoutRcp45 = mockPrecipitationSeasonal.filter((row) => row.scenario !== 'rcp45');
+    const { datasets } = buildSeasonalChartData(withoutRcp45);
+    expect(datasets.map((d) => d.label)).toEqual(['RCP2.6', 'RCP8.5']);
+  });
+});
+
 describe('buildSeasonalSummary', () => {
   it('describes each season and says which get wetter or drier', () => {
     expect(buildSeasonalSummary(mockPrecipitationSeasonal)).toBe(
@@ -54,6 +62,11 @@ describe('buildSeasonalSummary', () => {
 
   it('can describe another scenario', () => {
     expect(buildSeasonalSummary(mockPrecipitationSeasonal, 'rcp26')).toContain('Winter +10.5%');
+  });
+
+  it('describes the highest scenario still shown when RCP8.5 is hidden (CCD-158, CCD-165)', () => {
+    const withoutRcp85 = mockPrecipitationSeasonal.filter((row) => row.scenario !== 'rcp85');
+    expect(buildSeasonalSummary(withoutRcp85)).toMatch(/^Under RCP4\.5,/);
   });
 
   it('describes temperature in °C and says which season warms the most (CCD-157)', () => {

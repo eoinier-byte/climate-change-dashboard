@@ -26,6 +26,38 @@
   color: var(--color-text);
 }
 
+/* "Show scenarios" tick boxes (CCD-158, CCD-165): side by side, wrapping on small screens */
+.scenario-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: var(--space-8) 0 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.scenario-filter legend {
+  font-weight: 600;
+  padding: 0 var(--space-2);
+}
+
+.scenario-filter__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+/* Small coloured square matching the scenario's chart colour */
+.scenario-filter__swatch {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 2px;
+}
+
 .county-page__intro {
   color: var(--color-text-muted);
 }
