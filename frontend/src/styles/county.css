@@ -26,12 +26,21 @@
   color: var(--color-text);
 }
 
-/* "Show scenarios" tick boxes (CCD-158, CCD-165): side by side, wrapping on small screens */
+/* The scenario and period controls (CCD-406): side by side, one above the other on small screens */
+.county-page__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+/* "Show scenarios" tick boxes (CCD-158, CCD-165), also used for the period radio buttons:
+   options side by side, wrapping on small screens */
 .scenario-filter {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-6);
-  margin: var(--space-8) 0 0;
+  margin: 0;
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);

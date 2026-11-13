@@ -20,6 +20,17 @@ npm run dev            # http://localhost:5173
 Other commands: `npm run lint`, `npm test`, `npm run build`, `npm run preview`.
 Set the API base URL in `frontend/.env` (`VITE_API_URL=http://localhost:8000/api`).
 
+## County page URL settings (CCD-406)
+
+The county page keeps the chosen scenarios and period in the URL, so a link opens exactly the same view:
+
+| Setting | Values | Default (when missing or not valid) |
+|---|---|---|
+| `rcp` | Comma list of `26`, `45`, `85`, e.g. `?rcp=26,85` | All three scenarios |
+| `period` | `2021-2050` or `2071-2100` (the period the seasonal charts show) | `2071-2100` |
+
+Example: `/county/cork?rcp=85&period=2021-2050` shows only RCP8.5, with mid-century seasonal charts. A setting equal to its default is left out of the URL, and the settings are kept when switching county. The code is in `src/hooks/useCountyView.js`.
+
 ## Testing (CCD-412)
 
 Tests use **Vitest** (the test runner) and **React Testing Library** (renders a component and finds things on it the way a person would: by text, label or role). Test files sit next to the file they test and end in `.test.js` or `.test.jsx`, e.g. `components/SeasonalChart.jsx` → `components/SeasonalChart.test.jsx`.
