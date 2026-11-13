@@ -199,3 +199,28 @@ class SeaLevelSeriesSerializer(serializers.ModelSerializer):
             )
             scenario['values'].append(proj.value)
         return series
+
+
+class CountySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = County
+        fields = ('name', 'slug', 'has_coastline')
+
+
+class MapItemSerializer(serializers.ModelSerializer):
+    county = CountySerializer()
+
+    class Meta:
+        model = ClimateProjection
+        fields = ('county', 'value', 'unit')
+
+
+class MapSerializer(serializers.Serializer):
+    variable = serializers.CharField()
+    scenario = serializers.CharField()
+    period = serializers.CharField()
+    season = serializers.CharField()
+    unit = serializers.CharField(allow_null=True)
+    min = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
+    max = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
+    results = MapItemSerializer(many=True)
