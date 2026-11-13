@@ -97,7 +97,4 @@
   font-weight: 700;
 }
 
-/* Space between the two rainfall charts */
-.county-page .projection-chart {
-  margin: var(--space-6) 0 0;
-}
+/* Space between charts now comes from .chart-card in charts.css (CCD-160) */

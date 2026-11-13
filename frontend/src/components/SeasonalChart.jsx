@@ -6,6 +6,8 @@
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { buildSeasonalChartData, buildSeasonalSummary, changeUnit } from './seasonalChartData';
+import ChartCard from './charts/ChartCard';
+import { buildChartOptions } from './charts/chartOptions';
 
 // Chart.js only includes the parts you register, which keeps the bundle small
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -29,25 +31,18 @@ export default function SeasonalChart({ rows, countyName }) {
   const title = `Change in ${variable} by season in ${countyName}, ${period} (${unit})`;
   const source = SOURCE_NAMES[rows[0].source] || rows[0].source;
 
-  // Chart.js settings: title on top, legend underneath, the unit on the side axis
-  const options = {
-    responsive: true,
-    plugins: {
-      title: { display: true, text: title },
-      legend: { position: 'bottom' },
-    },
-    scales: {
-      y: { title: { display: true, text: `${unit} change from ${baselinePeriod}` } },
-    },
-  };
+  // Shared settings (CCD-160, CCD-167): unit on the side axis and in the tooltip
+  const options = buildChartOptions({ yTitle: `${unit} change from ${baselinePeriod}`, unit });
 
   return (
-    <figure className="projection-chart">
+    <ChartCard
+      title={title}
+      subtitle={`Change in each season compared with the ${baselinePeriod} average`}
+      summary={buildSeasonalSummary(rows)}
+      source={source}
+    >
       {/* role="img" + aria-label tell screen readers what the chart is */}
       <Bar data={buildSeasonalChartData(rows)} options={options} role="img" aria-label={title} />
-      <figcaption>
-        {buildSeasonalSummary(rows)} Source: {source}.
-      </figcaption>
-    </figure>
+    </ChartCard>
   );
 }
