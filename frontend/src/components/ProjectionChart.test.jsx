@@ -1,4 +1,5 @@
-// Tests for the projection chart (CCD-161 / CCD-168).
+// Tests for the projection chart (CCD-161 / CCD-168), used for temperature (CCD-155)
+// and precipitation (CCD-162).
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProjectionChart from './ProjectionChart';
@@ -8,8 +9,16 @@ import { SCENARIO_COLORS } from '../styles/scenarioColors';
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real chart
 // for a simple placeholder. The tests check our data, not Chart.js itself.
+// The placeholder also copies the side (y) axis title into data-y-title,
+// so a test can check which unit the axis shows.
 vi.mock('react-chartjs-2', () => ({
-  Line: (props) => <div data-testid="line-chart" aria-label={props['aria-label']} />,
+  Line: (props) => (
+    <div
+      data-testid="line-chart"
+      aria-label={props['aria-label']}
+      data-y-title={props.options.scales.y.title.text}
+    />
+  ),
 }));
 
 describe('buildChartData', () => {
@@ -27,6 +36,12 @@ describe('buildChartData', () => {
     const { datasets } = buildChartData(mockTemperature);
     expect(datasets[0].data).toEqual([9.815, 10.527, 10.545]);
   });
+
+  it('turns the precipitation strings into numbers (mm)', () => {
+    const { datasets } = buildChartData(mockPrecipitation);
+    // RCP8.5: baseline, 2021-2050, 2071-2100
+    expect(datasets[2].data).toEqual([1368.817, 1405.153, 1477.806]);
+  });
 });
 
 describe('buildSummary', () => {
@@ -37,7 +52,10 @@ describe('buildSummary', () => {
   });
 
   it('describes the precipitation change in %', () => {
-    expect(buildSummary(mockPrecipitation)).toContain('RCP8.5 +8%');
+    // "%" sits right next to the number, with no space
+    expect(buildSummary(mockPrecipitation)).toBe(
+      'By 2071-2100, compared with 1976-2005: RCP2.6 +5.2%, RCP4.5 +5.2%, RCP8.5 +8%.',
+    );
   });
 });
 
@@ -49,6 +67,18 @@ describe('ProjectionChart', () => {
     );
     expect(screen.getByText(/RCP8.5 \+2.71 °C/)).toBeTruthy();
     expect(screen.getByText(/Source: Climate Ireland TRANSLATE/)).toBeTruthy();
+  });
+
+  it('shows annual precipitation in mm, with the change in %', () => {
+    render(<ProjectionChart data={mockPrecipitation} />);
+    const chart = screen.getByTestId('line-chart');
+
+    // The title and the side axis use the amount of rain (mm)
+    expect(chart.getAttribute('aria-label')).toBe('Precipitation in Cork (annual), mm');
+    expect(chart.getAttribute('data-y-title')).toBe('mm');
+
+    // The summary under the chart uses the percentage change
+    expect(screen.getByText(/RCP8.5 \+8%/)).toBeTruthy();
   });
 
   it('shows a message instead of an empty chart when there is no data', () => {
