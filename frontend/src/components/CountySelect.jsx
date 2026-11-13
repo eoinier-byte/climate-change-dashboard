@@ -3,7 +3,7 @@
 // so every chart on the page switches to that county.
 // Props: "currentSlug" is the county being shown now, e.g. "cork".
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getCounties } from '../services/api';
 import { countyPath } from '../routes';
 
@@ -12,6 +12,8 @@ export default function CountySelect({ currentSlug }) {
   const [counties, setCounties] = useState([]);
   // useNavigate gives us a function that changes the page, like clicking a link
   const navigate = useNavigate();
+  // useLocation gives the current URL, so we can keep its "?..." part when switching county
+  const location = useLocation();
 
   // Load the list once, when the dropdown first appears
   useEffect(() => {
@@ -33,9 +35,11 @@ export default function CountySelect({ currentSlug }) {
   // Nothing to choose from yet (still loading, or the API failed)
   if (counties.length === 0) return null;
 
-  // When a county is picked, open its page, e.g. /county/kerry
+  // When a county is picked, open its page, e.g. /county/kerry.
+  // location.search is the "?rcp=...&period=..." part of the URL (CCD-406):
+  // keeping it means the chosen scenarios and period stay the same for the new county.
   function handleChange(event) {
-    navigate(countyPath(event.target.value));
+    navigate({ pathname: countyPath(event.target.value), search: location.search });
   }
 
   // If the URL has a county that is not in the list (e.g. /county/atlantis),

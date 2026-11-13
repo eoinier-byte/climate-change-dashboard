@@ -1,7 +1,7 @@
-// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407).
+// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
 import { getCounties, getCounty, getProjections, getSeaLevel } from '../services/api';
@@ -37,12 +37,26 @@ vi.mock('react-chartjs-2', () => ({
   ),
 }));
 
-// Opens the page at /county/<slug>, the same way the real app does
-function renderCounty(slug = 'cork') {
+// Shows the "?..." part of the current URL, so a test can check what the page wrote there
+function CurrentSearch() {
+  return <p data-testid="current-search">{useLocation().search}</p>;
+}
+
+// Opens the page at /county/<slug><search>, the same way the real app does,
+// e.g. renderCounty('cork', '?rcp=85')
+function renderCounty(slug = 'cork', search = '') {
   render(
-    <MemoryRouter initialEntries={[countyPath(slug)]}>
+    <MemoryRouter initialEntries={[countyPath(slug) + search]}>
       <Routes>
-        <Route path={ROUTES.county} element={<CountyDashboard />} />
+        <Route
+          path={ROUTES.county}
+          element={
+            <>
+              <CountyDashboard />
+              <CurrentSearch />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -134,6 +148,43 @@ describe('CountyDashboard', () => {
 
     const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
     charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP8.5'));
+  });
+
+  it('restores the scenarios from the URL (CCD-406)', async () => {
+    renderCounty('cork', '?rcp=26,85');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    expect(screen.getByRole('checkbox', { name: /^RCP4\.5/ }).checked).toBe(false);
+    const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
+    charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP8.5'));
+  });
+
+  it('writes the scenarios into the URL when a box is unticked (CCD-406)', async () => {
+    const user = userEvent.setup();
+    renderCounty('cork');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    await user.click(screen.getByRole('checkbox', { name: /^RCP4\.5/ }));
+
+    expect(screen.getByTestId('current-search').textContent).toBe('?rcp=26%2C85');
+  });
+
+  it('shows the seasonal charts for the period in the URL, and writes a new choice there (CCD-406)', async () => {
+    const user = userEvent.setup();
+    renderCounty('cork');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    // Default: end of century, so both seasonal charts are for 2071-2100
+    expect(screen.getByRole('radio', { name: 'End of century (2071-2100)' }).checked).toBe(true);
+    expect(screen.getAllByTestId('bar-chart')).toHaveLength(2);
+
+    await user.click(screen.getByRole('radio', { name: 'Mid-century (2021-2050)' }));
+
+    expect(screen.getByTestId('current-search').textContent).toBe('?period=2021-2050');
+    // The mock data only has seasonal rows for 2071-2100, so 2021-2050 shows the "no data" message.
+    // That proves the charts now ask for the chosen period.
+    expect(screen.queryAllByTestId('bar-chart')).toHaveLength(0);
+    expect(screen.getAllByText('No seasonal data is available for this selection.')).toHaveLength(2);
   });
 
   it('asks the API for the sea level of the county in the URL (CCD-407)', async () => {

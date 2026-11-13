@@ -3,19 +3,22 @@
 // then shows today's climate and the temperature and rainfall charts,
 // each with an annual line chart and a seasonal bar chart (CCD-157).
 // The "Choose a county" dropdown switches every chart to another county (CCD-159, CCD-166).
-// The "Show scenarios" tick boxes show or hide scenarios on every chart (CCD-158, CCD-165).
+// The "Show scenarios" tick boxes show or hide scenarios on every chart (CCD-158, CCD-165),
+// and the period choice sets which period the seasonal charts show. Both are kept in the URL
+// (e.g. /county/cork?rcp=26,85&period=2021-2050) so a shared link opens the same view (CCD-406).
 // Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import ProjectionChart from '../components/ProjectionChart';
+import PeriodFilter from '../components/PeriodFilter';
 import ScenarioFilter from '../components/ScenarioFilter';
 import SeaLevelChart from '../components/SeaLevelChart';
 import SeasonalChart from '../components/SeasonalChart';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
+import useCountyView, { PERIODS } from '../hooks/useCountyView';
 import { getCounty, getProjections, getSeaLevel } from '../services/api';
-import { ALL_SCENARIOS } from '../styles/scenarioColors';
 import { ROUTES } from '../routes';
 
 // Formats a number string from the API for people to read,
@@ -35,9 +38,9 @@ export default function CountyDashboard() {
   // { slug, county, rows, seaLevel } when it worked, or { slug, error } when it failed.
   const [result, setResult] = useState(null);
 
-  // The scenarios ticked in "Show scenarios". All three to start with.
-  // This is kept when you switch county, so your choice stays the same.
-  const [selectedScenarios, setSelectedScenarios] = useState(ALL_SCENARIOS);
+  // The scenarios and period chosen, read from the URL (?rcp=...&period=...).
+  // Defaults when the URL has none: all three scenarios, 2071-2100. See hooks/useCountyView.js
+  const { scenarios: selectedScenarios, period, setScenarios, setPeriod } = useCountyView();
 
   useEffect(() => {
     // If the user moves to another county before this one has loaded,
@@ -99,8 +102,8 @@ export default function CountyDashboard() {
   // Turn the API rows into what each chart needs
   const temperature = filterScenarios(buildSeries(rows, county.name, 'temperature'), selectedScenarios);
   const precipitation = filterScenarios(buildSeries(rows, county.name, 'precipitation'), selectedScenarios);
-  const seasonalTemperature = seasonalRows(shownRows, 'temperature');
-  const seasonalPrecipitation = seasonalRows(shownRows, 'precipitation');
+  const seasonalTemperature = seasonalRows(shownRows, 'temperature', period);
+  const seasonalPrecipitation = seasonalRows(shownRows, 'precipitation', period);
 
   return (
     <main className="county-page">
@@ -134,8 +137,11 @@ export default function CountyDashboard() {
         </div>
       </section>
 
-      {/* One set of tick boxes for every chart below */}
-      <ScenarioFilter selected={selectedScenarios} onChange={setSelectedScenarios} />
+      {/* One set of controls for every chart below. Changing them updates the URL. */}
+      <div className="county-page__controls">
+        <ScenarioFilter selected={selectedScenarios} onChange={setScenarios} />
+        <PeriodFilter periods={PERIODS} selected={period} onChange={setPeriod} />
+      </div>
 
       <section aria-labelledby="temperature-heading">
         <h2 id="temperature-heading">Temperature</h2>
