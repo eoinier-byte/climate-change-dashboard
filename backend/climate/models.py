@@ -1,5 +1,6 @@
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import models
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Value
 from django.utils.text import slugify
 
 from common.enums import Variable
@@ -16,6 +17,21 @@ class ClimateProjectionQuerySet(models.query.QuerySet):
             .filter(county__slug=slug, variable=variable, season=season)
             .order_by('scenario', 'period')
         )
+
+    def aggregate_groups(
+        self, scenarios: bool = True, periods: bool = True, seasons: bool = True, variables: bool = True
+    ) -> dict[str, list[str]]:
+        params = {}
+        if scenarios:
+            params['scenarios'] = ArrayAgg('scenario', distinct=True, order_by='scenario', default=Value([]))
+        if periods:
+            params['periods'] = ArrayAgg('period', distinct=True, order_by='period', default=Value([]))
+        if seasons:
+            params['seasons'] = ArrayAgg('season', distinct=True, order_by='season', default=Value([]))
+        if variables:
+            params['variables'] = ArrayAgg('variable', distinct=True, order_by='variable', default=Value([]))
+
+        return self.aggregate(**params)
 
 
 class County(models.Model):

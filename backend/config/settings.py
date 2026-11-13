@@ -26,6 +26,8 @@ env = environ.Env(
     DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
     ANTHROPIC_API_KEY=(str, ''),
+    REDIS_HOST=(str, 'redis'),
+    REDIS_PORT=(int, 6379),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -184,3 +186,21 @@ SUMMARY_SEASON = 'annual'
 
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+
+# Redis
+REDIS_HOST = env('REDIS_HOST')
+REDIS_PORT = env('REDIS_PORT')
+
+if TESTING:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+        }
+    }
+DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
