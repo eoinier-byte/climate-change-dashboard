@@ -13,7 +13,13 @@ const DESCRIPTIONS = {
   rcp85: 'high emissions',
 };
 
+// id of the hint text, so the disabled tick box can point to it (aria-describedby)
+const HINT_ID = 'scenario-filter-hint';
+
 export default function ScenarioFilter({ selected, onChange }) {
+  // Only one scenario ticked: its box is disabled, so explain why
+  const onlyOneLeft = selected.length === 1;
+
   // Runs when a box is clicked: add the scenario if it was unticked, remove it if it was ticked
   function handleToggle(scenario) {
     if (selected.includes(scenario)) {
@@ -39,6 +45,8 @@ export default function ScenarioFilter({ selected, onChange }) {
               type="checkbox"
               checked={checked}
               disabled={isLastOne}
+              // A screen reader reads the hint below when it reaches the disabled box
+              aria-describedby={isLastOne ? HINT_ID : undefined}
               onChange={() => handleToggle(scenario)}
             />
             {/* Coloured square that matches the chart line, plus the name, so colour is not the only cue */}
@@ -51,6 +59,12 @@ export default function ScenarioFilter({ selected, onChange }) {
           </label>
         );
       })}
+      {/* Shown only when one scenario is left, to explain why its box can't be unticked */}
+      {onlyOneLeft && (
+        <p id={HINT_ID} className="scenario-filter__hint">
+          At least one scenario must be shown.
+        </p>
+      )}
     </fieldset>
   );
 }

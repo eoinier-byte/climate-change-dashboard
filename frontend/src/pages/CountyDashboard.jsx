@@ -75,10 +75,15 @@ export default function CountyDashboard() {
     };
   }, [slug]);
 
+  // CountySelect is always the FIRST thing inside <main> in every state below (loading, error,
+  // loaded). Because it stays in the same place, React keeps the same dropdown on screen while
+  // a new county loads, instead of removing it and downloading the county list again.
+
   // Still loading: nothing back yet, or the answer is for a different county
   if (!result || result.slug !== slug) {
     return (
-      <main>
+      <main className="county-page">
+        <CountySelect currentSlug={slug} />
         <h1>County dashboard</h1>
         <p role="status">Loading county data…</p>
       </main>
@@ -90,14 +95,14 @@ export default function CountyDashboard() {
     const notFound = result.error.message.includes('404');
     return (
       <main className="county-page">
+        {/* Let people pick a real county straight away */}
+        <CountySelect currentSlug={slug} />
         <h1>{notFound ? 'County not found' : 'Something went wrong'}</h1>
         <p role="alert">
           {notFound
             ? `We don't have a county called "${slug}".`
             : 'We could not load the data for this county. Please try again later.'}
         </p>
-        {/* Let people pick a real county straight away */}
-        <CountySelect currentSlug={slug} />
         <Link to={ROUTES.home}>Back to the map</Link>
       </main>
     );
