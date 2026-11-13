@@ -1,11 +1,12 @@
-// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143).
+// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
-import { getCounties, getCounty, getProjections } from '../services/api';
+import { getCounties, getCounty, getProjections, getSeaLevel } from '../services/api';
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
+import { mockSeaLevelCork } from '../mocks/seaLevel';
 import { ROUTES, countyPath } from '../routes';
 
 // Replace the real API calls with fakes, so the tests never need the backend
@@ -13,6 +14,7 @@ vi.mock('../services/api', () => ({
   getCounties: vi.fn(),
   getCounty: vi.fn(),
   getProjections: vi.fn(),
+  getSeaLevel: vi.fn(),
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real charts
@@ -53,6 +55,7 @@ describe('CountyDashboard', () => {
     getCounties.mockResolvedValue([mockCork, { id: 8, name: 'Kerry', slug: 'kerry', has_coastline: true }]);
     getCounty.mockResolvedValue(mockCork);
     getProjections.mockResolvedValue(mockCorkRows);
+    getSeaLevel.mockResolvedValue(mockSeaLevelCork);
   });
 
   it('shows the "Choose a county" dropdown with the current county selected (CCD-159, CCD-166)', async () => {
@@ -94,12 +97,16 @@ describe('CountyDashboard', () => {
     expect(screen.getByText('1,369 mm')).toBeTruthy();
   });
 
-  it('shows the annual and seasonal charts for temperature and rainfall', async () => {
+  it('shows the annual and seasonal charts for temperature and rainfall, and the sea-level chart', async () => {
     renderCounty();
     await screen.findByRole('heading', { level: 1, name: 'Cork' });
 
     const lineCharts = screen.getAllByTestId('line-chart').map((chart) => chart.getAttribute('aria-label'));
-    expect(lineCharts).toEqual(['Temperature in Cork (annual), °C', 'Precipitation in Cork (annual), mm']);
+    expect(lineCharts).toEqual([
+      'Temperature in Cork (annual), °C',
+      'Precipitation in Cork (annual), mm',
+      "Sea-level rise at Cork's coast, cm", // CCD-407
+    ]);
 
     // Seasonal temperature (CCD-157) comes first, in the Temperature section
     const barCharts = screen.getAllByTestId('bar-chart').map((chart) => chart.getAttribute('aria-label'));
@@ -114,11 +121,11 @@ describe('CountyDashboard', () => {
     await screen.findByRole('heading', { level: 1, name: 'Cork' });
 
     const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
-    expect(charts).toHaveLength(4);
+    expect(charts).toHaveLength(5); // 3 line charts (incl. sea level) + 2 bar charts
     charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP4.5,RCP8.5'));
   });
 
-  it('hides a scenario on all four charts when its box is unticked', async () => {
+  it('hides a scenario on every chart when its box is unticked', async () => {
     const user = userEvent.setup();
     renderCounty();
     await screen.findByRole('heading', { level: 1, name: 'Cork' });
@@ -127,6 +134,20 @@ describe('CountyDashboard', () => {
 
     const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
     charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP8.5'));
+  });
+
+  it('asks the API for the sea level of the county in the URL (CCD-407)', async () => {
+    renderCounty('cork');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+    expect(getSeaLevel).toHaveBeenCalledWith('cork');
+  });
+
+  it('still shows the page if only the sea level fails to load', async () => {
+    getSeaLevel.mockRejectedValue(new Error('API error 500 for /sea-level/cork/'));
+    renderCounty();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Cork' })).toBeTruthy();
+    expect(screen.getByText('No sea-level data is available for this county.')).toBeTruthy();
   });
 
   it('shows "County not found" for an unknown county', async () => {
