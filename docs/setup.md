@@ -240,6 +240,43 @@ Exit codes: `0` connected, `1` connection failed (server down, wrong password, n
 pytest db -q
 ```
 
+## Backups
+
+Each developer's database lives only in the Docker volume on their own machine, so a wrong reload, migration or `docker compose down -v` loses it. A dump taken first gets it back in a minute. Scripts and the exact `pg_dump` command: [db/README.md](../db/README.md#backup-and-restore-ccd-272) (CCD-272).
+
+| | |
+|---|---|
+| **Where** | `~/ccd-backups/` on your own machine, **outside the repository**: `<database>_<YYYY-MM-DD_HHMMSS>.dump`. Use `BACKUP_DIR` for another folder outside the repo; the script refuses a folder inside it. Never commit a dump or upload it to a shared drive, chat or cloud folder: it contains the `users` table (emails and password hashes). The files are mode 600, readable only by you |
+| **Who** | Whoever is about to change the data takes the dump, on the machine where the change happens: the developer running the loader or the migration on their own `climate_dev`, or the person preparing `climate_staging` before a demo or merge. Later, the deployment pipeline does this for the hosted database (Epic 8) |
+| **When** | **Before every data reload** (`python manage.py load_data`), before `python manage.py migrate` when a migration changes or removes existing tables, before `docker compose down -v`, and before a demo |
+| **Keep** | The last 5 dumps per database. Delete older ones by hand: `ls -t ~/ccd-backups/climate_dev_*.dump \| tail -n +6 \| xargs -r rm` |
+
+**Take a dump** (database running, from the repository root):
+
+```bash
+db/backup.sh                    # climate_dev (DB_NAME in .env)
+db/backup.sh climate_staging    # another database
+```
+
+Expected: `Saved /home/<you>/ccd-backups/climate_dev_2026-11-12_173000.dump (108K, data for 14 tables)`.
+
+**Restore into an empty database** (to check a dump, or to compare an old copy with the current one):
+
+```bash
+docker compose exec db createdb -U <DB_USER from .env> climate_restore
+db/restore.sh ~/ccd-backups/climate_dev_2026-11-12_173000.dump climate_restore
+```
+
+Expected: `Restored 14 tables into climate_restore`. The script refuses a database that already has tables, so it can never overwrite data.
+
+**Recover `climate_dev` itself.** Stop the Django server first, then replace the database with an empty one and restore into it. This deletes the current `climate_dev`, so take a dump of it first if it might still be useful:
+
+```bash
+docker compose exec db dropdb -U <DB_USER> climate_dev
+docker compose exec db createdb -U <DB_USER> climate_dev
+db/restore.sh ~/ccd-backups/climate_dev_2026-11-12_173000.dump climate_dev
+```
+
 ## Stop, restart and reset
 
 | Goal | Command | Data |
@@ -249,7 +286,7 @@ pytest db -q
 | Remove the container | `docker compose down` | kept (the `pgdata` volume stays) |
 | **Wipe everything** | `docker compose down -v` | **deleted** |
 
-> ⚠️ **`docker compose down -v` deletes the `pgdata` volume, which means every table and row in every database (`ccd`, `climate_dev` and `climate_staging`), plus the roles.** The data can't be recovered. Only use it when you want a clean database, e.g. after changing the password or user. Then reload the data with the loader.
+> ⚠️ **`docker compose down -v` deletes the `pgdata` volume, which means every table and row in every database (`ccd`, `climate_dev` and `climate_staging`), plus the roles.** The data can't be recovered. Only use it when you want a clean database, e.g. after changing the password or user. Take a dump first (`db/backup.sh`, see "Backups"), then reload the data with the loader.
 
 The service uses `restart: unless-stopped`, so after `up` it starts again with Docker until you stop it.
 
