@@ -1,14 +1,16 @@
 // Tests for the county dashboard page (CCD-149, CCD-142, CCD-143).
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
-import { getCounty, getProjections } from '../services/api';
+import { getCounties, getCounty, getProjections } from '../services/api';
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
 import { ROUTES, countyPath } from '../routes';
 
 // Replace the real API calls with fakes, so the tests never need the backend
 vi.mock('../services/api', () => ({
+  getCounties: vi.fn(),
   getCounty: vi.fn(),
   getProjections: vi.fn(),
 }));
@@ -35,8 +37,27 @@ describe('CountyDashboard', () => {
   // Start every test with fresh fakes that return Cork's data
   beforeEach(() => {
     vi.clearAllMocks();
+    getCounties.mockResolvedValue([mockCork, { id: 8, name: 'Kerry', slug: 'kerry', has_coastline: true }]);
     getCounty.mockResolvedValue(mockCork);
     getProjections.mockResolvedValue(mockCorkRows);
+  });
+
+  it('shows the "Choose a county" dropdown with the current county selected (CCD-159, CCD-166)', async () => {
+    renderCounty('cork');
+    const dropdown = await screen.findByRole('combobox', { name: 'Choose a county' });
+    expect(dropdown.value).toBe('cork');
+  });
+
+  it('loads the new county when another one is chosen', async () => {
+    const user = userEvent.setup();
+    renderCounty('cork');
+    const dropdown = await screen.findByRole('combobox', { name: 'Choose a county' });
+
+    await user.selectOptions(dropdown, 'kerry');
+
+    // The page asks the API for Kerry's data
+    await vi.waitFor(() => expect(getCounty).toHaveBeenCalledWith('kerry'));
+    expect(getProjections).toHaveBeenCalledWith({ county: 'kerry' });
   });
 
   it('shows a loading message first', () => {

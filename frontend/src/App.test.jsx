@@ -7,6 +7,7 @@ import { ROUTES, countyPath } from './routes';
 // The county page now loads data from the API (CCD-149). These tests only check
 // the routes, so the API calls are replaced with fakes that never finish loading.
 vi.mock('./services/api', () => ({
+  getCounties: vi.fn(() => new Promise(() => {})),
   getCounty: vi.fn(() => new Promise(() => {})),
   getProjections: vi.fn(() => new Promise(() => {})),
 }));

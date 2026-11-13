@@ -2,9 +2,11 @@
 // Loads the county (CCD-142) and its projection rows (CCD-143) from the API,
 // then shows today's climate and the temperature and rainfall charts,
 // each with an annual line chart and a seasonal bar chart (CCD-157).
+// The "Choose a county" dropdown switches every chart to another county (CCD-159, CCD-166).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
+import CountySelect from '../components/CountySelect';
 import ProjectionChart from '../components/ProjectionChart';
 import SeasonalChart from '../components/SeasonalChart';
 import { buildSeries, seasonalRows } from '../components/countyChartData';
@@ -62,13 +64,15 @@ export default function CountyDashboard() {
   if (result.error) {
     const notFound = result.error.message.includes('404');
     return (
-      <main>
+      <main className="county-page">
         <h1>{notFound ? 'County not found' : 'Something went wrong'}</h1>
         <p role="alert">
           {notFound
             ? `We don't have a county called "${slug}".`
             : 'We could not load the data for this county. Please try again later.'}
         </p>
+        {/* Let people pick a real county straight away */}
+        <CountySelect currentSlug={slug} />
         <Link to={ROUTES.home}>Back to the map</Link>
       </main>
     );
@@ -85,6 +89,7 @@ export default function CountyDashboard() {
 
   return (
     <main className="county-page">
+      <CountySelect currentSlug={slug} />
       <h1>{county.name}</h1>
       <p className="county-page__intro">
         How the climate in County {county.name} is projected to change under three emissions scenarios, compared
