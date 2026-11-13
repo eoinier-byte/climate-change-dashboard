@@ -1,0 +1,28 @@
+[
+  {
+    "model": "climate.datasource",
+    "fields": {
+      "code": "translate",
+      "name": "Climate Ireland — TRANSLATE climate projections",
+      "organisation": "Environmental Protection Agency (Climate Ireland portal); data produced by Met Éireann's TRANSLATE project with ICHEC (University of Galway) and MaREI (UCC)",
+      "baseline_period": "1976-2005",
+      "licence": "Licence name not stated.",
+      "attribution": "Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023).",
+      "url": "https://www.climateireland.ie/data-explorer/",
+      "accessed_on": "2026-10-27"
+    }
+  },
+  {
+    "model": "climate.datasource",
+    "fields": {
+      "code": "ukcp18",
+      "name": "Met Office — UKCP18 sea level projections",
+      "organisation": "Met Office (UK)",
+      "baseline_period": "1981-2000",
+      "licence": "Open Government Licence v3.0.",
+      "attribution": "Contains Met Office data licensed under the Open Government Licence v3.0.",
+      "url": "https://opennetzero.org/met-office/time-mean-sea-level-projections-to-2100-cm",
+      "accessed_on": "2026-10-27"
+    }
+  }
+]
