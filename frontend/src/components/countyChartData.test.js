@@ -62,4 +62,11 @@ describe('seasonalRows', () => {
       expect(row.scenario).not.toBe('baseline');
     });
   });
+
+  it('can pick the seasonal temperature rows instead (CCD-157)', () => {
+    const rows = seasonalRows(mockCorkRows, 'temperature');
+
+    expect(rows).toHaveLength(12);
+    rows.forEach((row) => expect(row.variable).toBe('temperature'));
+  });
 });

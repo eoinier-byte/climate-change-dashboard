@@ -1,4 +1,4 @@
-// Helper functions for the seasonal precipitation chart (CCD-162).
+// Helper functions for the seasonal charts: precipitation (CCD-162) and temperature (CCD-157).
 // They take the rows from the list endpoint (GET /api/projections/) for one county,
 // one variable and one period, and turn them into what the chart needs.
 // Kept separate from the component so they are easy to test.
@@ -16,6 +16,19 @@ export const SEASON_LABELS = {
 // The scenarios, from lowest to highest emissions
 const SCENARIOS = ['rcp26', 'rcp45', 'rcp85'];
 
+// The backend gives rainfall change in % and temperature change in °C
+export function changeUnit(variable) {
+  return variable === 'precipitation' ? '%' : '°C';
+}
+
+// Writes a change with its sign and unit, e.g. "+22.1%" or "+2.63 °C".
+// "%" sits next to the number; °C gets a space, as in the line charts.
+function formatChange(change, variable) {
+  const sign = change > 0 ? '+' : ''; // negative numbers already have a minus sign
+  const unit = changeUnit(variable);
+  return unit === '%' ? `${sign}${change}%` : `${sign}${change} ${unit}`;
+}
+
 // Finds the one row for a scenario and season, or undefined if it is missing
 function findRow(rows, scenario, season) {
   return rows.find((row) => row.scenario === scenario && row.season === season);
@@ -28,7 +41,7 @@ export function buildSeasonalChartData(rows) {
 
   const datasets = SCENARIOS.map((scenario) => ({
     label: SCENARIO_LABELS[scenario],
-    // The API sends numbers as strings, so turn each one into a real number.
+    // The API may send numbers as strings, so turn each one into a real number.
     // A missing row becomes null, so Chart.js leaves a gap instead of drawing 0.
     data: SEASONS.map((season) => {
       const row = findRow(rows, scenario, season);
@@ -40,29 +53,45 @@ export function buildSeasonalChartData(rows) {
   return { labels, datasets };
 }
 
-// Builds a short text summary for one scenario (RCP8.5 by default), e.g.
-// "Under RCP8.5, by 2071-2100 compared with 1976-2005: Winter +22.1%, ... Wetter: Winter, ... Drier: Summer."
+// Builds a short text summary for one scenario (RCP8.5 by default).
 // Screen readers read this, because they cannot see the chart.
+// Rainfall:    "... Winter +22.1%, ... Wetter: Winter, ... Drier: Summer."
+// Temperature: "... Winter +2.63 °C, ... Biggest rise: Autumn."
 export function buildSeasonalSummary(rows, scenario = 'rcp85') {
   const first = rows[0];
+  const variable = first.variable;
   const parts = [];
   const wetter = [];
   const drier = [];
+  let biggestSeason = null;
+  let biggestChange = null;
 
   SEASONS.forEach((season) => {
     const row = findRow(rows, scenario, season);
     if (!row) return; // skip a season with no data
 
     const change = Number(row.change);
-    const sign = change > 0 ? '+' : ''; // negative numbers already have a minus sign
-    parts.push(`${SEASON_LABELS[season]} ${sign}${change}%`);
+    parts.push(`${SEASON_LABELS[season]} ${formatChange(change, variable)}`);
 
     if (change > 0) wetter.push(SEASON_LABELS[season]);
     if (change < 0) drier.push(SEASON_LABELS[season]);
+
+    // Remember the season with the largest change so far
+    if (biggestChange === null || change > biggestChange) {
+      biggestChange = change;
+      biggestSeason = SEASON_LABELS[season];
+    }
   });
 
   let summary = `Under ${SCENARIO_LABELS[scenario]}, by ${first.period} compared with ${first.baseline_period}: ${parts.join(', ')}.`;
-  if (wetter.length > 0) summary += ` Wetter: ${wetter.join(', ')}.`;
-  if (drier.length > 0) summary += ` Drier: ${drier.join(', ')}.`;
+
+  if (variable === 'precipitation') {
+    // Rainfall: say which seasons get wetter and which get drier
+    if (wetter.length > 0) summary += ` Wetter: ${wetter.join(', ')}.`;
+    if (drier.length > 0) summary += ` Drier: ${drier.join(', ')}.`;
+  } else if (biggestSeason !== null) {
+    // Temperature: every season warms, so say which warms the most
+    summary += ` Biggest rise: ${biggestSeason}.`;
+  }
   return summary;
 }

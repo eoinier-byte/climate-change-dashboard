@@ -1,6 +1,7 @@
 // County dashboard page, e.g. /county/cork (CCD-148, CCD-149).
 // Loads the county (CCD-142) and its projection rows (CCD-143) from the API,
-// then shows today's climate and the temperature and rainfall charts.
+// then shows today's climate and the temperature and rainfall charts,
+// each with an annual line chart and a seasonal bar chart (CCD-157).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
@@ -79,7 +80,8 @@ export default function CountyDashboard() {
   // Turn the API rows into what each chart needs
   const temperature = buildSeries(rows, county.name, 'temperature');
   const precipitation = buildSeries(rows, county.name, 'precipitation');
-  const seasonal = seasonalRows(rows);
+  const seasonalTemperature = seasonalRows(rows, 'temperature');
+  const seasonalPrecipitation = seasonalRows(rows, 'precipitation');
 
   return (
     <main className="county-page">
@@ -115,12 +117,13 @@ export default function CountyDashboard() {
       <section aria-labelledby="temperature-heading">
         <h2 id="temperature-heading">Temperature</h2>
         <ProjectionChart data={temperature} />
+        <SeasonalChart rows={seasonalTemperature} countyName={county.name} />
       </section>
 
       <section aria-labelledby="rainfall-heading">
         <h2 id="rainfall-heading">Rainfall</h2>
         <ProjectionChart data={precipitation} />
-        <SeasonalChart rows={seasonal} countyName={county.name} />
+        <SeasonalChart rows={seasonalPrecipitation} countyName={county.name} />
       </section>
     </main>
   );
