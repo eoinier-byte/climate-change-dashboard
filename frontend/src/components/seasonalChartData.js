@@ -34,12 +34,26 @@ function findRow(rows, scenario, season) {
   return rows.find((row) => row.scenario === scenario && row.season === season);
 }
 
+// The scenarios that have at least one row, in the usual order.
+// When some scenarios are hidden with the tick boxes (CCD-158, CCD-165), only the rest are listed.
+export function scenariosInRows(rows) {
+  return SCENARIOS.filter((scenario) => rows.some((row) => row.scenario === scenario));
+}
+
+// The highest-emissions scenario still in the rows (RCP8.5 if it is there),
+// which is the one the summary describes
+function highestScenario(rows) {
+  const present = scenariosInRows(rows);
+  return present[present.length - 1];
+}
+
 // Builds the { labels, datasets } object that Chart.js expects for a bar chart.
 // One group of bars per season, and one bar per scenario inside each group.
+// Only scenarios that are in the rows get bars, so hidden scenarios leave no empty space.
 export function buildSeasonalChartData(rows) {
   const labels = SEASONS.map((season) => SEASON_LABELS[season]);
 
-  const datasets = SCENARIOS.map((scenario) => ({
+  const datasets = scenariosInRows(rows).map((scenario) => ({
     label: SCENARIO_LABELS[scenario],
     // The API may send numbers as strings, so turn each one into a real number.
     // A missing row becomes null, so Chart.js leaves a gap instead of drawing 0.
@@ -53,11 +67,12 @@ export function buildSeasonalChartData(rows) {
   return { labels, datasets };
 }
 
-// Builds a short text summary for one scenario (RCP8.5 by default).
+// Builds a short text summary for one scenario: by default the highest one shown
+// (RCP8.5, or RCP4.5 if RCP8.5 is hidden, and so on).
 // Screen readers read this, because they cannot see the chart.
 // Rainfall:    "... Winter +22.1%, ... Wetter: Winter, ... Drier: Summer."
 // Temperature: "... Winter +2.63 °C, ... Biggest rise: Autumn."
-export function buildSeasonalSummary(rows, scenario = 'rcp85') {
+export function buildSeasonalSummary(rows, scenario = highestScenario(rows)) {
   const first = rows[0];
   const variable = first.variable;
   const parts = [];

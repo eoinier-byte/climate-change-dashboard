@@ -1,6 +1,6 @@
 // Tests for the county dashboard helpers (CCD-149).
 import { describe, expect, it } from 'vitest';
-import { buildSeries, seasonalRows } from './countyChartData';
+import { buildSeries, filterScenarios, seasonalRows } from './countyChartData';
 import { mockCorkRows } from '../mocks/countyRows';
 import { mockTemperature, mockPrecipitation } from '../mocks/projections';
 
@@ -68,5 +68,27 @@ describe('seasonalRows', () => {
 
     expect(rows).toHaveLength(12);
     rows.forEach((row) => expect(row.variable).toBe('temperature'));
+  });
+});
+
+describe('filterScenarios (CCD-158, CCD-165)', () => {
+  it('keeps only the ticked scenarios', () => {
+    const series = buildSeries(mockCorkRows, 'Cork', 'temperature');
+    const filtered = filterScenarios(series, ['rcp26', 'rcp85']);
+
+    expect(Object.keys(filtered.scenarios)).toEqual(['rcp26', 'rcp85']);
+    // Everything else is unchanged
+    expect(filtered.periods).toEqual(series.periods);
+    expect(filtered.unit).toBe('°C');
+  });
+
+  it('does not change the original series', () => {
+    const series = buildSeries(mockCorkRows, 'Cork', 'temperature');
+    filterScenarios(series, ['rcp26']);
+    expect(Object.keys(series.scenarios)).toEqual(['rcp26', 'rcp45', 'rcp85']);
+  });
+
+  it('passes null straight through', () => {
+    expect(filterScenarios(null, ['rcp26'])).toBeNull();
   });
 });

@@ -16,10 +16,23 @@ vi.mock('../services/api', () => ({
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real charts
-// for simple placeholders that keep the chart's title as their label
+// for simple placeholders that keep the chart's title as their label.
+// data-lines lists the scenario names the chart would draw, e.g. "RCP2.6,RCP8.5".
 vi.mock('react-chartjs-2', () => ({
-  Line: (props) => <div data-testid="line-chart" aria-label={props['aria-label']} />,
-  Bar: (props) => <div data-testid="bar-chart" aria-label={props['aria-label']} />,
+  Line: (props) => (
+    <div
+      data-testid="line-chart"
+      aria-label={props['aria-label']}
+      data-lines={props.data.datasets.map((d) => d.label).join(',')}
+    />
+  ),
+  Bar: (props) => (
+    <div
+      data-testid="bar-chart"
+      aria-label={props['aria-label']}
+      data-lines={props.data.datasets.map((d) => d.label).join(',')}
+    />
+  ),
 }));
 
 // Opens the page at /county/<slug>, the same way the real app does
@@ -94,6 +107,26 @@ describe('CountyDashboard', () => {
       'Change in temperature by season in Cork, 2071-2100 (°C)',
       'Change in precipitation by season in Cork, 2071-2100 (%)',
     ]);
+  });
+
+  it('shows all three scenarios on every chart to start with (CCD-158, CCD-165)', async () => {
+    renderCounty();
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
+    expect(charts).toHaveLength(4);
+    charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP4.5,RCP8.5'));
+  });
+
+  it('hides a scenario on all four charts when its box is unticked', async () => {
+    const user = userEvent.setup();
+    renderCounty();
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    await user.click(screen.getByRole('checkbox', { name: /^RCP4\.5/ }));
+
+    const charts = [...screen.getAllByTestId('line-chart'), ...screen.getAllByTestId('bar-chart')];
+    charts.forEach((chart) => expect(chart.getAttribute('data-lines')).toBe('RCP2.6,RCP8.5'));
   });
 
   it('shows "County not found" for an unknown county', async () => {

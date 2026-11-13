@@ -83,3 +83,18 @@ export function seasonalRows(rows, variable = 'precipitation', period = SEASONAL
       row.scenario !== 'baseline',
   );
 }
+
+// Keeps only the ticked scenarios in a series from buildSeries (CCD-158, CCD-165),
+// e.g. filterScenarios(series, ['rcp26', 'rcp85']) drops the RCP4.5 line.
+// Returns a new object, so the original series is not changed.
+export function filterScenarios(series, selected) {
+  if (!series) return series; // nothing to filter
+
+  const scenarios = {};
+  Object.entries(series.scenarios).forEach(([key, scenario]) => {
+    if (selected.includes(key)) scenarios[key] = scenario;
+  });
+
+  // "..." copies every other field (county, unit, periods...) unchanged
+  return { ...series, scenarios };
+}

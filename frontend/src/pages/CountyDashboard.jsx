@@ -3,14 +3,17 @@
 // then shows today's climate and the temperature and rainfall charts,
 // each with an annual line chart and a seasonal bar chart (CCD-157).
 // The "Choose a county" dropdown switches every chart to another county (CCD-159, CCD-166).
+// The "Show scenarios" tick boxes show or hide scenarios on all four charts (CCD-158, CCD-165).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import ProjectionChart from '../components/ProjectionChart';
+import ScenarioFilter from '../components/ScenarioFilter';
 import SeasonalChart from '../components/SeasonalChart';
-import { buildSeries, seasonalRows } from '../components/countyChartData';
+import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
 import { getCounty, getProjections } from '../services/api';
+import { ALL_SCENARIOS } from '../styles/scenarioColors';
 import { ROUTES } from '../routes';
 
 // Formats a number string from the API for people to read,
@@ -29,6 +32,10 @@ export default function CountyDashboard() {
   // What the API sent back, saved together with the slug it was for.
   // { slug, county, rows } when it worked, or { slug, error } when it failed.
   const [result, setResult] = useState(null);
+
+  // The scenarios ticked in "Show scenarios". All three to start with.
+  // This is kept when you switch county, so your choice stays the same.
+  const [selectedScenarios, setSelectedScenarios] = useState(ALL_SCENARIOS);
 
   useEffect(() => {
     // If the user moves to another county before this one has loaded,
@@ -81,11 +88,15 @@ export default function CountyDashboard() {
   const { county, rows } = result;
   const summary = county.summary;
 
+  // Only the rows for the ticked scenarios (the baseline row is always kept,
+  // because the line charts start from it)
+  const shownRows = rows.filter((row) => row.scenario === 'baseline' || selectedScenarios.includes(row.scenario));
+
   // Turn the API rows into what each chart needs
-  const temperature = buildSeries(rows, county.name, 'temperature');
-  const precipitation = buildSeries(rows, county.name, 'precipitation');
-  const seasonalTemperature = seasonalRows(rows, 'temperature');
-  const seasonalPrecipitation = seasonalRows(rows, 'precipitation');
+  const temperature = filterScenarios(buildSeries(rows, county.name, 'temperature'), selectedScenarios);
+  const precipitation = filterScenarios(buildSeries(rows, county.name, 'precipitation'), selectedScenarios);
+  const seasonalTemperature = seasonalRows(shownRows, 'temperature');
+  const seasonalPrecipitation = seasonalRows(shownRows, 'precipitation');
 
   return (
     <main className="county-page">
@@ -118,6 +129,9 @@ export default function CountyDashboard() {
           )}
         </div>
       </section>
+
+      {/* One set of tick boxes for all four charts below */}
+      <ScenarioFilter selected={selectedScenarios} onChange={setSelectedScenarios} />
 
       <section aria-labelledby="temperature-heading">
         <h2 id="temperature-heading">Temperature</h2>
