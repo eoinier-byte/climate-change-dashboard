@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.test import TestCase
 
 from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
@@ -8,6 +9,10 @@ from common.enums import Scenario, Season, Unit, Variable
 
 
 class ProjectionTestCase(TestCase):
+    def setUp(self):
+        cache.clear()
+        super().setUp()
+
     @classmethod
     def setUpTestData(cls):
         cls.county = County.objects.create(name='Cork', has_coastline=True)
