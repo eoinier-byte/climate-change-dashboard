@@ -126,6 +126,15 @@ jobs:
         env:
           FLOOD_ENGINE_PY_DIR: ${{ github.workspace }}/flood_engine/build/python
         run: python -m pytest flood_engine/tests/python -v
+      # Flood precompute (CCD-400): run its tests with the real binding, so the end-to-end test
+      # (skipped in the pipeline job, which has no binding) really runs. Synthetic inputs only.
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        run: pip install -r pipeline/requirements.txt
+      - if: ${{ hashFiles('flood_engine/CMakeLists.txt') != '' }}
+        working-directory: pipeline
+        env:
+          FLOOD_ENGINE_PY_DIR: ${{ github.workspace }}/flood_engine/build/python
+        run: python -m pytest tests/test_flood_precompute.py -v
 
   # Failure alerts (CCD-279): post to the team's Discord channel if any job above fails.
   # Needs a repo secret called DISCORD_WEBHOOK_URL (see docs/ci-cd.md).

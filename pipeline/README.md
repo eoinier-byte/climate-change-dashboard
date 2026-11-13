@@ -91,3 +91,38 @@ Where the data comes from, and the licences, are in [`DATA_SOURCES.md`](../DATA_
 - **Leitrim and Limerick** have coastline but no UKCP18 sea point near it. Leitrim uses **Sligo's** sea level values (Donegal Bay) and Limerick uses **Clare's** (Shannon Estuary). These are estimates.
 - A small number of coastal land cells fall just outside the county outlines and aren't counted.
 - Baselines differ: temperature and rainfall use 1976–2005; sea level uses 1981–2000. Both are centred on about 1990.
+## Rebuilding the flood layers (CCD-400)
+
+`flood_precompute.py` turns the local Copernicus DEM into flood layers for the 15 coastal counties.
+Contract: [`docs/flood-engine.md`](../docs/flood-engine.md) (§3 input, §7 limits, §9 D3/D5/D6).
+
+**Inputs** (none are committed: the DEM licence forbids it, D2):
+
+- `--dem`: the GLO-90 mosaic, `data/dem/glo90/ireland_glo90.vrt` (how to get it: `DATA_SOURCES.md` §7)
+- `--land`: a land polygon for the **whole island incl. Northern Ireland** (D3). Outside it = sea. Lakes inside it stay land.
+- `--counties`: `pipeline/data/boundaries/counties_tailte_eireann_2019.geojson` (county name column `ENGLISH`)
+- the `flood_engine_py` binding, built as in `docs/flood-engine.md` §10, with `FLOOD_ENGINE_PY_DIR` pointing at it
+
+Run from the repository root (pilot county first, D5):
+
+```bash
+cmake -S flood_engine -B flood_engine/build -DFLOOD_ENGINE_BUILD_PYTHON=ON -DPython_EXECUTABLE="$(which python)"
+cmake --build flood_engine/build -j
+FLOOD_ENGINE_PY_DIR=flood_engine/build/python python pipeline/flood_precompute.py \
+    --dem data/dem/glo90/ireland_glo90.vrt --land <land.gpkg> \
+    --counties pipeline/data/boundaries/counties_tailte_eireann_2019.geojson \
+    --out pipeline/data/processed/flood --county cork
+```
+
+Leave out `--county` to build all 15 coastal counties. `--cell-size` (default 90 m) sets the ITM grid.
+
+**Output:** `pipeline/data/processed/flood/<slug>/` with `level_000.png` … `level_200.png` (RGBA, EPSG:3857,
+flooded = semi-transparent blue) and `index.json` (slug, bounds `[[south, west], [north, east]]`, `cell_size_m`,
+per-level `flooded_cells` / `flooded_area_km2`, attribution, model limits). The script also prints the per-level table.
+
+**How:** the DEM is reprojected once to a national ITM grid (bilinear), NaN/no-data become `-9999.0`, the land polygon
+gives the sea mask, and the engine runs once per level `k/10` on the whole island so water is never cut off at a county
+edge. Each county then counts only its own flooded cells; areas come from the ITM grid, not the PNG.
+
+Tests use tiny synthetic inputs only: `python -m pytest tests/test_flood_precompute.py -v` (the real-engine test runs
+when `FLOOD_ENGINE_PY_DIR` is set).

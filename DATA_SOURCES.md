@@ -56,7 +56,7 @@ Last updated: 10 November 2026 · Owner: Eoin Ryan
 
 ## 4. Footer text (combined)
 
-> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0. Elevation data (flood layers): produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.
+> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0. Elevation data (flood layers): produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. Northern Ireland outline (flood layers): © Ordnance Survey of Northern Ireland, OSNI Open Data – Largescale Boundaries – NI Outline, released under the Open Government Licence v3.0.
 
 ## 5. Considered and not used
 
@@ -100,3 +100,26 @@ Limitations:
 
 - **Surface model, not terrain.** Heights include buildings and vegetation, so towns and forests look higher than the ground.
 - **EGM2008 height 0 is not exactly local mean sea level.** The offset from Irish mean sea level along the coast has not been measured yet. UKCP18 (§2) gives sea-level *change* relative to a baseline, not heights on a datum, so the flood engine must state which present-day sea level it adds that change to.
+
+## 8. Land polygon (flood sea mask, CCD-420)
+
+> Chosen by Artur Romanov on 12 November 2026 (Option 1 of CCD-420; decision D3 in [docs/flood-engine.md](docs/flood-engine.md)). Built by `pipeline/build_land_polygon.py`.
+
+| | |
+|---|---|
+| **Output** | `pipeline/data/boundaries/ireland_land.gpkg` (layer `land`, EPSG:2157, 9.2 MB, committed). Everything outside it is sea for the flood engine; lakes inside it stay land |
+| **Inputs** | (1) Republic of Ireland: the Tailte Éireann county file from §3, `pipeline/data/boundaries/counties_tailte_eireann_2019.geojson`. (2) Northern Ireland: **OSNI Open Data – Largescale Boundaries – NI Outline**, Ordnance Survey of Northern Ireland (Land & Property Services) |
+| **URL (NI outline)** | https://www.opendatani.gov.uk/dataset/osni-open-data-largescale-boundaries-ni-outline (shapefile ZIP resource) |
+| **Date accessed** | 12 November 2026 (page checked and ZIP downloaded; files inside the ZIP are dated 26 September 2024) |
+| **Format (NI outline)** | Shapefile in a ZIP, one MultiPolygon, TM65 / Irish Grid (EPSG:29902). The geometry is not valid as published; the build script repairs it (`make_valid`) |
+| **How to rebuild** | Download the shapefile ZIP **in a browser** (the site returns 403 to scripts) to `pipeline/data/raw/ni_outline/` (git-ignored), then from the repo root: `python pipeline/build_land_polygon.py --part pipeline/data/boundaries/counties_tailte_eireann_2019.geojson --part pipeline/data/raw/ni_outline/osni_open_data_largescale_boundaries_ni_outline.zip --out pipeline/data/boundaries/ireland_land.gpkg` |
+| **Licence / reuse terms** | ROI part: **CC BY 4.0** (§3). NI part: **Open Government Licence v3.0**. The dataset page says "UK Open Government Licence (OGL)"; the metadata file inside the ZIP says "Made and published by Ordnance Survey of Northern Ireland® and released under the Open Government Licence v3.0". Both allow redistribution with credit, so the combined file is committed |
+| **Required attribution** | ROI: as §3. NI: "© Ordnance Survey of Northern Ireland" (credit field of the official SpatialNI ArcGIS item for this dataset). UNVERIFIED: OSNI's data.gov.uk pages ask for a longer statement beginning "Contains LPS Intellectual Property © Crown copyright and database right (year)"; its full wording has not been copied from the page yet |
+| **Why chosen** | The ROI coastline is the same one the flood script uses to count cells per county, so ROI coastal cells are not lost between two different coastlines. Official sources on both sides of the border. Considered and not used: OpenStreetMap land polygons (https://osmdata.openstreetmap.de/data/land-polygons.html, ODbL): seamless but a different coastline from the county file and a large global download; Natural Earth: too coarse for a 90 m grid |
+
+Limitations:
+
+- **Two surveys meet at the border.** ROI (generalised 20 m) and NI (OSNI Largescale) outlines do not match exactly. The script closes gaps narrower than about 200 m (buffer +100 m then −100 m), only where the two outlines are within 100 m of each other, so no inland sliver becomes "sea" and coastal inlets elsewhere stay sea.
+- **Estuaries inside county boundaries count as land.** The statutory county boundaries run across the inner parts of some estuaries (seen in the CCD-420 check images: the Shannon and Fergus estuaries, upper Cork Harbour), so that water is "land" in this polygon. The DEM gives water about 0 m, so these areas show as flooded already at 0.0 m: in the CCD-420 run, 184 km² in Clare, 58 km² in Limerick and 56 km² in Kerry at 0.0 m are mostly estuary water, not land. Proposed for Sprint 3 (not done): treat those areas as sea, or show flooding relative to the 0.0 m layer.
+- **Generalised ROI coastline.** The ROI part is generalised to 20 m, finer than the 90 m flood grid.
+- **Conflicting OSNI licence statement.** NISRA's Crown copyright page (https://www.nisra.gov.uk/crown-copyright) says OSNI-branded mapping is exempt from the OGL. The dataset itself is marked OGL v3.0 by OSNI, which we follow; UNVERIFIED with LPS.
