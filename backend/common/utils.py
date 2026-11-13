@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any, Iterable
 
 from django.db.models import Model
 
@@ -18,3 +19,8 @@ def change_from_baseline(value: Decimal, base: Decimal, variable: str) -> Decima
 
 def get_period_choices():
     return [(period, period) for period in distinct('period', ClimateProjection)]
+
+
+def validate_choice(field: str, val: Any, choices: Iterable[str], errors: dict) -> None:
+    if val not in choices:
+        errors[field] = f'Invalid {field}: {val}. Valid {field}s are: {", ".join(choices)}'
