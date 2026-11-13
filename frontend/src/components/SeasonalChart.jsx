@@ -1,10 +1,11 @@
-// Bar chart of the % change in precipitation for each season (CCD-162),
-// so people can see which seasons are expected to get wetter or drier.
+// Bar chart of the change for each season: % change in precipitation (CCD-162)
+// or °C change in temperature (CCD-157).
 // It takes the rows from the list endpoint (GET /api/projections/) as the "rows" prop,
 // and the county's display name (e.g. "Cork") as the "countyName" prop.
+// The rows say which variable they are, so the chart works out its own title and unit.
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { buildSeasonalChartData, buildSeasonalSummary } from './seasonalChartData';
+import { buildSeasonalChartData, buildSeasonalSummary, changeUnit } from './seasonalChartData';
 
 // Chart.js only includes the parts you register, which keeps the bundle small
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -20,12 +21,15 @@ export default function SeasonalChart({ rows, countyName }) {
     return <p>No seasonal data is available for this selection.</p>;
   }
 
-  const period = rows[0].period;
+  const { period, variable, baseline_period: baselinePeriod } = rows[0];
+  const unit = changeUnit(variable); // "%" for precipitation, "°C" for temperature
+
   // e.g. "Change in precipitation by season in Cork, 2071-2100 (%)"
-  const title = `Change in precipitation by season in ${countyName}, ${period} (%)`;
+  //   or "Change in temperature by season in Cork, 2071-2100 (°C)"
+  const title = `Change in ${variable} by season in ${countyName}, ${period} (${unit})`;
   const source = SOURCE_NAMES[rows[0].source] || rows[0].source;
 
-  // Chart.js settings: title on top, legend underneath, "%" on the side axis
+  // Chart.js settings: title on top, legend underneath, the unit on the side axis
   const options = {
     responsive: true,
     plugins: {
@@ -33,7 +37,7 @@ export default function SeasonalChart({ rows, countyName }) {
       legend: { position: 'bottom' },
     },
     scales: {
-      y: { title: { display: true, text: `% change from ${rows[0].baseline_period}` } },
+      y: { title: { display: true, text: `${unit} change from ${baselinePeriod}` } },
     },
   };
 

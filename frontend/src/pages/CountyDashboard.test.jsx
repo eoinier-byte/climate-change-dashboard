@@ -60,15 +60,19 @@ describe('CountyDashboard', () => {
     expect(screen.getByText('1,369 mm')).toBeTruthy();
   });
 
-  it('shows the annual temperature, annual rainfall and seasonal rainfall charts', async () => {
+  it('shows the annual and seasonal charts for temperature and rainfall', async () => {
     renderCounty();
     await screen.findByRole('heading', { level: 1, name: 'Cork' });
 
     const lineCharts = screen.getAllByTestId('line-chart').map((chart) => chart.getAttribute('aria-label'));
     expect(lineCharts).toEqual(['Temperature in Cork (annual), °C', 'Precipitation in Cork (annual), mm']);
 
-    const barChart = screen.getByTestId('bar-chart');
-    expect(barChart.getAttribute('aria-label')).toBe('Change in precipitation by season in Cork, 2071-2100 (%)');
+    // Seasonal temperature (CCD-157) comes first, in the Temperature section
+    const barCharts = screen.getAllByTestId('bar-chart').map((chart) => chart.getAttribute('aria-label'));
+    expect(barCharts).toEqual([
+      'Change in temperature by season in Cork, 2071-2100 (°C)',
+      'Change in precipitation by season in Cork, 2071-2100 (%)',
+    ]);
   });
 
   it('shows "County not found" for an unknown county', async () => {

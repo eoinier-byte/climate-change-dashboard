@@ -71,12 +71,13 @@ export function buildSeries(rows, countyName, variable, season = 'annual') {
   };
 }
 
-// The rows SeasonalChart needs: rainfall for each season in one future period.
+// The rows SeasonalChart needs: one variable for each season in one future period,
+// e.g. seasonalRows(rows, 'temperature').
 // The baseline rows are left out because SeasonalChart only shows the scenarios.
-export function seasonalRows(rows, period = SEASONAL_PERIOD) {
+export function seasonalRows(rows, variable = 'precipitation', period = SEASONAL_PERIOD) {
   return rows.filter(
     (row) =>
-      row.variable === 'precipitation' &&
+      row.variable === variable &&
       row.period === period &&
       row.season !== 'annual' &&
       row.scenario !== 'baseline',

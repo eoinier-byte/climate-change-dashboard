@@ -4,7 +4,7 @@
 //   GET /api/projections/?county=cork -> mockCorkRows (the rows the dashboard uses)
 // Values are Cork's real figures from pipeline/data/processed/climate_data.csv.
 // Django REST Framework sends decimal numbers as strings, so the mock does the same.
-import { mockPrecipitationSeasonal } from './projections';
+import { mockPrecipitationSeasonal, mockTemperatureSeasonal } from './projections';
 
 // One county with its present-day summary
 export const mockCork = {
@@ -63,4 +63,9 @@ const precipitationRows = [
 ];
 
 // Everything together, in the same mixed-up order the API could send it
-export const mockCorkRows = [...precipitationRows, ...mockPrecipitationSeasonal, ...temperatureRows];
+export const mockCorkRows = [
+  ...precipitationRows,
+  ...mockPrecipitationSeasonal,
+  ...temperatureRows,
+  ...mockTemperatureSeasonal,
+];
