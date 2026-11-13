@@ -34,7 +34,12 @@ export function tooltipLabel(context, unit) {
 // screen readers can read), so Chart.js's own title is turned off.
 export function buildChartOptions({ yTitle, unit }) {
   return {
+    // responsive: redraw the chart whenever its box changes size (phone <-> laptop).
+    // maintainAspectRatio: false: fill the box's height from charts.css, instead of keeping
+    // a fixed width:height shape. Without it, charts squash on phones and can stay the
+    // wrong size after the window is resized (CCD-180).
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       title: { display: false },
       legend: { position: 'bottom' },

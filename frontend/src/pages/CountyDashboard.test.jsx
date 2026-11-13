@@ -187,6 +187,29 @@ describe('CountyDashboard', () => {
     expect(screen.getAllByText('No seasonal data is available for this selection.')).toHaveLength(2);
   });
 
+  it('shows the sections in the agreed order, with reserved slots (CCD-180)', async () => {
+    renderCounty();
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    const sections = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+    expect(sections).toEqual([
+      "Today's climate (1976-2005 average)",
+      'Temperature',
+      'Rainfall',
+      'Sea level',
+      'What this means for you',
+      'Warming stripes',
+      'Climate analogue',
+      'Share this view',
+    ]);
+  });
+
+  it('has a "Copy link to this view" button in the actions (CCD-180)', async () => {
+    renderCounty();
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+    expect(screen.getByRole('button', { name: 'Copy link to this view' })).toBeTruthy();
+  });
+
   it('asks the API for the sea level of the county in the URL (CCD-407)', async () => {
     renderCounty('cork');
     await screen.findByRole('heading', { level: 1, name: 'Cork' });

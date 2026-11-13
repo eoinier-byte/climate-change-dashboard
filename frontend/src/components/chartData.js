@@ -16,6 +16,20 @@ export function buildLabels(data) {
   return [`${data.baseline_period} (baseline)`, ...data.periods];
 }
 
+// Below this chart width (in pixels), the baseline label is shortened (CCD-180),
+// e.g. on a 375 px phone screen
+export const NARROW_CHART_PX = 500;
+
+// On a narrow chart, "1976-2005 (baseline)" is too long and gets cut off at the left edge,
+// so it becomes just "1976-2005". The card's subtitle already says the lines start at the baseline.
+// Other labels, and wider charts, are left as they are.
+export function shortenLabel(label, chartWidth) {
+  if (chartWidth < NARROW_CHART_PX) {
+    return label.replace(' (baseline)', '');
+  }
+  return label;
+}
+
 // Builds the { labels, datasets } object that Chart.js expects.
 // One line per scenario (RCP2.6, RCP4.5, RCP8.5).
 export function buildChartData(data) {

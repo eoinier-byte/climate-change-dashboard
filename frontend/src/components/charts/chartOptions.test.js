@@ -34,6 +34,12 @@ describe('buildChartOptions', () => {
     expect(label).toBe('RCP8.5: 22.1%');
   });
 
+  it('resizes with its box and fills the box height (CCD-180)', () => {
+    const options = buildChartOptions({ yTitle: 'cm', unit: 'cm' });
+    expect(options.responsive).toBe(true);
+    expect(options.maintainAspectRatio).toBe(false);
+  });
+
   it('has the legend underneath and the Chart.js title off (ChartCard shows the title)', () => {
     const options = buildChartOptions({ yTitle: 'cm', unit: 'cm' });
     expect(options.plugins.legend.position).toBe('bottom');
