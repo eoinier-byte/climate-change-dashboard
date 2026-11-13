@@ -191,16 +191,20 @@ ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
 REDIS_HOST = env('REDIS_HOST')
 REDIS_PORT = env('REDIS_PORT')
 
+# Redis
+REDIS_CACHE = {
+    'BACKEND': 'django_redis.cache.RedisCache',
+    'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+    'OPTIONS': {
+        'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        'IGNORE_EXCEPTIONS': True,
+        'SOCKET_CONNECT_TIMEOUT': 1,
+        'SOCKET_TIMEOUT': 1,
+    },
+}
+DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
+
 if TESTING:
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            },
-        }
-    }
-DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
+    CACHES = {'default': REDIS_CACHE}
