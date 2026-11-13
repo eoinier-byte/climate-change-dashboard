@@ -15,6 +15,8 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { buildSeaLevelChartData, buildSeaLevelSummary, hasSeaLevelData } from './seaLevelChartData';
+import ChartCard from './charts/ChartCard';
+import { buildChartOptions } from './charts/chartOptions';
 import { ALL_SCENARIOS } from '../styles/scenarioColors';
 
 // Chart.js only includes the parts you register, which keeps the bundle small
@@ -41,25 +43,18 @@ export default function SeaLevelChart({ data, selected = ALL_SCENARIOS }) {
   const firstSeries = Object.values(data.series)[0];
   const source = SOURCE_NAMES[firstSeries.source] || firstSeries.source;
 
-  // Chart.js settings: title on top, legend underneath, unit and baseline on the side axis
-  const options = {
-    responsive: true,
-    plugins: {
-      title: { display: true, text: title },
-      legend: { position: 'bottom' },
-    },
-    scales: {
-      y: { title: { display: true, text: `${data.unit} rise since ${data.baseline_period}` } },
-    },
-  };
+  // Shared settings (CCD-160): unit and baseline on the side axis, unit in the tooltip
+  const options = buildChartOptions({ yTitle: `${data.unit} rise since ${data.baseline_period}`, unit: data.unit });
 
   return (
-    <figure className="projection-chart">
+    <ChartCard
+      title={title}
+      subtitle={`Rise in mean sea level compared with the ${data.baseline_period} average`}
+      summary={buildSeaLevelSummary(data, selected)}
+      source={source}
+    >
       {/* role="img" + aria-label tell screen readers what the chart is */}
       <Line data={buildSeaLevelChartData(data, selected)} options={options} role="img" aria-label={title} />
-      <figcaption>
-        {buildSeaLevelSummary(data, selected)} Source: {source}.
-      </figcaption>
-    </figure>
+    </ChartCard>
   );
 }

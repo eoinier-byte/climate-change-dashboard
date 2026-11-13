@@ -13,6 +13,8 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { buildChartData, buildSummary } from './chartData';
+import ChartCard from './charts/ChartCard';
+import { buildChartOptions } from './charts/chartOptions';
 
 // Chart.js only includes the parts you register, which keeps the bundle small
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -31,25 +33,19 @@ export default function ProjectionChart({ data }) {
   // e.g. "Temperature in Cork (annual), °C"
   const title = `${capitalise(data.variable)} in ${data.county} (${data.season}), ${data.unit}`;
 
-  // Chart.js settings: title on top, legend underneath, unit on the side axis
-  const options = {
-    responsive: true,
-    plugins: {
-      title: { display: true, text: title },
-      legend: { position: 'bottom' },
-    },
-    scales: {
-      y: { title: { display: true, text: data.unit } },
-    },
-  };
+  // Shared settings (CCD-160): unit on the side axis and in the tooltip.
+  // The tooltip shows the actual value (e.g. °C or mm), the same as the side axis.
+  const options = buildChartOptions({ yTitle: data.unit, unit: data.unit });
 
   return (
-    <figure className="projection-chart">
+    <ChartCard
+      title={title}
+      subtitle={`Each line starts at the ${data.baseline_period} average`}
+      summary={buildSummary(data)}
+      source={data.source}
+    >
       {/* role="img" + aria-label tell screen readers what the chart is */}
       <Line data={buildChartData(data)} options={options} role="img" aria-label={title} />
-      <figcaption>
-        {buildSummary(data)} Source: {data.source}.
-      </figcaption>
-    </figure>
+    </ChartCard>
   );
 }
