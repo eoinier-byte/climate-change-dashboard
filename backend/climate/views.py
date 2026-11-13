@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import OuterRef, Subquery, Value
 from rest_framework import viewsets
@@ -7,9 +9,15 @@ from rest_framework.views import APIView
 
 from climate.filters import ClimateProjectionFilterSet
 from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
-from climate.serializers import ClimateProjectionSerializer, CountyDetailSerializer, SeaLevelSeriesSerializer
-from common.enums import Scenario
+from climate.serializers import (
+    ClimateProjectionSerializer,
+    CountyDetailSerializer,
+    MapSerializer,
+    SeaLevelSeriesSerializer,
+)
+from common.enums import Scenario, Season, Variable
 from common.serializers import CountySerializer
+from common.utils import validate_choice
 
 # Create your views here.
 
@@ -70,4 +78,51 @@ class ClimateProjectionListView(ListAPIView):
         ).values('value')[:1]
         return ClimateProjection.objects.select_related('county', 'data_source').annotate(
             baseline_value=Subquery(baseline)
+        )
+
+
+class MapView(ListAPIView):
+    queryset = ClimateProjection.objects.select_related('county')
+    serializer_class = MapSerializer
+
+    def get(self, request, *args, **kwargs):
+        variable = request.GET.get('variable')
+        scenario = request.GET.get('scenario')
+        season = request.GET.get('season')
+        period = request.GET.get('period')
+
+        errors = {}
+        validate_choice('variable', variable, Variable.values, errors)
+        validate_choice('scenario', scenario, Scenario.values, errors)
+        validate_choice('season', season, Season.values, errors)
+        validate_choice('period', period, ClimateProjection.objects.values_list('period', flat=True).distinct(), errors)
+
+        if errors:
+            return Response(data=errors, status=HTTPStatus.BAD_REQUEST)
+
+        queryset = self.get_queryset()
+        values = [county.value for county in queryset]
+        payload = {
+            'variable': variable,
+            'scenario': scenario,
+            'season': season,
+            'period': period,
+            'unit': queryset[0].unit if queryset else None,
+            'min': min(values, default=None),
+            'max': max(values, default=None),
+            'results': queryset,
+        }
+        return Response(self.get_serializer(payload).data, status=HTTPStatus.OK)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        variable = self.request.GET.get('variable')
+        scenario = self.request.GET.get('scenario')
+        season = self.request.GET.get('season')
+        period = self.request.GET.get('period')
+
+        return (
+            queryset.filter(variable=variable, scenario=scenario, season=season, period=period)
+            .only('value', 'unit', 'county__name', 'county__slug', 'county__has_coastline')
+            .order_by('county__name')
         )
