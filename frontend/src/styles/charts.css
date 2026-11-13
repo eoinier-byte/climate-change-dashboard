@@ -1,0 +1,32 @@
+/* The shared chart frame, ChartCard (CCD-160, CCD-167). Uses the theme variables only. */
+
+.chart-card {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.chart-card__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.chart-card__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+}
+
+.chart-card__chart {
+  margin-top: var(--space-4);
+}
+
+.chart-card__caption {
+  margin-top: var(--space-4);
+}
+
+/* The source line is quieter than the summary, but still dark enough to read (7.3:1 on white) */
+.chart-card__source {
+  color: var(--color-text-muted);
+}
