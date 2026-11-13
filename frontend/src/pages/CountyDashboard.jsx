@@ -3,16 +3,18 @@
 // then shows today's climate and the temperature and rainfall charts,
 // each with an annual line chart and a seasonal bar chart (CCD-157).
 // The "Choose a county" dropdown switches every chart to another county (CCD-159, CCD-166).
-// The "Show scenarios" tick boxes show or hide scenarios on all four charts (CCD-158, CCD-165).
+// The "Show scenarios" tick boxes show or hide scenarios on every chart (CCD-158, CCD-165).
+// Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import ProjectionChart from '../components/ProjectionChart';
 import ScenarioFilter from '../components/ScenarioFilter';
+import SeaLevelChart from '../components/SeaLevelChart';
 import SeasonalChart from '../components/SeasonalChart';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
-import { getCounty, getProjections } from '../services/api';
+import { getCounty, getProjections, getSeaLevel } from '../services/api';
 import { ALL_SCENARIOS } from '../styles/scenarioColors';
 import { ROUTES } from '../routes';
 
@@ -30,7 +32,7 @@ export default function CountyDashboard() {
   const { slug } = useParams();
 
   // What the API sent back, saved together with the slug it was for.
-  // { slug, county, rows } when it worked, or { slug, error } when it failed.
+  // { slug, county, rows, seaLevel } when it worked, or { slug, error } when it failed.
   const [result, setResult] = useState(null);
 
   // The scenarios ticked in "Show scenarios". All three to start with.
@@ -42,10 +44,12 @@ export default function CountyDashboard() {
     // "ignore" stops the old answer from overwriting the new page.
     let ignore = false;
 
-    // Ask for the county and its projections at the same time
-    Promise.all([getCounty(slug), getProjections({ county: slug })])
-      .then(([county, rows]) => {
-        if (!ignore) setResult({ slug, county, rows });
+    // Ask for the county, its projections and its sea level at the same time.
+    // If only the sea level fails, ".catch(() => null)" turns it into null,
+    // so the rest of the page still shows and the sea-level chart shows a message.
+    Promise.all([getCounty(slug), getProjections({ county: slug }), getSeaLevel(slug).catch(() => null)])
+      .then(([county, rows, seaLevel]) => {
+        if (!ignore) setResult({ slug, county, rows, seaLevel });
       })
       .catch((error) => {
         if (!ignore) setResult({ slug, error });
@@ -85,7 +89,7 @@ export default function CountyDashboard() {
     );
   }
 
-  const { county, rows } = result;
+  const { county, rows, seaLevel } = result;
   const summary = county.summary;
 
   // Only the rows for the ticked scenarios (the baseline row is always kept,
@@ -130,7 +134,7 @@ export default function CountyDashboard() {
         </div>
       </section>
 
-      {/* One set of tick boxes for all four charts below */}
+      {/* One set of tick boxes for every chart below */}
       <ScenarioFilter selected={selectedScenarios} onChange={setSelectedScenarios} />
 
       <section aria-labelledby="temperature-heading">
@@ -143,6 +147,11 @@ export default function CountyDashboard() {
         <h2 id="rainfall-heading">Rainfall</h2>
         <ProjectionChart data={precipitation} />
         <SeasonalChart rows={seasonalPrecipitation} countyName={county.name} />
+      </section>
+
+      <section aria-labelledby="sea-level-heading">
+        <h2 id="sea-level-heading">Sea level</h2>
+        <SeaLevelChart data={seaLevel} selected={selectedScenarios} />
       </section>
     </main>
   );

@@ -2,8 +2,9 @@
 // Kept separate from the component so they are easy to test.
 import { SCENARIO_COLORS } from '../styles/scenarioColors';
 
-// Line style per scenario, so colour is not the only way to tell them apart
-const LINE_STYLES = {
+// Line style per scenario, so colour is not the only way to tell them apart.
+// Exported so the sea-level chart (CCD-407) draws its lines the same way.
+export const LINE_STYLES = {
   rcp26: [], // solid
   rcp45: [8, 4], // dashed
   rcp85: [2, 3], // dotted

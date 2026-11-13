@@ -10,6 +10,7 @@ vi.mock('./services/api', () => ({
   getCounties: vi.fn(() => new Promise(() => {})),
   getCounty: vi.fn(() => new Promise(() => {})),
   getProjections: vi.fn(() => new Promise(() => {})),
+  getSeaLevel: vi.fn(() => new Promise(() => {})),
 }));
 
 // [path to open, heading the page should show]
