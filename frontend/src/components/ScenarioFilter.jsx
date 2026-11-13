@@ -3,10 +3,8 @@
 //   "selected" - the scenarios ticked now, e.g. ['rcp26', 'rcp85']
 //   "onChange" - called with the new list when a box is ticked or unticked
 // At least one scenario always stays ticked, so the charts are never empty.
-import { SCENARIO_COLORS, SCENARIO_LABELS } from '../styles/scenarioColors';
-
-// The scenarios, from lowest to highest emissions
-export const ALL_SCENARIOS = ['rcp26', 'rcp45', 'rcp85'];
+// ALL_SCENARIOS lives in scenarioColors.js: a component file may only export components
+import { ALL_SCENARIOS, SCENARIO_COLORS, SCENARIO_LABELS } from '../styles/scenarioColors';
 
 // A short description of each scenario, so people know what they are choosing
 const DESCRIPTIONS = {

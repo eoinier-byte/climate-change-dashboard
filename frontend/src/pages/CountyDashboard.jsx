@@ -9,10 +9,11 @@ import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import ProjectionChart from '../components/ProjectionChart';
-import ScenarioFilter, { ALL_SCENARIOS } from '../components/ScenarioFilter';
+import ScenarioFilter from '../components/ScenarioFilter';
 import SeasonalChart from '../components/SeasonalChart';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
 import { getCounty, getProjections } from '../services/api';
+import { ALL_SCENARIOS } from '../styles/scenarioColors';
 import { ROUTES } from '../routes';
 
 // Formats a number string from the API for people to read,
