@@ -6,16 +6,27 @@
 // The "Show scenarios" tick boxes show or hide scenarios on every chart (CCD-158, CCD-165),
 // and the period choice sets which period the seasonal charts show. Both are kept in the URL
 // (e.g. /county/cork?rcp=26,85&period=2021-2050) so a shared link opens the same view (CCD-406).
+//
+// Page layout, top to bottom (CCD-180). Blocks still to be built have a reserved CountySlot,
+// so they can be added without moving anything else:
+//   1. Headline numbers  - county name, today's climate
+//   2. Charts            - scenario/period controls, temperature, rainfall, sea level
+//   3. "What this means for you" - slot for CCD-375 (impacts block)
+//   4. Warming stripes   - slot for CCD-374
+//   5. Climate analogue  - slot for CCD-373
+//   6. Actions           - copy link (share); Download PDF goes here (CCD-408)
 // Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
+import CountySlot from '../components/CountySlot';
 import ProjectionChart from '../components/ProjectionChart';
 import PeriodFilter from '../components/PeriodFilter';
 import ScenarioFilter from '../components/ScenarioFilter';
 import SeaLevelChart from '../components/SeaLevelChart';
 import SeasonalChart from '../components/SeasonalChart';
+import ShareLink from '../components/ShareLink';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
 import useCountyView, { PERIODS } from '../hooks/useCountyView';
 import { getCounty, getProjections, getSeaLevel } from '../services/api';
@@ -114,7 +125,7 @@ export default function CountyDashboard() {
         with the {summary.period} average.
       </p>
 
-      {/* Today's climate: the baseline (1976-2005) annual values */}
+      {/* 1. Headline numbers: today's climate, the baseline (1976-2005) annual values */}
       <section aria-labelledby="today-heading">
         <h2 id="today-heading">Today's climate ({summary.period} average)</h2>
         <div className="county-page__stats">
@@ -137,7 +148,7 @@ export default function CountyDashboard() {
         </div>
       </section>
 
-      {/* One set of controls for every chart below. Changing them updates the URL. */}
+      {/* 2. Charts. One set of controls for every chart below. Changing them updates the URL. */}
       <div className="county-page__controls">
         <ScenarioFilter selected={selectedScenarios} onChange={setScenarios} />
         <PeriodFilter periods={PERIODS} selected={period} onChange={setPeriod} />
@@ -158,6 +169,20 @@ export default function CountyDashboard() {
       <section aria-labelledby="sea-level-heading">
         <h2 id="sea-level-heading">Sea level</h2>
         <SeaLevelChart data={seaLevel} selected={selectedScenarios} />
+      </section>
+
+      {/* 3-5. Reserved slots: put the finished block inside, e.g. <CountySlot ...><ImpactsBlock /></CountySlot> */}
+      <CountySlot name="impacts" title="What this means for you" story="CCD-375" />
+      <CountySlot name="stripes" title="Warming stripes" story="CCD-374" />
+      <CountySlot name="analogue" title="Climate analogue" story="CCD-373" />
+
+      {/* 6. Actions */}
+      <section className="county-page__actions" aria-labelledby="actions-heading">
+        <h2 id="actions-heading">Share this view</h2>
+        <div className="county-page__action-buttons">
+          <ShareLink />
+          {/* The Download PDF button (CCD-408) goes here, next to the share button */}
+        </div>
       </section>
     </main>
   );

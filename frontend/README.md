@@ -31,6 +31,27 @@ The county page keeps the chosen scenarios and period in the URL, so a link open
 
 Example: `/county/cork?rcp=85&period=2021-2050` shows only RCP8.5, with mid-century seasonal charts. A setting equal to its default is left out of the URL, and the settings are kept when switching county. The code is in `src/hooks/useCountyView.js`.
 
+## County page layout and reserved slots (CCD-180)
+
+`src/pages/CountyDashboard.jsx` shows its sections in this order:
+
+1. **Headline numbers**: county name, today's climate (1976-2005 average)
+2. **Charts**: scenario and period controls, then temperature, rainfall and sea level
+3. **What this means for you**: slot for CCD-375 (impacts block)
+4. **Warming stripes**: slot for CCD-374
+5. **Climate analogue**: slot for CCD-373
+6. **Actions**: "Copy link to this view" (share); the Download PDF button (CCD-408) goes next to it
+
+Slots 3-5 use `CountySlot` (`src/components/CountySlot.jsx`). To fill one, put your block inside it in `CountyDashboard.jsx`; nothing else on the page needs to change:
+
+```jsx
+<CountySlot name="stripes" title="Warming stripes" story="CCD-374">
+  <WarmingStripes county={county} />
+</CountySlot>
+```
+
+An empty slot shows a dashed "Reserved for CCD-…" box under `npm run dev`, and nothing at all on the built site, so visitors never see placeholders. The layout is checked at 375 px (phone) and 1280 px (laptop) wide.
+
 ## Testing (CCD-412)
 
 Tests use **Vitest** (the test runner) and **React Testing Library** (renders a component and finds things on it the way a person would: by text, label or role). Test files sit next to the file they test and end in `.test.js` or `.test.jsx`, e.g. `components/SeasonalChart.jsx` → `components/SeasonalChart.test.jsx`.

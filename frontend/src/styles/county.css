@@ -98,3 +98,45 @@
 }
 
 /* Space between charts now comes from .chart-card in charts.css (CCD-160) */
+
+/* Reserved slots (CCD-180). An empty slot only shows while developing, as a dashed box. */
+.county-slot--empty {
+  padding: var(--space-4);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+}
+
+.county-slot--empty h2 {
+  margin-top: 0;
+}
+
+/* Actions: share now, Download PDF later (CCD-408). Buttons side by side, wrapping on phones. */
+.county-page__action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.share-link__status {
+  margin: var(--space-2) 0 0;
+  min-height: 1.5em; /* keeps the space, so the page doesn't jump when the message appears */
+  color: var(--color-text-muted);
+}
+
+/* Phones (CCD-180, checked at 375 px wide): less padding, so the charts get more width */
+@media (max-width: 480px) {
+  /* ".county-page" in front makes this win over charts.css, whichever file loads last */
+  .county-page .chart-card {
+    padding: var(--space-2);
+  }
+
+  .scenario-filter {
+    padding: var(--space-3);
+  }
+
+  .county-select {
+    max-width: none; /* full width dropdown */
+  }
+}

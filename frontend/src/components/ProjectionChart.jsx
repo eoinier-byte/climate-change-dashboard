@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { buildChartData, buildSummary } from './chartData';
+import { buildChartData, buildSummary, shortenLabel } from './chartData';
 import ChartCard from './charts/ChartCard';
 import { buildChartOptions } from './charts/chartOptions';
 
@@ -36,6 +36,17 @@ export default function ProjectionChart({ data }) {
   // Shared settings (CCD-160): unit on the side axis and in the tooltip.
   // The tooltip shows the actual value (e.g. °C or mm), the same as the side axis.
   const options = buildChartOptions({ yTitle: data.unit, unit: data.unit });
+
+  // Labels along the bottom: Chart.js calls this for each label every time it draws,
+  // including after a resize. "this" is the bottom axis, so this.chart.width is the chart's
+  // current width. It has to be a normal function (not an arrow function) for "this" to work.
+  options.scales.x = {
+    ticks: {
+      callback(value) {
+        return shortenLabel(this.getLabelForValue(value), this.chart.width);
+      },
+    },
+  };
 
   return (
     <ChartCard
