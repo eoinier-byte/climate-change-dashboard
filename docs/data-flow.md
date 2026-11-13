@@ -180,6 +180,7 @@ Agreed 29 Oct 2026 (Eoin, Taras): counties are addressed by **slug**, and the en
 | GET | `/api/meta/` | The filter options, read from the database (below) | – | CCD-63 |
 | GET | `/api/projections/?county={slug}&variable=&season=&scenario=` | Full chart data for one county: values and change for every scenario and period (below) | 400 missing `county` or invalid filter; 404 unknown county | CCD-84 (Sprint 2) |
 | GET | `/api/sea-level/?county={slug}` | Sea level rise for one county, every 10 years (below) | 400 missing `county`; 404 unknown county | CCD-91 (Sprint 2) |
+| GET | `/api/map/?variable=&scenario=&period=&season=` | One value per county for the home page choropleth; shape in [api.md](api.md#map-ccd-338) | 400 missing or invalid parameter | CCD-338 (Sprint 2) |
 
 Only `county` is required for `/projections/`. Leaving out `variable`, `season` or `scenario` returns all of them.
 
