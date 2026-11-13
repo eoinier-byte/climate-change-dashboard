@@ -1,0 +1,17 @@
+/* Right-hand slot for the chat panel (CCD-403). Empty and hidden until the chat story fills it. */
+.chat-slot {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  width: min(24rem, 100vw);
+  overflow-y: auto;
+  background: var(--color-bg);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -4px 0 16px rgb(0 0 0 / 0.12);
+}
+
+.chat-slot[hidden] {
+  display: none;
+}
