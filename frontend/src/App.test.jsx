@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import App from './App.jsx';
 import { ROUTES, countyPath } from './routes';
 
-// [path to open, heading the page should show]
-const pages = [
-  [ROUTES.home, 'Map'],
+// Pages that are still a "Coming soon" placeholder: [path to open, heading the page should show]
+const placeholders = [
   [countyPath('cork'), 'County dashboard'],
   [ROUTES.compare, 'Compare'],
   [ROUTES.seaLevel, 'Flooding'],
@@ -25,14 +24,20 @@ function renderAt(path) {
 }
 
 describe('routes', () => {
-  it.each(pages)('%s renders its page with a Coming soon placeholder', (path, heading) => {
+  it.each(placeholders)('%s renders its page with a Coming soon placeholder', (path, heading) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
     expect(screen.getByText('Coming soon.')).toBeTruthy();
   });
 
+  it('renders the home page at /', () => {
+    renderAt(ROUTES.home);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/climate projections/i);
+  });
+
   it('has a test for every route in the route table', () => {
-    expect(pages).toHaveLength(Object.keys(ROUTES).length);
+    // placeholders + the home page
+    expect(placeholders.length + 1).toBe(Object.keys(ROUTES).length);
   });
 
   it('shows Page not found, with a link back to the map, for an unknown URL', () => {

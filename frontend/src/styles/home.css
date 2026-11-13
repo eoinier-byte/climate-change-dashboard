@@ -1,0 +1,69 @@
+/* Home page (CCD-134). */
+.home {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.hero {
+  padding: var(--space-8) var(--space-6);
+  background: linear-gradient(135deg, var(--color-surface), #e3efe9);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) * 2);
+}
+
+.hero h1 {
+  font-size: clamp(1.75rem, 4vw + 0.5rem, 2.75rem);
+  color: var(--color-primary-dark);
+}
+
+.hero__intro {
+  max-width: 40rem;
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+}
+
+.map-area__canvas {
+  display: grid;
+  place-items: center;
+  min-height: 22rem;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: calc(var(--radius) * 2);
+}
+
+.county-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.county-grid a {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.county-grid a:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+}
+
+@media (max-width: 30rem) {
+  .hero {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .map-area__canvas {
+    min-height: 14rem;
+  }
+}

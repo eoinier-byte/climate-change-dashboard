@@ -7,7 +7,7 @@ import { ROUTES, countyPath } from '../routes';
 
 // [link text, where it goes, heading of the page it opens]
 const links = [
-  ['Map', ROUTES.home, 'Map'],
+  ['Map', ROUTES.home, /climate projections/i],
   ['Compare', ROUTES.compare, 'Compare'],
   ['Flooding', ROUTES.seaLevel, 'Flooding'],
   ['About', ROUTES.about, 'About'],
