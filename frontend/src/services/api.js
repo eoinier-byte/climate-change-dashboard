@@ -10,3 +10,9 @@ export async function apiGet(path, options = {}) {
 
 export const getCounties = (opts) => apiGet('/counties/', opts);
 export const getCounty = (slug, opts) => apiGet(`/counties/${slug}/`, opts);
+
+// Projection rows from the list endpoint (CCD-143).
+// "filters" is an object such as { county: 'cork', variable: 'temperature' }.
+// URLSearchParams turns it into "county=cork&variable=temperature" for the URL.
+export const getProjections = (filters, opts) =>
+  apiGet(`/projections/?${new URLSearchParams(filters)}`, opts);
