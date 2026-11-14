@@ -169,6 +169,42 @@ Adding 2041–2070 would make 10 scenario/period combinations and 2,600 CSV rows
 - [ ] Reviewed by one teammate
 - [ ] CCD-17 and CCD-19 moved to Done
 
+## 9. Impact indicators (CCD-365)
+
+| | |
+|---|---|
+| **Question** | Can the TRANSLATE data give the four impact indicators named in CCD-364 (frost days, hot days, heating degree days, growing season length)? |
+| **Answer** | **Yes, all four.** TRANSLATE publishes them as ready-made indicator files, so nothing has to be calculated from daily data (which we don't have: our `tmean` / `tot_prec` files are 30-year means). **None dropped.** |
+| **Date checked** | 14 November 2026 |
+| **Checked by** | Taras Ivanysenko |
+| **Files** | 7 per indicator: baseline 1976–2005 + RCP2.6/4.5/8.5 × 2021–2050 and 2071–2100, **ANNUAL only**. 28 in total, same URL template as §2 with `fd`, `su`, `hdd`, `gsl` as `{var}`. Downloaded by `pipeline/fetch/climate_service_api.py` into `pipeline/data/raw/indicators/<code>/` (git-ignored). |
+
+| CCD-364 indicator | TRANSLATE file | Definition (README inside each archive) | Unit | Mean of all land cells: baseline → RCP4.5 2071–2100 → RCP8.5 2071–2100 |
+|---|---|---|---|---|
+| Frost days | `fd` | Days when the daily minimum temperature is below 0 °C | days a year | 40.5 → 19.4 → 9.1 |
+| Hot days | `su` (Summer Days) | Days when the daily maximum temperature is above 25 °C | days a year | 2.3 → 6.4 → 13.3 |
+| Heating degree days | `hdd` | Cumulative number of degrees that the daily mean temperature is below 15.5 °C | degree days | 2,299 → 1,841 → 1,506 |
+| Growing season length | `gsl` | Days between the start and end of the growing season (6 days in a row above / below 5 °C, data dictionary) | days a year | 314.3 → 345.7 → 354.1 |
+
+The land-cell means cover the whole grid (Northern Ireland included) and are only a plausibility check; the county values come from the pipeline (CCD-366).
+
+**Checked with Xarray on all 28 files:**
+
+- One variable per file, named like the file prefix (`fd`, `su`, `hdd`, `gsl`), dimensions time 1 × 451 × 351, time stamp 1990-01-01: the same 30-year layout as `tmean`.
+- **Same grid as the `tmean` baseline** (lat/lon equal within 0.0001°) and the same land mask: no land cell missing and no extra sea cells. So the pipeline can reuse the existing cell-to-county matching (§4) and read values by row and column.
+- **Exception, `gsl` future files:** 145 land cells are empty (the same 145 in all six files). 143 are outside the 26 counties (mostly the Kintyre peninsula in Scotland) and 2 are in Cork. The pipeline's cleaning step drops empty cells, so Cork's future growing season is averaged over 2 fewer cells than its baseline; the effect is negligible.
+
+**Caveats for CCD-366 / CCD-367:**
+
+1. **Heating degree days are degree days, not a count of days.** The Data Explorer's data dictionary says "number of days where average temperature is below 15.5 °C", but the archive README and the files (unit `DD`, values 1,643–3,870 a year) show a sum of degrees. Label it as heating demand (e.g. "heating need falls by 20 %"), never as "days". The README gives the `chg` unit for HDD as %, so a percentage change matches the source.
+2. **Annual only.** There are no seasonal files for these indicators, so the dashboard's season switch does not apply to them.
+3. **Hot days are small numbers at baseline** (0–5 a year per cell), so county values will be a few days; round with care (one decimal or "about N days").
+4. Each archive also holds the 10th and 90th percentile of the ensemble (`ens10`, `ens90`). Not used now; they could show the model spread later.
+
+**Not used:** the 2041–2070 period, global warming levels and `chg` files (as §6), and the other TRANSLATE indicators (icing days, nights above 15 °C, heatwaves, TXx, growing season start, rainfall indices), which are outside CCD-364.
+
+**Licence found in the archive README:** TRANSLATE data are provided under **CC BY 4.0**, cited as "Met Éireann TRANSLATE report (2023)". `DATA_SOURCES.md` §1 still says the licence name is not stated.
+
 ## Sources
 
 - [Climate Ireland — Data Explorer](https://www.climateireland.ie/data-explorer/)
