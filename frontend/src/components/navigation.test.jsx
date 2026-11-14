@@ -1,9 +1,18 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
 import { ROUTES, countyPath } from '../routes';
+
+// The county page now loads data from the API (CCD-149). These tests only check
+// navigation, so the API calls are replaced with fakes that never finish loading.
+vi.mock('../services/api', () => ({
+  getCounties: vi.fn(() => new Promise(() => {})),
+  getCounty: vi.fn(() => new Promise(() => {})),
+  getProjections: vi.fn(() => new Promise(() => {})),
+  getSeaLevel: vi.fn(() => new Promise(() => {})),
+}));
 
 // Click-through tests: move between pages the way a visitor would.
 function renderAt(path) {
