@@ -6,6 +6,7 @@
 //   - error.message is readable. For an HTTP error it keeps the form "API error 404 for /path/",
 //     because the pages check it for "404" (e.g. County not found).
 // Callers may pass fetch options as the last argument, e.g. { signal } to cancel a request.
+// With VITE_USE_MOCKS=true the answers come from src/mocks/ instead of the server (CCD-405).
 
 // The error every API function throws, so pages can tell the cases apart with error.status
 export class ApiError extends Error {
@@ -23,10 +24,35 @@ function baseUrl() {
   return import.meta.env.VITE_API_URL ?? '';
 }
 
+// Mock mode (CCD-405): with VITE_USE_MOCKS=true in frontend/.env, every function answers with
+// example data from src/mocks/ and never calls the server. Anything else uses the real API.
+// VITE_MOCK_DELAY_MS=800 (optional) makes the mock answers slow, so Loading can be seen.
+let warnedAboutMocks = false;
+
+async function mockGetResponse(path) {
+  if (!warnedAboutMocks) {
+    warnedAboutMocks = true;
+    console.warn('API mocks are ON (VITE_USE_MOCKS=true): this is example data, not the real API.');
+  }
+  // Loaded only now, so the mock data stays out of the normal bundle
+  const { mockGet } = await import('../mocks/mockResponses');
+
+  const delay = Number(import.meta.env.VITE_MOCK_DELAY_MS) || 0;
+  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+
+  const { status, body } = mockGet(path);
+  if (status >= 400) {
+    throw new ApiError(`API error ${status} for ${path}`, { status, path });
+  }
+  return body;
+}
+
 // The one place that calls fetch.
 // fetch does not throw on 404/500, so we check res.ok ourselves,
 // and fetch throws a TypeError when the network is down, which we turn into an ApiError too.
 export async function apiGet(path, options = {}) {
+  if (import.meta.env.VITE_USE_MOCKS === 'true') return mockGetResponse(path);
+
   let res;
   try {
     res = await fetch(`${baseUrl()}${path}`, options);
