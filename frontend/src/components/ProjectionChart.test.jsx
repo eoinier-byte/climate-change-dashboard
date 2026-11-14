@@ -3,7 +3,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProjectionChart from './ProjectionChart';
-import { buildChartData, buildLabels, buildSummary } from './chartData';
+import { buildChartData, buildLabels, buildSummary, shortenLabel } from './chartData';
 import { mockPrecipitation, mockTemperature } from '../mocks/projections';
 import { SCENARIO_COLORS } from '../styles/scenarioColors';
 
@@ -41,6 +41,20 @@ describe('buildChartData', () => {
     const { datasets } = buildChartData(mockPrecipitation);
     // RCP8.5: baseline, 2021-2050, 2071-2100
     expect(datasets[2].data).toEqual([1368.817, 1405.153, 1477.806]);
+  });
+});
+
+describe('shortenLabel (CCD-180)', () => {
+  it('drops "(baseline)" on a narrow chart, like a 375 px phone', () => {
+    expect(shortenLabel('1976-2005 (baseline)', 330)).toBe('1976-2005');
+  });
+
+  it('keeps the full label on a wide chart', () => {
+    expect(shortenLabel('1976-2005 (baseline)', 1200)).toBe('1976-2005 (baseline)');
+  });
+
+  it('leaves the other labels alone', () => {
+    expect(shortenLabel('2071-2100', 330)).toBe('2071-2100');
   });
 });
 

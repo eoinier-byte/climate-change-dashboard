@@ -1,7 +1,8 @@
-import '../styles/chat-slot.css';
 import { Outlet } from 'react-router-dom';
 import Footer from './Footer';
 import NavBar from './NavBar';
+import '../styles/chat-slot.css';
+import '../styles/responsive.css';
 
 // The frame around every page: navigation bar, the page itself, then the footer.
 //

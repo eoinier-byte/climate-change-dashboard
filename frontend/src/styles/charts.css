@@ -1,0 +1,48 @@
+/* The shared chart frame, ChartCard (CCD-160, CCD-167). Uses the theme variables only. */
+
+.chart-card {
+  min-width: 0; /* lets the card shrink to the screen width instead of growing to fit the chart */
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.chart-card__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.chart-card__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+}
+
+/* The box the chart is drawn in (CCD-180). Chart.js needs this box to:
+   - be "position: relative" and hold only the chart, so it can measure it
+   - have a set height, because the charts fill the height (maintainAspectRatio: false)
+   - be allowed to shrink (min-width: 0), so a chart never pushes out past the card on phones */
+.chart-card__chart {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 22rem;
+  margin-top: var(--space-4);
+}
+
+/* Phones: a bit shorter, so the chart and its legend fit on screen together */
+@media (max-width: 480px) {
+  .chart-card__chart {
+    height: 18rem;
+  }
+}
+
+.chart-card__caption {
+  margin-top: var(--space-4);
+}
+
+/* The source line is quieter than the summary, but still dark enough to read (7.3:1 on white) */
+.chart-card__source {
+  color: var(--color-text-muted);
+}

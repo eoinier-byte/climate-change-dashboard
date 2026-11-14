@@ -2,8 +2,9 @@
 // Kept separate from the component so they are easy to test.
 import { SCENARIO_COLORS } from '../styles/scenarioColors';
 
-// Line style per scenario, so colour is not the only way to tell them apart
-const LINE_STYLES = {
+// Line style per scenario, so colour is not the only way to tell them apart.
+// Exported so the sea-level chart (CCD-407) draws its lines the same way.
+export const LINE_STYLES = {
   rcp26: [], // solid
   rcp45: [8, 4], // dashed
   rcp85: [2, 3], // dotted
@@ -13,6 +14,20 @@ const LINE_STYLES = {
 // the baseline period first, then each future period
 export function buildLabels(data) {
   return [`${data.baseline_period} (baseline)`, ...data.periods];
+}
+
+// Below this chart width (in pixels), the baseline label is shortened (CCD-180),
+// e.g. on a 375 px phone screen
+export const NARROW_CHART_PX = 500;
+
+// On a narrow chart, "1976-2005 (baseline)" is too long and gets cut off at the left edge,
+// so it becomes just "1976-2005". The card's subtitle already says the lines start at the baseline.
+// Other labels, and wider charts, are left as they are.
+export function shortenLabel(label, chartWidth) {
+  if (chartWidth < NARROW_CHART_PX) {
+    return label.replace(' (baseline)', '');
+  }
+  return label;
 }
 
 // Builds the { labels, datasets } object that Chart.js expects.

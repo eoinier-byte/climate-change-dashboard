@@ -67,3 +67,25 @@ export const mockPrecipitationSeasonal = [
   { county: 'cork', variable: 'precipitation', scenario: 'rcp45', period: '2071-2100', season: 'autumn', baseline_period: '1976-2005', units: 'mm', source: 'translate', value: '410.150', baseline_value: '395.294', projected_value: '410.150', change: '3.8' },
   { county: 'cork', variable: 'precipitation', scenario: 'rcp85', period: '2071-2100', season: 'autumn', baseline_period: '1976-2005', units: 'mm', source: 'translate', value: '418.263', baseline_value: '395.294', projected_value: '418.263', change: '5.8' },
 ];
+// Cork, temperature by season for 2071-2100 (CCD-157).
+// The same shape as above, from:
+// GET /api/projections/?county=cork&variable=temperature&period=2071-2100
+// "change" is the change in °C from the 1976-2005 baseline (not %).
+export const mockTemperatureSeasonal = [
+  // Winter (baseline 5.715 °C)
+  { county: 'cork', variable: 'temperature', scenario: 'rcp26', period: '2071-2100', season: 'winter', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '6.424', baseline_value: '5.715', projected_value: '6.424', change: '0.71' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp45', period: '2071-2100', season: 'winter', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '7.182', baseline_value: '5.715', projected_value: '7.182', change: '1.47' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp85', period: '2071-2100', season: 'winter', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '8.345', baseline_value: '5.715', projected_value: '8.345', change: '2.63' },
+  // Spring (baseline 8.553 °C)
+  { county: 'cork', variable: 'temperature', scenario: 'rcp26', period: '2071-2100', season: 'spring', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '8.887', baseline_value: '8.553', projected_value: '8.887', change: '0.33' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp45', period: '2071-2100', season: 'spring', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '9.464', baseline_value: '8.553', projected_value: '9.464', change: '0.91' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp85', period: '2071-2100', season: 'spring', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '10.484', baseline_value: '8.553', projected_value: '10.484', change: '1.93' },
+  // Summer (baseline 14.517 °C)
+  { county: 'cork', variable: 'temperature', scenario: 'rcp26', period: '2071-2100', season: 'summer', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '15.150', baseline_value: '14.517', projected_value: '15.150', change: '0.63' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp45', period: '2071-2100', season: 'summer', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '15.979', baseline_value: '14.517', projected_value: '15.979', change: '1.46' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp85', period: '2071-2100', season: 'summer', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '17.331', baseline_value: '14.517', projected_value: '17.331', change: '2.81' },
+  // Autumn (baseline 10.435 °C)
+  { county: 'cork', variable: 'temperature', scenario: 'rcp26', period: '2071-2100', season: 'autumn', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '11.642', baseline_value: '10.435', projected_value: '11.642', change: '1.21' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp45', period: '2071-2100', season: 'autumn', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '12.426', baseline_value: '10.435', projected_value: '12.426', change: '1.99' },
+  { county: 'cork', variable: 'temperature', scenario: 'rcp85', period: '2071-2100', season: 'autumn', baseline_period: '1976-2005', units: 'degC', source: 'translate', value: '13.865', baseline_value: '10.435', projected_value: '13.865', change: '3.43' },
+];

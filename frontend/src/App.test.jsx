@@ -1,12 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from './App.jsx';
 import { ROUTES, countyPath } from './routes';
 
-// Pages that are still a "Coming soon" placeholder: [path to open, heading the page should show]
-const placeholders = [
-  [countyPath('cork'), 'County dashboard'],
+// The county page now loads data from the API (CCD-149). These tests only check
+// the routes, so the API calls are replaced with fakes that never finish loading.
+vi.mock('./services/api', () => ({
+  getCounties: vi.fn(() => new Promise(() => {})),
+  getCounty: vi.fn(() => new Promise(() => {})),
+  getProjections: vi.fn(() => new Promise(() => {})),
+  getSeaLevel: vi.fn(() => new Promise(() => {})),
+}));
+
+// [path to open, heading the page should show]
+// Pages that are not built yet and still show the Coming soon placeholder
+const pages = [
   [ROUTES.compare, 'Compare'],
   [ROUTES.seaLevel, 'Flooding'],
   [ROUTES.about, 'About'],
@@ -15,29 +24,39 @@ const placeholders = [
   [ROUTES.profile, 'Profile'],
 ];
 
+// Pages that are built, so they have their own tests next to the page file
+const builtPages = [[countyPath('cork'), 'County dashboard']];
+
 function renderAt(path) {
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
   );
 }
 
 describe('routes', () => {
-  it.each(placeholders)('%s renders its page with a Coming soon placeholder', (path, heading) => {
+  it.each(pages)('%s renders its page with a Coming soon placeholder', (path, heading) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
     expect(screen.getByText('Coming soon.')).toBeTruthy();
   });
 
+  // The county page shows "County dashboard" while its data is loading
+  it.each(builtPages)('%s renders its page', (path, heading) => {
+    renderAt(path);
+    expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
+  });
+
+  // The home page is built too (CCD-134), with its own heading
   it('renders the home page at /', () => {
     renderAt(ROUTES.home);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/climate projections/i);
   });
 
   it('has a test for every route in the route table', () => {
-    // placeholders + the home page
-    expect(placeholders.length + 1).toBe(Object.keys(ROUTES).length);
+    // placeholders + built pages + the home page
+    expect(pages.length + builtPages.length + 1).toBe(Object.keys(ROUTES).length);
   });
 
   it('shows Page not found, with a link back to the map, for an unknown URL', () => {
