@@ -46,6 +46,18 @@ describe('ScenarioFilter', () => {
     expect(box('RCP2.6').disabled).toBe(false);
   });
 
+  it('explains why the last ticked box is disabled, and links the box to that hint', () => {
+    render(<ScenarioFilter selected={['rcp45']} onChange={() => {}} />);
+
+    const hint = screen.getByText('At least one scenario must be shown.');
+    expect(box('RCP4.5').getAttribute('aria-describedby')).toBe(hint.id);
+  });
+
+  it('shows no hint while more than one scenario is ticked', () => {
+    render(<ScenarioFilter selected={['rcp26', 'rcp85']} onChange={() => {}} />);
+    expect(screen.queryByText('At least one scenario must be shown.')).toBeNull();
+  });
+
   it('describes each scenario in its label', () => {
     render(<ScenarioFilter selected={['rcp26', 'rcp45', 'rcp85']} onChange={() => {}} />);
 
