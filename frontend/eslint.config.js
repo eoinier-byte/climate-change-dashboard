@@ -18,4 +18,13 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Test files and the shared test helpers (CCD-417) are never hot-reloaded in the app,
+    // so the "a .jsx file may only export components" rule doesn't apply to them.
+    // (renderWithRouter.jsx needs JSX but exports helper functions, not components.)
+    files: ['src/test/**/*.{js,jsx}', '**/*.test.{js,jsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

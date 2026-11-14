@@ -1,16 +1,13 @@
 // Tests for the "Copy link to this view" button (CCD-180).
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import ShareLink from './ShareLink';
+import { renderWithRouter } from '../test/renderWithRouter';
 
+// Shared helper (CCD-417): draws ShareLink as if the browser were at "url"
 function renderAt(url) {
-  render(
-    <MemoryRouter initialEntries={[url]}>
-      <ShareLink />
-    </MemoryRouter>,
-  );
+  renderWithRouter(<ShareLink />, { url });
 }
 
 describe('ShareLink', () => {

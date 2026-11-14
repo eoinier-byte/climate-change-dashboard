@@ -116,6 +116,43 @@ vi.mock('react-chartjs-2', () => ({
 }));
 ```
 
+### Shared test helpers (CCD-417)
+
+Two helpers in `src/test/` save writing the same setup in every test file:
+
+| Helper | File | What it does |
+|---|---|---|
+| `renderWithRouter(ui, { url, path })` | `src/test/renderWithRouter.jsx` | Draws a component inside a pretend router, starting at `url`. Give `path` (e.g. `ROUTES.county`) when the component reads the URL with `useParams` |
+| `currentLocation()` | `src/test/renderWithRouter.jsx` | The address the pretend browser is at now, e.g. `'/county/kerry?rcp=85'`, to check a click changed the page |
+| `mockApiSuccess(api, overrides)` | `src/test/mockApi.js` | Makes every fake API function answer with mock data in the agreed shapes (Cork, from `src/mocks/`). Change one answer with e.g. `{ counties: [] }` |
+| `mockApiLoading(api)` | `src/test/mockApi.js` | Makes every fake never answer, so the page stays on "Loading…" |
+| `mockApiError(api, name, status)` | `src/test/mockApi.js` | Makes one fake fail, e.g. `mockApiError(api, 'getCounty', 404)` |
+
+```jsx
+import { screen } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
+import * as api from '../services/api';
+import { ROUTES } from '../routes';
+import { mockApiSuccess } from '../test/mockApi';
+import { renderWithRouter } from '../test/renderWithRouter';
+import CountyDashboard from './CountyDashboard';
+
+vi.mock('../services/api'); // every API function becomes a fake
+// (the county page also draws charts, so add the react-chartjs-2 mock from "Charts" above too)
+
+beforeEach(() => {
+  vi.clearAllMocks();   // forget calls from the previous test
+  mockApiSuccess(api);  // the fakes answer with Cork's data
+});
+
+it('shows the county name', async () => {
+  renderWithRouter(<CountyDashboard />, { url: '/county/cork', path: ROUTES.county });
+  expect(await screen.findByRole('heading', { level: 1, name: 'Cork' })).toBeTruthy();
+});
+```
+
+`CountySelect.test.jsx` and `ShareLink.test.jsx` use these helpers, so they're good examples to copy. Older tests still set things up by hand (as below), which also works.
+
 ### Writing a test for a page that calls the API
 
 Pages get their data through `src/services/api.js`. In a test, replace those functions with fakes using `vi.mock`, and give the fakes data from `src/mocks/`. That way the test is fast, never needs the backend, and you choose exactly what the "API" returns, including errors.
@@ -179,7 +216,7 @@ it('shows an error when the API fails', async () => {
 - [ ] File named `Something.test.jsx` next to `Something.jsx`
 - [ ] Covers what should happen **and** what happens with no data or an API error
 - [ ] Finds things by role, label or text, not by CSS class
-- [ ] Charts replaced with `vi.mock('react-chartjs-2', …)`; API replaced with `vi.mock('../services/api', …)`
+- [ ] Charts replaced with `vi.mock('react-chartjs-2', …)`; API replaced with `vi.mock('../services/api')` (use the shared helpers in `src/test/` to fill it)
 - [ ] `npm run lint` and `npm test` both pass
 
 ## Rules
