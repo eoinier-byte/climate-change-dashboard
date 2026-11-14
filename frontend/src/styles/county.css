@@ -59,6 +59,14 @@
   cursor: pointer;
 }
 
+/* "At least one scenario must be shown." under the tick boxes, on its own line */
+.scenario-filter__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 /* Small coloured square matching the scenario's chart colour */
 .scenario-filter__swatch {
   display: inline-block;

@@ -5,8 +5,9 @@ import { Chart as ChartJS } from 'chart.js';
 
 // Chart.js draws on a <canvas>, which can't read CSS variables,
 // so these copy theme.css. Keep them the same as --font-body and --color-text-muted.
-const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-const TEXT_COLOR = '#4a5a53';
+// theme.test.js checks they match, so the test fails if one is changed without the other.
+export const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+export const TEXT_COLOR = '#4a5a53';
 
 // Set once for every chart: the site's font, and muted text for axes and legends
 ChartJS.defaults.font.family = FONT_FAMILY;

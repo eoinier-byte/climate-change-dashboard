@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SCENARIO_COLORS } from './scenarioColors';
+import { FONT_FAMILY, TEXT_COLOR } from '../components/charts/chartOptions';
 
 // Read theme.css straight from disk (Vitest would turn an imported CSS file into an empty string)
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'theme.css'), 'utf8');
@@ -48,5 +49,19 @@ describe('theme colours meet WCAG AA (4.5:1 for text)', () => {
 describe('scenario colours', () => {
   it.each(Object.entries(SCENARIO_COLORS))('%s in JavaScript matches theme.css', (key, hex) => {
     expect(token(`--color-${key}`)).toBe(hex.toLowerCase());
+  });
+});
+
+// Chart.js can't read CSS variables, so chartOptions.js keeps its own copies (CCD-160).
+// These tests fail if theme.css changes and the chart copies don't (or the other way round).
+describe('chart settings match theme.css', () => {
+  it('chart text colour is --color-text-muted', () => {
+    expect(TEXT_COLOR.toLowerCase()).toBe(token('--color-text-muted'));
+  });
+
+  it('chart font is --font-body', () => {
+    const match = css.match(/--font-body:\s*([^;]+);/);
+    expect(match).not.toBeNull();
+    expect(FONT_FAMILY).toBe(match[1].trim());
   });
 });

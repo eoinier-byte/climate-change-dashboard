@@ -90,6 +90,21 @@ describe('CountyDashboard', () => {
     expect(getProjections).toHaveBeenCalledWith({ county: 'kerry' });
   });
 
+  it('keeps the dropdown on screen while the new county loads, without reloading the county list', async () => {
+    const user = userEvent.setup();
+    renderCounty('cork');
+    const dropdown = await screen.findByRole('combobox', { name: 'Choose a county' });
+
+    // Kerry's data never finishes loading in this test, so the page stays on "Loading…"
+    getCounty.mockReturnValue(new Promise(() => {}));
+    await user.selectOptions(dropdown, 'kerry');
+
+    expect(screen.getByRole('status').textContent).toBe('Loading county data…');
+    expect(screen.getByRole('combobox', { name: 'Choose a county' })).toBeTruthy();
+    // The county list was downloaded once, not again for Kerry
+    expect(getCounties).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a loading message first', () => {
     renderCounty();
     expect(screen.getByRole('status').textContent).toBe('Loading county data…');
