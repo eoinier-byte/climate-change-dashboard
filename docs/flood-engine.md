@@ -1,6 +1,6 @@
 # Flood engine: format, method and limits (CCD-396, CCD-401)
 
-· Owner: Artur Romanov · Parent story: CCD-395 · Last updated: 12 November 2026
+· Owner: Artur Romanov · Parent story: CCD-395 · Last updated: 13 November 2026
 
 This document is the contract between four parts of the project:
 
@@ -194,7 +194,8 @@ These are known simplifications. They should also be stated on the dashboard nex
   (decision D4).
 - **Little land may flood.** With 0–2 m of still water, no tide offset and a 90 m surface model, very little land may
   flood. The precompute script is first run on one pilot county (Cork) to check this (decision D5).
-  **Pilot result: not run yet** (the land polygon for the sea mask, D3, is still to be chosen).
+  **Pilot result:** land does flood at every level. Cork: 25.47 km² at 0.0 m, 41.06 km² at 1.0 m, 52.30 km² at 2.0 m
+  (`pipeline/data/processed/flood/cork/index.json`), so the layers were then built for all 15 coastal counties.
 - **Sea mask from a land polygon.** Which cells count as sea depends on the land/coastline polygon (D3). Its coastline
   detail limits where the sea starts. Lakes and loughs inside the polygon are treated as land, never as sea.
 - **County totals can miss coastal cells.** A flooded cell is counted for a county only if its centre is inside the
@@ -203,9 +204,9 @@ These are known simplifications. They should also be stated on the dashboard nex
 
 ---
 
-## 8. Elevation source. Decided: GLO-90 (pending objections until 12 Nov)
+## 8. Elevation source: GLO-90 (agreed by the team, 10 Nov)
 
-> Decided by Artur on 9 November 2026 (D1). It stands unless a team member objects by Thursday 12 November 2026.
+> Proposed by Artur on 9 November 2026 (D1). Agreed by the team at stand-up on 10 November 2026.
 
 **Copernicus DEM, GLO-90**, from the Copernicus Data Space Ecosystem. GLO-30 is used only if the pilot county shows
 that GLO-90 misses obvious coastal features (D1).
@@ -243,7 +244,7 @@ Not yet checked (to do before the team agrees):
 Date: 9 November 2026 · Decided by: Artur Romanov. Items marked **(team)** stand unless someone objects by
 Thursday 12 November 2026.
 
-**D1. Elevation source (team): Copernicus DEM GLO-90.**
+**D1. Elevation source (team): Copernicus DEM GLO-90.** Agreed at stand-up on 10 November 2026.
 Reason: national coverage, free, and its vertical accuracy (< 4 m) makes GLO-30's extra detail of little value, while
 GLO-90 files are 9× smaller. GLO-30 only if a pilot county shows GLO-90 misses obvious coastal features.
 
@@ -264,7 +265,7 @@ Reason: keep the first version simple and match the still-water definition in §
 a 90 m surface model, little land may flood. The precompute script is first run on one pilot county (Cork); if almost
 nothing floods, adding a mean-high-water offset is proposed for Sprint 3.
 
-**D6. Flood layer format (team; affects CCD-360 and CCD-169).**
+**D6. Flood layer format (team; affects CCD-360 and CCD-169).** Confirmed by Taras Ivanysenko (CCD-360 owner) at a team stand-up.
 Reason: one fixed layout lets the precompute script, the API and the map be built in parallel.
 
 - Folder: `pipeline/data/processed/flood/<county-slug>/` for the 15 coastal counties, with slugs as in the County table.
@@ -365,7 +366,7 @@ Script: `pipeline/flood_precompute.py`. Tests: `pipeline/tests/test_flood_precom
 | Input | Where | Notes |
 |---|---|---|
 | Elevation | `data/dem/glo90/ireland_glo90.vrt` (Copernicus GLO-90 mosaic, §8) | Local only, never committed (D2). How to download: `DATA_SOURCES.md` §7 |
-| Land polygon | path given with `--land` | Whole island incl. Northern Ireland (D3). Outside = sea. **Source not chosen yet**: options are listed in CCD-420 |
+| Land polygon | path given with `--land` | Whole island incl. Northern Ireland (D3). Outside = sea. `pipeline/data/boundaries/ireland_land.gpkg`, built by `pipeline/build_land_polygon.py` from the Tailte Éireann counties + OSNI NI outline (`DATA_SOURCES.md` §8) |
 | County boundaries | `pipeline/data/boundaries/counties_tailte_eireann_2019.geojson` | Tailte Éireann, CC BY 4.0; name column `ENGLISH` |
 | Engine | `flood_engine_py` (§10) | Directory given by `FLOOD_ENGINE_PY_DIR` |
 

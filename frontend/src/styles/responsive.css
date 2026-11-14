@@ -1,0 +1,38 @@
+/* Responsive rules shared by every page (CCD-138). Checked at 375, 768 and 1280 px wide.
+   Page-specific rules live next to each component (nav.css, home.css, ...). */
+
+/* Nothing may make the page scroll sideways */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Long words and URLs (footer credits) wrap instead of overflowing */
+.site-footer a {
+  overflow-wrap: anywhere;
+}
+
+/* Phones */
+@media (max-width: 30rem) {
+  main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .site-nav__inner,
+  .site-footer__inner {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+}
+
+/* Large screens: keep line length readable */
+@media (min-width: 80rem) {
+  main {
+    padding-top: var(--space-8);
+  }
+}

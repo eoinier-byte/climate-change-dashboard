@@ -269,6 +269,19 @@ db/restore.sh ~/ccd-backups/climate_dev_2026-11-12_173000.dump climate_restore
 
 Expected: `Restored 14 tables into climate_restore`. The script refuses a database that already has tables, so it can never overwrite data.
 
+**Restore test (CCD-272), 13 November 2026, Artur Romanov.** `db/backup.sh` dumped `climate_dev` to `~/ccd-backups/climate_dev_2026-11-13_185529.dump` (64K, data for 14 tables, mode 600), and `db/restore.sh` restored it into the empty `climate_restore` ("Restored 14 tables into climate_restore"). Row counts in the two databases:
+
+| Table | climate_dev | climate_restore |
+|---|---|---|
+| climate_county | 26 | 26 |
+| climate_climateprojection | 1,820 | 1,820 |
+| climate_sealevelprojection | 405 | 405 |
+| climate_datasource | 2 | 2 |
+| users_user | 0 | 0 |
+| django_migrations | 21 | 21 |
+
+All match. Compare them yourself after a restore with `docker compose exec -T db psql -U <DB_USER> -d <database> -Atc "select count(*) from <table>"`.
+
 **Recover `climate_dev` itself.** Stop the Django server first, then replace the database with an empty one and restore into it. This deletes the current `climate_dev`, so take a dump of it first if it might still be useful:
 
 ```bash

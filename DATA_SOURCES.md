@@ -69,7 +69,7 @@ Last updated: 10 November 2026 · Owner: Eoin Ryan
 
 ## 6. Copernicus DEM (flood engine, CCD-396)
 
-> **Agreed by the team at stand-up on <DATE>.** Proposed by Artur Romanov on 9 November 2026 for the flood engine (CCD-395). Format details: [docs/flood-engine.md](docs/flood-engine.md). Download details: §7.
+> **Agreed by the team at stand-up on 10 November 2026.** Proposed by Artur Romanov on 9 November 2026 for the flood engine (CCD-395). Format details: [docs/flood-engine.md](docs/flood-engine.md). Download details: §7.
 
 | | |
 |---|---|
