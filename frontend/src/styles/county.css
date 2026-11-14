@@ -1,0 +1,142 @@
+/* County dashboard page (CCD-149). Uses the theme variables from theme.css only. */
+
+.county-page section {
+  margin-top: var(--space-8);
+}
+
+/* "Choose a county" dropdown (CCD-159, CCD-166): label above the box */
+.county-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 16rem;
+  margin-bottom: var(--space-6);
+}
+
+.county-select label {
+  font-weight: 600;
+}
+
+.county-select select {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* The scenario and period controls (CCD-406): side by side, one above the other on small screens */
+.county-page__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+/* "Show scenarios" tick boxes (CCD-158, CCD-165), also used for the period radio buttons:
+   options side by side, wrapping on small screens */
+.scenario-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.scenario-filter legend {
+  font-weight: 600;
+  padding: 0 var(--space-2);
+}
+
+.scenario-filter__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+/* Small coloured square matching the scenario's chart colour */
+.scenario-filter__swatch {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 2px;
+}
+
+.county-page__intro {
+  color: var(--color-text-muted);
+}
+
+/* Today's climate: cards side by side, wrapping onto new lines on small screens */
+.county-page__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.stat-card {
+  flex: 1 1 12rem;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.stat-card__label {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.stat-card__value {
+  margin: var(--space-1) 0 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+/* Space between charts now comes from .chart-card in charts.css (CCD-160) */
+
+/* Reserved slots (CCD-180). An empty slot only shows while developing, as a dashed box. */
+.county-slot--empty {
+  padding: var(--space-4);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+}
+
+.county-slot--empty h2 {
+  margin-top: 0;
+}
+
+/* Actions: share now, Download PDF later (CCD-408). Buttons side by side, wrapping on phones. */
+.county-page__action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.share-link__status {
+  margin: var(--space-2) 0 0;
+  min-height: 1.5em; /* keeps the space, so the page doesn't jump when the message appears */
+  color: var(--color-text-muted);
+}
+
+/* Phones (CCD-180, checked at 375 px wide): less padding, so the charts get more width */
+@media (max-width: 480px) {
+  /* ".county-page" in front makes this win over charts.css, whichever file loads last */
+  .county-page .chart-card {
+    padding: var(--space-2);
+  }
+
+  .scenario-filter {
+    padding: var(--space-3);
+  }
+
+  .county-select {
+    max-width: none; /* full width dropdown */
+  }
+}

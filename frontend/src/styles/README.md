@@ -35,3 +35,19 @@ Colour must never be the only cue (docs/data-flow.md): also use line styles or l
 ## Accessibility
 
 `theme.test.js` checks that every text and background pair meets WCAG AA (4.5:1) and that the JavaScript colours match `theme.css`. If you change a colour, run `npm test`.
+
+## Charts (CCD-160, CCD-167)
+
+Every chart is wrapped in **`ChartCard`** (`src/components/charts/ChartCard.jsx`, styles in `charts.css`): title, subtitle, the chart, then the summary sentence and the source line. Chart.js settings come from **`buildChartOptions({ yTitle, unit })`** (`src/components/charts/chartOptions.js`): same font and text colour as the site, legend underneath, unit on the side axis and in the tooltip (e.g. "RCP4.5: 11.28 °C").
+
+```jsx
+import ChartCard from './charts/ChartCard';
+import { buildChartOptions } from './charts/chartOptions';
+
+const options = buildChartOptions({ yTitle: 'cm rise since 1981-2000', unit: 'cm' });
+<ChartCard title="Sea-level rise at Cork's coast, cm" subtitle="..." summary={summary} source="Met Office UKCP18">
+  <Line data={data} options={options} role="img" aria-label="Sea-level rise at Cork's coast, cm" />
+</ChartCard>
+```
+
+Every chart keeps the same scenario colours (above), so a scenario looks the same on every chart. Contrast is checked in `chartOptions.test.js`: each scenario colour is at least 4.5:1 on `--color-bg` and `--color-surface`.

@@ -1,5 +1,7 @@
 # CCD: Climate Change Dashboard (Ireland Climate Futures Dashboard)
 
+[![CI](https://github.com/eoinier-byte/climate-change-dashboard/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/eoinier-byte/climate-change-dashboard/actions/workflows/ci.yml)
+
 MTU group project 2026. A web app where a user picks an Irish county and sees how its **temperature, rainfall and sea level** are projected to change by 2050 and 2100 under different emissions scenarios (RCP2.6 / RCP4.5 / RCP8.5), using official EPA / Climate Ireland data explained in plain language.
 
 > Academic prototype. We visualise published climate **projections**; we do not produce forecasts. Data from EPA Climate Ireland / Met Éireann TRANSLATE, Met Office UKCP18 and Tailte Éireann, used with attribution.
@@ -61,7 +63,24 @@ cd backend && python manage.py test
 cd frontend && npm test
 ```
 
-GitHub Actions runs these on every pull request (`.github/workflows/ci.yml`). A job only runs once its folder has code in it.
+Before pushing frontend changes, also run `npm run lint` (CI runs it before the tests).
+
+## CI/CD
+
+GitHub Actions runs the **CI** workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every pull request and every push to `main`. The badge at the top shows whether `main` is passing.
+
+| Job | Checks |
+|---|---|
+| `lint` | Python lint and formatting (ruff) |
+| `pipeline` | Pipeline scripts compile; pipeline tests |
+| `backend` | Django tests against a fresh PostgreSQL |
+| `frontend` | ESLint, build, Vitest tests |
+| `cpp` | C++ flood engine build and tests, Python binding tests |
+| `notify` | Posts to the team's Discord channel if any job fails |
+
+A pull request can only be merged into `main` when all five checks are green and one teammate has approved it (branch protection). Deployment on merge (CCD-278) is not set up yet.
+
+**When CI fails:** open the link in the Discord message (or **Details** next to the red ✗ on the PR), click the red job, then the red step, and read the `##[error]` lines at the bottom. Fix it on the same branch and push; CI runs again by itself. Full guide, with common errors and how to re-run a job: [docs/ci-cd.md](docs/ci-cd.md).
 
 ## Rules for everyone
 

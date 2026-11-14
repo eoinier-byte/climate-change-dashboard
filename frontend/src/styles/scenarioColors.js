@@ -7,6 +7,10 @@ export const SCENARIO_COLORS = {
   rcp85: '#c62828', // red
 };
 
+// The three future scenarios, from lowest to highest emissions.
+// Used by the "Show scenarios" tick boxes and the county page (CCD-158, CCD-165).
+export const ALL_SCENARIOS = ['rcp26', 'rcp45', 'rcp85'];
+
 export const SCENARIO_LABELS = {
   rcp26: 'RCP2.6',
   rcp45: 'RCP4.5',
