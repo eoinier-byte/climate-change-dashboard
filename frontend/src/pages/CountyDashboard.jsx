@@ -21,6 +21,7 @@ import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
+import Loading from '../components/Loading';
 import ProjectionChart from '../components/ProjectionChart';
 import PeriodFilter from '../components/PeriodFilter';
 import ScenarioFilter from '../components/ScenarioFilter';
@@ -85,7 +86,7 @@ export default function CountyDashboard() {
       <main className="county-page">
         <CountySelect currentSlug={slug} />
         <h1>County dashboard</h1>
-        <p role="status">Loading county data…</p>
+        <Loading message="Loading county data…" />
       </main>
     );
   }
