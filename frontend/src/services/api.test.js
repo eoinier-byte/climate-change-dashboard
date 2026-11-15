@@ -116,3 +116,50 @@ describe('apiGet', () => {
     expect(error).not.toBeInstanceOf(ApiError);
   });
 });
+
+// Mock mode (CCD-405): VITE_USE_MOCKS=true answers from src/mocks instead of calling fetch.
+describe('mock mode', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_USE_MOCKS', 'true');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('answers from the mocks and never calls fetch', async () => {
+    const counties = await getCounties();
+    expect(counties).toHaveLength(26);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('works through the helper functions, including getMap', async () => {
+    expect((await getCounty('cork')).name).toBe('Cork');
+    expect((await getSeaLevel('cork')).series.rcp85).toBeDefined();
+    expect((await getProjections({ county: 'cork' })).length).toBeGreaterThan(0);
+    // the mock only knows the periods the real API accepts (1976-2005, 2021-2050, 2071-2100)
+    expect((await getMap({ ...MAP_CHOICES, period: '2021-2050' })).results).toHaveLength(26);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fails like the real API for an unknown county, with the status in the message', async () => {
+    const error = await getCounty('atlantis').catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(404);
+    expect(error.message).toBe('API error 404 for /counties/atlantis/');
+  });
+
+  it('tells the developer once that mocks are on', async () => {
+    await getCounties();
+    await getCounties();
+    expect(console.warn.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('uses the real API again when the switch is off', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'false');
+    fetchMock.mockResolvedValue(fakeResponse({ body: [] }));
+    await getCounties();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
