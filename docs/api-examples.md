@@ -12,15 +12,15 @@ One JSON example for every endpoint the frontend uses or will use, so frontend w
 | `GET /projections/?county={slug}` | Built | CCD-84 | Taras |
 | `GET /sea-level/{slug}/` | Built | CCD-91 | Taras |
 | `GET /map/?variable=&scenario=&period=&season=` | Built | CCD-338 | Taras |
-| `GET /impacts/?county={slug}` | **Proposed** (not built yet) | CCD-364 / CCD-367 | Taras |
+| `GET /counties/{slug}/impacts/?scenario=&period=` | Built | CCD-364 / CCD-367 / CCD-368 | Taras |
 | `GET /analogues/?county={slug}` | **Proposed** (not built yet) | CCD-354 / CCD-358 | Artur |
 | `POST /reports/` | **Proposed** (not built yet) | CCD-295 / CCD-307 | Taras |
 
-The built endpoints were written from the backend code (`climate/serializers.py`, `climate/views.py`) and the real data. The proposed ones follow the same style as `/projections/`: a flat list or one object per county, selected with `?county=`. The owner confirms or changes each shape in a comment on CCD-405, and this file is then updated.
+The built endpoints were written from the backend code (`climate/serializers.py`, `climate/views.py`) and the real data. The remaining proposed ones follow the same style as `/projections/`: a flat list or one object per county, selected with `?county=`. The owner confirms or changes each shape in a comment on CCD-405, and this file is then updated.
 
 All decimal numbers are strings (for example `"9.815"`), as Django REST Framework sends them. The frontend formats them and never recalculates them.
 
-**The numbers are examples.** Cork's figures are real. The map, impacts and analogue numbers are made up to show the shape, and every other county reuses Cork's figures with its own name.
+**The numbers are examples.** Cork's figures are real, including the impacts. The map and analogue numbers are made up to show the shape, and every other county reuses Cork's figures with its own name.
 
 ## Using the mock data in the frontend
 
@@ -285,62 +285,75 @@ One value for each county, with `unit`, `min` and `max` for the legend (shortene
 }
 ```
 
-## Proposed endpoints (to be confirmed by their owners)
+### `GET /counties/{slug}/impacts/?scenario=&period=` (CCD-364, CCD-367, CCD-368, Taras)
 
-### `GET /impacts/?county={slug}` (CCD-367, Taras)
+Everyday indicators instead of raw degrees: `frost_days`, `summer_days`, `heating_degree_days` and `growing_season_length`. A flat list like `/projections/`, with one row per indicator, scenario and period, including a `baseline` row for 1976-2005 (shortened here to four rows; the real answer for Cork has 28).
 
-Everyday indicators instead of raw degrees: frost days, hot days, heating degree days and growing season length. Each indicator has its baseline and one row per scenario and period (shortened here).
+Both `scenario` and `period` are optional filters. An unknown choice is a 400 that names the field, for example `{"scenario": ["Select a valid choice. rcp60 is not one of the available choices."]}`. An unknown county is a 404, and a county with no indicators gives `[]`. As in `/projections/`, `baseline_value` and `projected_value` are strings, and `change` is a number. `units` is `days` or `degC_days`. The frontend function is `getImpacts(slug)` in `services/api.js`.
 
 <!-- example: impacts -->
 ```json
-{
-  "county": "cork",
-  "baseline_period": "1976-2005",
-  "source": "translate",
-  "indicators": [
-    {
-      "code": "frost_days",
-      "label": "Frost days",
-      "unit": "days per year",
-      "baseline": "38.000",
-      "projections": [
-        {
-          "scenario": "rcp26",
-          "period": "2021-2050",
-          "value": "31.000",
-          "change": "-7.000"
-        },
-        {
-          "scenario": "rcp26",
-          "period": "2071-2100",
-          "value": "29.000",
-          "change": "-9.000"
-        }
-      ]
-    },
-    {
-      "code": "hot_days",
-      "label": "Hot days (25 °C or above)",
-      "unit": "days per year",
-      "baseline": "1.000",
-      "projections": [
-        {
-          "scenario": "rcp26",
-          "period": "2021-2050",
-          "value": "2.000",
-          "change": "1.000"
-        },
-        {
-          "scenario": "rcp26",
-          "period": "2071-2100",
-          "value": "2.000",
-          "change": "1.000"
-        }
-      ]
-    }
-  ]
-}
+[
+  {
+    "scenario": "baseline",
+    "baseline_period": "1976-2005",
+    "units": "days",
+    "source": "translate",
+    "value": "30.826",
+    "county": "cork",
+    "period": "1976-2005",
+    "season": "annual",
+    "baseline_value": "30.826",
+    "projected_value": "30.826",
+    "change": 0.0,
+    "indicator": "frost_days"
+  },
+  {
+    "scenario": "rcp85",
+    "baseline_period": "1976-2005",
+    "units": "days",
+    "source": "translate",
+    "value": "6.417",
+    "county": "cork",
+    "period": "2071-2100",
+    "season": "annual",
+    "baseline_value": "30.826",
+    "projected_value": "6.417",
+    "change": -24.41,
+    "indicator": "frost_days"
+  },
+  {
+    "scenario": "baseline",
+    "baseline_period": "1976-2005",
+    "units": "degC_days",
+    "source": "translate",
+    "value": "2123.712",
+    "county": "cork",
+    "period": "1976-2005",
+    "season": "annual",
+    "baseline_value": "2123.712",
+    "projected_value": "2123.712",
+    "change": 0.0,
+    "indicator": "heating_degree_days"
+  },
+  {
+    "scenario": "rcp85",
+    "baseline_period": "1976-2005",
+    "units": "degC_days",
+    "source": "translate",
+    "value": "1359.013",
+    "county": "cork",
+    "period": "2071-2100",
+    "season": "annual",
+    "baseline_value": "2123.712",
+    "projected_value": "1359.013",
+    "change": -764.7,
+    "indicator": "heating_degree_days"
+  }
+]
 ```
+
+## Proposed endpoints (to be confirmed by their owners)
 
 ### `GET /analogues/?county={slug}` (CCD-358, Artur)
 
@@ -404,7 +417,6 @@ Response (202 Accepted):
 
 | Endpoint | Confirmed by | Date |
 |---|---|---|
-| Built endpoints (counties, county, meta, projections, sea-level, map) | | |
-| `/impacts/` | | |
+| Built endpoints (counties, county, meta, projections, sea-level, map, impacts) | | |
 | `/analogues/` | | |
 | `POST /reports/` | | |

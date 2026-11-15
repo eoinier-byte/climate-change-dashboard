@@ -35,7 +35,7 @@ describe('docs/api-examples.md and the mocks agree', () => {
     ['seaLevel', '/sea-level/cork/'],
     ['seaLevelInland', '/sea-level/kildare/'],
     ['map', MAP],
-    ['impacts', '/impacts/?county=cork'],
+    ['impacts', '/counties/cork/impacts/'],
     ['analogues', '/analogues/?county=cork'],
   ];
 
@@ -88,14 +88,14 @@ describe('not found and missing parameters', () => {
     '/counties/atlantis/',
     '/sea-level/atlantis/',
     '/projections/?county=atlantis',
-    '/impacts/?county=atlantis',
+    '/counties/atlantis/impacts/',
     '/analogues/?county=atlantis',
     '/nothing-here/',
   ])('%s is a 404', (path) => {
     expect(mockGet(path).status).toBe(404);
   });
 
-  it.each(['/projections/', '/impacts/', '/analogues/'])('%s without ?county= is a 400', (path) => {
+  it.each(['/projections/', '/analogues/'])('%s without ?county= is a 400', (path) => {
     expect(mockGet(path).status).toBe(400);
   });
 });
@@ -179,23 +179,56 @@ describe('map', () => {
   });
 });
 
-describe('proposed endpoints', () => {
-  it('impacts: four indicators, each with a row for every scenario and period', () => {
-    const { indicators } = body('/impacts/?county=cork');
-    expect(indicators.map((indicator) => indicator.code)).toEqual([
-      'frost_days', 'hot_days', 'heating_degree_days', 'growing_season',
+describe('impacts (built: GET /counties/{slug}/impacts/)', () => {
+  it('is a flat list with the four indicators, each with a baseline row and a row per scenario and period', () => {
+    const rows = body('/counties/cork/impacts/');
+    expect(rows).toHaveLength(28); // 4 indicators x (baseline + 3 scenarios x 2 periods)
+    expect([...new Set(rows.map((row) => row.indicator))].sort()).toEqual([
+      'frost_days', 'growing_season_length', 'heating_degree_days', 'summer_days',
     ]);
-    indicators.forEach((indicator) => expect(indicator.projections).toHaveLength(6));
+    expect(rows.filter((row) => row.indicator === 'frost_days')).toHaveLength(7);
   });
 
-  it('impacts: every change is the value minus the baseline', () => {
-    body('/impacts/?county=cork').indicators.forEach((indicator) => {
-      indicator.projections.forEach((row) => {
-        expect(Number(row.value) - Number(indicator.baseline)).toBeCloseTo(Number(row.change), 3);
-      });
+  it('has the fields of a projections row, plus the indicator', () => {
+    const [row] = body('/counties/cork/impacts/');
+    expect(Object.keys(row).sort()).toEqual([
+      'baseline_period', 'baseline_value', 'change', 'county', 'indicator', 'period',
+      'projected_value', 'scenario', 'season', 'source', 'units', 'value',
+    ]);
+    expect(typeof row.change).toBe('number');
+    expect(row.baseline_value).toMatch(/^-?\d+\.\d{3}$/); // decimals are strings
+  });
+
+  it('every change is the projected value minus the baseline', () => {
+    body('/counties/cork/impacts/').forEach((row) => {
+      expect(Number(row.projected_value) - Number(row.baseline_value)).toBeCloseTo(row.change, 1);
     });
   });
 
+  it('gives another county its own slug', () => {
+    const rows = body('/counties/kerry/impacts/');
+    expect(rows.every((row) => row.county === 'kerry')).toBe(true);
+  });
+
+  it('filters by scenario and period, like the real endpoint', () => {
+    const rows = body('/counties/cork/impacts/?scenario=rcp85&period=2071-2100');
+    expect(rows.map((row) => row.indicator).sort()).toEqual([
+      'frost_days', 'growing_season_length', 'heating_degree_days', 'summer_days',
+    ]);
+    expect(rows.every((row) => row.scenario === 'rcp85' && row.period === '2071-2100')).toBe(true);
+  });
+
+  it.each([
+    ['scenario', 'rcp60'],
+    ['period', '2000-2001'],
+  ])('a %s the API does not know (%s) is a 400 that names the field', (field, value) => {
+    const answer = mockGet(`/counties/cork/impacts/?${field}=${value}`);
+    expect(answer.status).toBe(400);
+    expect(answer.body[field]).toBeDefined();
+  });
+});
+
+describe('proposed endpoints', () => {
   it('analogues: one row for each scenario and period, for the county asked for', () => {
     const rows = body('/analogues/?county=kerry');
     expect(rows).toHaveLength(6);
