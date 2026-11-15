@@ -82,14 +82,28 @@ function toNumber(value) {
   return value === null || value === undefined || value === '' ? NaN : Number(value);
 }
 
+// The lowest and highest value across several answers of GET /map/, as [min, max], to colour every
+// choice on one shared scale. Gives null unless every answer has arrived and has a usable range.
+export function sharedRange(answers) {
+  if (answers.length === 0 || answers.some((answer) => !answer)) return null;
+  const mins = answers.map((answer) => toNumber(answer.min));
+  const maxs = answers.map((answer) => toNumber(answer.max));
+  if ([...mins, ...maxs].some(Number.isNaN)) return null;
+  return [Math.min(...mins), Math.max(...maxs)];
+}
+
 // Everything the map needs to colour itself and draw its legend, from the answer of GET /map/.
 // "slugs" are the counties on the map. Returns null until the answer has arrived.
+// "range" is optional: [min, max] to use for the colour steps instead of this answer's own lowest and
+// highest. Giving every choice the same range makes the colours comparable, so a warmer scenario looks
+// warmer. Values outside it take the nearest end colour.
 //   colourFor(slug) - the colour for a county ('' value gives NO_DATA_COLOUR)
 //   bins            - [{ colour, from, to, label }] for the legend, lowest first
 //   valueFor(slug)  - the county's value as a number, or undefined when it has none (for the tooltip)
 //   missing         - how many of the counties have no value
 //   hasValues       - false when the answer has no results (e.g. an unknown choice has no rows)
-export function buildMapColours(answer, slugs) {
+//   shared          - true when the colours use a shared range (see "range")
+export function buildMapColours(answer, slugs, range = null) {
   if (!answer) return null;
 
   const valueBySlug = {};
@@ -101,13 +115,14 @@ export function buildMapColours(answer, slugs) {
   const missing = slugs.filter((slug) => valueBySlug[slug] === undefined).length;
 
   if (numbers.length === 0) {
-    return { colourFor: () => NO_DATA_COLOUR, valueFor: () => undefined, bins: [], missing, hasValues: false };
+    return { colourFor: () => NO_DATA_COLOUR, valueFor: () => undefined, bins: [], missing, hasValues: false, shared: false };
   }
 
-  // The API gives the lowest and highest value; use them so the colours match across a choice.
-  // If they are missing, take them from the counties.
-  const min = Number.isNaN(toNumber(answer.min)) ? Math.min(...numbers) : toNumber(answer.min);
-  const max = Number.isNaN(toNumber(answer.max)) ? Math.max(...numbers) : toNumber(answer.max);
+  // A shared range if there is a usable one. Otherwise the lowest and highest the API gives, or, if
+  // they are missing, the lowest and highest of the counties.
+  const shared = Boolean(range) && range.every((limit) => Number.isFinite(limit)) && range[1] > range[0];
+  const min = shared ? range[0] : Number.isNaN(toNumber(answer.min)) ? Math.min(...numbers) : toNumber(answer.min);
+  const max = shared ? range[1] : Number.isNaN(toNumber(answer.max)) ? Math.max(...numbers) : toNumber(answer.max);
   const ramp = RAMPS[answer.variable] ?? TEMPERATURE_RAMP;
   const middle = ramp[Math.floor(ramp.length / 2)];
 
@@ -120,6 +135,7 @@ export function buildMapColours(answer, slugs) {
       bins: [{ colour: middle, from: min, to: max, label }],
       missing,
       hasValues: true,
+      shared: false,
     };
   }
 
@@ -139,5 +155,6 @@ export function buildMapColours(answer, slugs) {
     bins,
     missing,
     hasValues: true,
+    shared,
   };
 }
