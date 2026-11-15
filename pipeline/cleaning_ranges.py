@@ -25,6 +25,10 @@
 RANGES = {
     "temperature": (-2, 22),  # degC
     "precipitation": (50, 5000),  # mm
+    "frost_days": (0, 366),
+    "summer_days": (0, 366),
+    "heating_degree_days": (0, 6000),
+    "growing_season_length": (0, 366),
 }
 
 # FILL_VALUE: a number some climate files use to mean "no data here".

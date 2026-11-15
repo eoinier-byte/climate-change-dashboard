@@ -24,6 +24,13 @@ describe('home page', () => {
     expect(document.getElementById('map-root')).not.toBeNull();
   });
 
+  it('draws the county map inside the map area (CCD-379)', () => {
+    renderHome();
+    const mapArea = document.getElementById('map-root');
+    expect(within(mapArea).getByTestId('map')).toBeTruthy();
+    expect(within(mapArea).getByTestId('county-outlines').dataset.counties).toBe('26');
+  });
+
   it('links to all 26 county dashboards', () => {
     renderHome();
     const list = screen.getByRole('heading', { name: 'Or choose a county' }).parentElement;

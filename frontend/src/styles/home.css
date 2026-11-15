@@ -23,14 +23,9 @@
 }
 
 .map-area__canvas {
-  display: grid;
-  place-items: center;
-  min-height: 22rem;
-  padding: var(--space-6);
-  text-align: center;
-  color: var(--color-text-muted);
+  overflow: hidden;
   background: var(--color-surface);
-  border: 2px dashed var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: calc(var(--radius) * 2);
 }
 
@@ -61,9 +56,5 @@
 @media (max-width: 30rem) {
   .hero {
     padding: var(--space-6) var(--space-4);
-  }
-
-  .map-area__canvas {
-    min-height: 14rem;
   }
 }

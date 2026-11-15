@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import CountySearch from '../components/CountySearch';
+import MapView from '../components/MapView';
 import { COUNTIES } from '../data/counties';
 import { countyPath } from '../routes';
 import '../styles/home.css';
 
-// Home page shell. The live map (a later story) mounts inside #map-root.
+// Home page shell. The map (CCD-379) is drawn inside #map-root; later map stories add colours and clicks.
 export default function Home() {
   return (
     <main className="home">
@@ -20,7 +21,7 @@ export default function Home() {
       <section className="map-area" aria-labelledby="map-title">
         <h2 id="map-title">Map of the 26 counties</h2>
         <div id="map-root" className="map-area__canvas" role="region" aria-label="County map">
-          <p>The interactive map will appear here. Use the search above or the list below.</p>
+          <MapView />
         </div>
       </section>
 

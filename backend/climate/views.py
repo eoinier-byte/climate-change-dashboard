@@ -4,15 +4,16 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.cache import cache
 from django.db.models import OuterRef, Subquery, Value
 from rest_framework import viewsets
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from climate.filters import ClimateProjectionFilterSet
-from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
+from climate.filters import ClimateProjectionFilterSet, ImpactIndicatorFilterSet
+from climate.models import ClimateProjection, County, DataSource, ImpactIndicator, SeaLevelProjection
 from climate.serializers import (
     ClimateProjectionSerializer,
     CountyDetailSerializer,
+    ImpactIndicatorSerializer,
     MapSerializer,
     SeaLevelSeriesSerializer,
 )
@@ -101,12 +102,7 @@ class MapView(ListAPIView):
         season = request.GET.get('season')
         period = request.GET.get('period')
 
-        proj_ck = ClimateCacheKey.map(
-            request.query_params.get('variable'),
-            request.query_params.get('scenario'),
-            request.query_params.get('season'),
-            request.query_params.get('period'),
-        )
+        proj_ck = ClimateCacheKey.map(variable, scenario, season, period)
 
         data = cache.get(proj_ck)
         if data:
@@ -153,4 +149,26 @@ class MapView(ListAPIView):
             .filter(variable=variable, scenario=scenario, season=season, period=period)
             .only('value', 'unit', 'county__name', 'county__slug', 'county__has_coastline')
             .order_by('county__name')
+        )
+
+
+class ImpactIndicatorListView(ListAPIView):
+    serializer_class = ImpactIndicatorSerializer
+    filterset_class = ImpactIndicatorFilterSet
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return ImpactIndicator.objects.none()
+
+        county = get_object_or_404(County, slug=self.kwargs['slug'])
+        baseline = ImpactIndicator.objects.filter(
+            county=OuterRef('county'),
+            indicator=OuterRef('indicator'),
+            scenario=Scenario.BASELINE,
+        ).values('value')[:1]
+        return (
+            ImpactIndicator.objects.filter(county=county)
+            .select_related('county', 'data_source')
+            .annotate(baseline_value=Subquery(baseline))
+            .order_by('indicator', 'scenario', 'period')
         )

@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import QuerySet, Value
 from django.utils.text import slugify
 
-from common.enums import Variable
+from common.enums import Indicator, Variable
 from common.models import BaseProjection
 from common.validators import validate_period
 
@@ -88,5 +88,19 @@ class SeaLevelProjection(BaseProjection):
             models.UniqueConstraint(
                 fields=['county', 'scenario', 'year'],
                 name='uniq_sea_level_projection',
+            ),
+        ]
+
+
+class ImpactIndicator(BaseProjection):
+    indicator = models.CharField(max_length=30, choices=Indicator)
+    period = models.CharField(max_length=9, validators=[validate_period])
+    value = models.DecimalField(max_digits=8, decimal_places=3)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['county', 'indicator', 'scenario', 'period'],
+                name='uniq_impact_indicator',
             ),
         ]
