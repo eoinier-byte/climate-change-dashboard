@@ -12,6 +12,7 @@
 //   });
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
 import { mockSeaLevelCork } from '../mocks/seaLevel';
+import { mockImpactsCork } from '../mocks/impacts';
 
 // A short county list in the same shape as GET /api/counties/
 export const mockCountyList = [
@@ -28,6 +29,7 @@ export function mockApiSuccess(api, overrides = {}) {
   api.getCounty.mockResolvedValue(overrides.county ?? mockCork);
   api.getProjections.mockResolvedValue(overrides.projections ?? mockCorkRows);
   api.getSeaLevel.mockResolvedValue(overrides.seaLevel ?? mockSeaLevelCork);
+  api.getImpacts.mockResolvedValue(overrides.impacts ?? mockImpactsCork);
 }
 
 // Every fake never answers, so the page stays on its "Loading…" state.
@@ -38,6 +40,7 @@ export function mockApiLoading(api) {
   api.getCounty.mockImplementation(neverAnswers);
   api.getProjections.mockImplementation(neverAnswers);
   api.getSeaLevel.mockImplementation(neverAnswers);
+  api.getImpacts.mockImplementation(neverAnswers);
 }
 
 // One fake fails with an HTTP error, the same message services/api.js would give,
