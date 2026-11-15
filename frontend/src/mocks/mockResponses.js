@@ -9,9 +9,11 @@
 //
 // THE NUMBERS ARE EXAMPLES, NOT REAL PROJECTIONS. Cork's figures are real (they come from
 // ./countyRows.js and ./seaLevel.js), every other county reuses Cork's with its own name,
-// and the map, impacts and analogue numbers are made up to show the shape.
+// and the map and analogue numbers are made up to show the shape. The impacts are Cork's
+// real figures too (./impacts.js).
 import { COUNTIES } from '../data/counties';
 import { mockCork, mockCorkRows } from './countyRows';
+import { mockImpactsCork } from './impacts';
 import { mockSeaLevelCork, mockSeaLevelInland } from './seaLevel';
 
 // The 15 coastal counties (same list as pipeline/flood_precompute.py)
@@ -159,32 +161,32 @@ const FUTURE_ROWS = [
   ['rcp85', '2021-2050'], ['rcp85', '2071-2100'],
 ];
 
-// GET /impacts/?county={slug} (CCD-367, Taras): everyday indicators instead of raw degrees
-const IMPACT_INDICATORS = [
-  { code: 'frost_days', label: 'Frost days', unit: 'days per year', baseline: 38, changes: [-7, -9, -9, -14, -10, -22] },
-  { code: 'hot_days', label: 'Hot days (25 °C or above)', unit: 'days per year', baseline: 1, changes: [1, 1, 1, 3, 2, 9] },
-  { code: 'heating_degree_days', label: 'Heating degree days', unit: 'degree days', baseline: 2650, changes: [-150, -160, -170, -300, -190, -520] },
-  { code: 'growing_season', label: 'Growing season length', unit: 'days', baseline: 280, changes: [10, 11, 13, 22, 15, 38] },
-];
+// GET /counties/{slug}/impacts/?scenario=&period= (CCD-364, CCD-367, Taras): everyday indicators
+// (frost days, summer days, heating degree days, growing season length) as a flat list like
+// /projections/. Both filters are optional. Every row has its baseline, projected value and change.
+// A choice the API does not know is a 400 that names the field, like the real endpoint's.
+const IMPACT_SCENARIOS = ['baseline', 'rcp26', 'rcp45', 'rcp85'];
+const IMPACT_PERIODS = ['1976-2005', '2021-2050', '2071-2100'];
 
-function impacts(county) {
-  return {
-    county: county.slug,
-    baseline_period: '1976-2005',
-    source: 'translate',
-    indicators: IMPACT_INDICATORS.map(({ code, label, unit, baseline, changes }) => ({
-      code,
-      label,
-      unit,
-      baseline: baseline.toFixed(3),
-      projections: FUTURE_ROWS.map(([scenario, period], index) => ({
-        scenario,
-        period,
-        value: (baseline + changes[index]).toFixed(3),
-        change: changes[index].toFixed(3),
-      })),
-    })),
-  };
+function impacts(county, params) {
+  const checks = [
+    ['scenario', IMPACT_SCENARIOS],
+    ['period', IMPACT_PERIODS],
+  ];
+  const errors = {};
+  checks.forEach(([field, valid]) => {
+    const value = params.get(field);
+    if (value && !valid.includes(value)) {
+      errors[field] = [`Select a valid choice. ${value} is not one of the available choices.`];
+    }
+  });
+  if (Object.keys(errors).length > 0) return { status: 400, body: errors };
+
+  const rows = mockImpactsCork
+    .filter((row) => !params.get('scenario') || row.scenario === params.get('scenario'))
+    .filter((row) => !params.get('period') || row.period === params.get('period'))
+    .map((row) => ({ ...row, county: county.slug }));
+  return { status: 200, body: rows };
 }
 
 // GET /analogues/?county={slug} (CCD-358, Artur): the European city whose present climate
@@ -228,6 +230,12 @@ export function mockGet(path) {
     return county ? { status: 200, body: countyDetail(county) } : notFound();
   }
 
+  const impactsMatch = url.pathname.match(/^\/counties\/([^/]+)\/impacts\/$/);
+  if (impactsMatch) {
+    const county = bySlug(impactsMatch[1]);
+    return county ? impacts(county, params) : notFound();
+  }
+
   const sea = url.pathname.match(/^\/sea-level\/([^/]+)\/$/);
   if (sea) {
     const county = bySlug(sea[1]);
@@ -237,7 +245,6 @@ export function mockGet(path) {
   // These need ?county=slug: 400 if it is missing, 404 if there is no such county
   const needsCounty = {
     '/projections/': (county) => projectionRows(county, params),
-    '/impacts/': impacts,
     '/analogues/': analogues,
   }[url.pathname];
   if (needsCounty) {
