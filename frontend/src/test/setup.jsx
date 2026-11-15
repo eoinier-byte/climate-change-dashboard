@@ -21,17 +21,18 @@ vi.mock('react-leaflet', async () => {
       const holder = useRef(null);
       useEffect(() => {
         if (!onEachFeature) return undefined;
+        const container = holder.current; // copied here, so the cleanup below uses the same element
         fakeLayers.clear();
         data.features.forEach((feature) => {
           const layer = makeFakeLayer();
           onEachFeature(feature, layer);
           layer.fire('add'); // Leaflet fires this once the shape is on the map
           fakeLayers.set(feature.properties.slug, layer);
-          holder.current.appendChild(layer.element);
+          container.appendChild(layer.element);
         });
         return () => {
           fakeLayers.clear();
-          holder.current?.replaceChildren();
+          container.replaceChildren();
         };
       }, [data, onEachFeature]);
 
