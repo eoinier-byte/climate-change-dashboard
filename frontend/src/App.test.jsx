@@ -17,7 +17,6 @@ vi.mock('./services/api', () => ({
 // [path to open, heading the page should show]
 // Pages that are not built yet and still show the Coming soon placeholder
 const pages = [
-  [ROUTES.compare, 'Compare'],
   [ROUTES.seaLevel, 'Flooding'],
   [ROUTES.about, 'About'],
   [ROUTES.login, 'Log in'],
@@ -26,7 +25,10 @@ const pages = [
 ];
 
 // Pages that are built, so they have their own tests next to the page file
-const builtPages = [[countyPath('cork'), 'County dashboard']];
+const builtPages = [
+  [countyPath('cork'), 'County dashboard'],
+  [ROUTES.compare, 'Compare'], // CCD-207
+];
 
 function renderAt(path) {
   render(
