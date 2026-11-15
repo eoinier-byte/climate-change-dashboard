@@ -71,3 +71,9 @@ export const getMap = (choices = {}, opts) => {
   const query = new URLSearchParams(MAP_PARAMS.map((name) => [name, choices[name]]));
   return apiGet(`/map/?${query}`, opts);
 };
+
+
+// Everyday impact indicators for one county (CCD-364, CCD-375): hot days, frost days,
+// heating degree days and growing season length. A flat list like /projections/: one row per
+// indicator, scenario and period, each with baseline_value, projected_value and change.
+export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, opts);
