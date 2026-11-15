@@ -13,7 +13,8 @@ const body = (path) => mockGet(path).body;
 describe('docs/api-examples.md and the mocks agree', () => {
   // Read the doc straight from disk and pick out each <!-- example: name --> JSON block
   const docPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'docs', 'api-examples.md');
-  const doc = readFileSync(docPath, 'utf8');
+  // On Windows, Git may give the file Windows line endings (\r\n), so turn them into plain \n first
+  const doc = readFileSync(docPath, 'utf8').replace(/\r\n/g, '\n');
   const examples = Object.fromEntries(
     [...doc.matchAll(/<!-- example: (\w+) -->\s*```json\n([\s\S]*?)```/g)].map((match) => [match[1], JSON.parse(match[2])]),
   );
