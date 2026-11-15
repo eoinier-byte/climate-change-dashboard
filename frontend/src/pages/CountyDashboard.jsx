@@ -11,8 +11,8 @@
 // so they can be added without moving anything else:
 //   1. Headline numbers  - county name, today's climate
 //   2. Charts            - scenario/period controls, temperature, rainfall, sea level
-//   3. "What this means for you" - everyday impacts (CCD-375), see components/ImpactsBlock.jsx
-//   4. Warming stripes   - slot for CCD-374
+//   3. "What this means for you" - slot for CCD-375 (impacts block)
+//   4. Warming stripes   - temperature stripes for the ticked scenarios (CCD-391)
 //   5. Climate analogue  - slot for CCD-373
 //   6. Actions           - copy link (share); Download PDF goes here (CCD-408)
 // Coastal counties also get a sea-level rise chart (CCD-407).
@@ -21,7 +21,6 @@ import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
-import ImpactsBlock from '../components/ImpactsBlock';
 import Loading from '../components/Loading';
 import ProjectionChart from '../components/ProjectionChart';
 import PeriodFilter from '../components/PeriodFilter';
@@ -29,6 +28,7 @@ import ScenarioFilter from '../components/ScenarioFilter';
 import SeaLevelChart from '../components/SeaLevelChart';
 import SeasonalChart from '../components/SeasonalChart';
 import ShareLink from '../components/ShareLink';
+import WarmingStripes from '../components/WarmingStripes';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
 import useCountyView, { PERIODS } from '../hooks/useCountyView';
 import { getCounty, getProjections, getSeaLevel } from '../services/api';
@@ -118,7 +118,8 @@ export default function CountyDashboard() {
   const shownRows = rows.filter((row) => row.scenario === 'baseline' || selectedScenarios.includes(row.scenario));
 
   // Turn the API rows into what each chart needs
-  const temperature = filterScenarios(buildSeries(rows, county.name, 'temperature'), selectedScenarios);
+  const temperatureSeries = buildSeries(rows, county.name, 'temperature');
+  const temperature = filterScenarios(temperatureSeries, selectedScenarios);
   const precipitation = filterScenarios(buildSeries(rows, county.name, 'precipitation'), selectedScenarios);
   const seasonalTemperature = seasonalRows(shownRows, 'temperature', period);
   const seasonalPrecipitation = seasonalRows(shownRows, 'precipitation', period);
@@ -178,14 +179,12 @@ export default function CountyDashboard() {
         <SeaLevelChart data={seaLevel} selected={selectedScenarios} />
       </section>
 
-      {/* 3. Everyday impacts (CCD-375). It loads its own data and follows the same scenario and
-          period controls as the charts. */}
-      <CountySlot name="impacts" title="What this means for you" story="CCD-375">
-        <ImpactsBlock slug={slug} scenarios={selectedScenarios} period={period} baselinePeriod={summary.period} />
+      {/* 3-5. Reserved slots: put the finished block inside, e.g. <CountySlot ...><ImpactsBlock /></CountySlot> */}
+      <CountySlot name="impacts" title="What this means for you" story="CCD-375" />
+      <CountySlot name="stripes" title="Warming stripes" story="CCD-374">
+        {/* The stripes get the series with every scenario, so their colours stay the same when one is unticked */}
+        {temperatureSeries && <WarmingStripes series={temperatureSeries} selected={selectedScenarios} />}
       </CountySlot>
-
-      {/* 4-5. Reserved slots: put the finished block inside, e.g. <CountySlot ...><WarmingStripes /></CountySlot> */}
-      <CountySlot name="stripes" title="Warming stripes" story="CCD-374" />
       <CountySlot name="analogue" title="Climate analogue" story="CCD-373" />
 
       {/* 6. Actions */}

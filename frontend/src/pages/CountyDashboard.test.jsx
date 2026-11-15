@@ -1,11 +1,10 @@
-// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406, CCD-375).
+// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406, CCD-391).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
-import { getCounties, getCounty, getImpacts, getProjections, getSeaLevel } from '../services/api';
-import { mockImpactsCork } from '../mocks/impacts';
+import { getCounties, getCounty, getProjections, getSeaLevel } from '../services/api';
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
 import { mockSeaLevelCork } from '../mocks/seaLevel';
 import { ROUTES, countyPath } from '../routes';
@@ -16,7 +15,6 @@ vi.mock('../services/api', () => ({
   getCounty: vi.fn(),
   getProjections: vi.fn(),
   getSeaLevel: vi.fn(),
-  getImpacts: vi.fn(),
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real charts
@@ -72,21 +70,6 @@ describe('CountyDashboard', () => {
     getCounty.mockResolvedValue(mockCork);
     getProjections.mockResolvedValue(mockCorkRows);
     getSeaLevel.mockResolvedValue(mockSeaLevelCork);
-    getImpacts.mockResolvedValue(mockImpactsCork);
-  });
-
-  it('shows the "What this means for you" impacts block for the county (CCD-375)', async () => {
-    renderCounty('cork');
-    // The block loads its own data, so wait for one of its cards
-    expect(await screen.findByRole('heading', { name: 'Frost days' })).toBeTruthy();
-    expect(getImpacts).toHaveBeenCalledWith('cork');
-  });
-
-  it('still shows the charts when the impacts request fails (CCD-375)', async () => {
-    getImpacts.mockRejectedValue(new Error('API error 500 for /counties/cork/impacts/'));
-    renderCounty('cork');
-    expect(await screen.findByRole('heading', { name: 'Temperature' })).toBeTruthy();
-    expect(await screen.findByRole('alert')).toBeTruthy();
   });
 
   it('shows the "Choose a county" dropdown with the current county selected (CCD-159, CCD-166)', async () => {
@@ -234,6 +217,21 @@ describe('CountyDashboard', () => {
       'Climate analogue',
       'Share this view',
     ]);
+  });
+
+  it('shows warming stripes for the ticked scenarios (CCD-391)', async () => {
+    renderCounty('cork', '?rcp=85');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Warming stripes for Cork' })).toBeTruthy();
+    expect(screen.getAllByRole('img', { name: /^RCP8\.5, / })).toHaveLength(3);
+    expect(screen.queryAllByRole('img', { name: /^RCP2\.6, / })).toHaveLength(0);
+  });
+
+  it('shows stripes for all three scenarios by default (CCD-391)', async () => {
+    renderCounty('cork');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+    expect(screen.getAllByRole('img', { name: /^RCP/ })).toHaveLength(9);
   });
 
   it('has a "Copy link to this view" button in the actions (CCD-180)', async () => {
