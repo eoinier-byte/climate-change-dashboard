@@ -3,6 +3,7 @@
 // Leaflet and the API are fakes.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import MapExplorer from './MapExplorer';
 import { TEMPERATURE_RAMP } from './mapColours';
 import { getMap } from '../services/api';
@@ -11,6 +12,22 @@ import { STEP_MS } from '../hooks/useMapView';
 vi.mock('../services/api', () => ({ getMap: vi.fn() }));
 // The map is clicked through to a county page by MapView; this test does not use that
 vi.mock('react-router-dom', async (importOriginal) => ({ ...(await importOriginal()), useNavigate: () => vi.fn() }));
+
+// Shows the address, so tests can read what the page wrote into the URL
+function Address() {
+  const { search } = useLocation();
+  return <output data-testid="address">{search}</output>;
+}
+
+// The page opened at the given address, like a link someone was sent
+function renderExplorer(address = '/') {
+  return render(
+    <MemoryRouter initialEntries={[address]}>
+      <MapExplorer />
+      <Address />
+    </MemoryRouter>,
+  );
+}
 
 // What the map last asked the API for. Call this after getMap.mockClear(), so the two requests for the
 // shared colour range (made once, when the page opens) are not counted.
@@ -42,7 +59,7 @@ describe('MapExplorer', () => {
   afterEach(() => vi.useRealTimers());
 
   it('shows the controls above the map, and asks for the end-of-century RCP8.5 map first', () => {
-    render(<MapExplorer />);
+    renderExplorer();
     expect(screen.getByRole('group', { name: 'Scenario' })).toBeTruthy();
     expect(screen.getByRole('slider')).toBeTruthy();
     expect(screen.getByTestId('map')).toBeTruthy();
@@ -50,13 +67,13 @@ describe('MapExplorer', () => {
   });
 
   it('also asks, once, for the coolest and warmest maps, to share one colour scale', () => {
-    render(<MapExplorer />);
+    renderExplorer();
     expect(asked({ scenario: 'baseline', period: '1976-2005', variable: 'temperature', season: 'annual' })).toBe(true);
     expect(asked({ scenario: 'rcp85', period: '2071-2100' })).toBe(true);
   });
 
   it('loads the map for another scenario when it is chosen, keeping the period', () => {
-    render(<MapExplorer />);
+    renderExplorer();
     getMap.mockClear();
 
     fireEvent.click(screen.getByRole('radio', { name: /Middle path/ }));
@@ -67,7 +84,7 @@ describe('MapExplorer', () => {
   });
 
   it('loads the map for another period when the slider is moved, keeping the scenario', () => {
-    render(<MapExplorer />);
+    renderExplorer();
     getMap.mockClear();
 
     fireEvent.change(screen.getByRole('slider'), { target: { value: '0' } });
@@ -78,7 +95,7 @@ describe('MapExplorer', () => {
   });
 
   it('steps to the next period when Play is pressed, then goes back to saying Play', async () => {
-    render(<MapExplorer />);
+    renderExplorer();
     fireEvent.change(screen.getByRole('slider'), { target: { value: '0' } });
     getMap.mockClear();
 
@@ -96,7 +113,7 @@ describe('MapExplorer', () => {
   });
 
   it('starts again from the first period when Play is pressed on the last', () => {
-    render(<MapExplorer />); // it opens on the last period
+    renderExplorer(); // it opens on the last period
     getMap.mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: /Play/ }));
@@ -105,7 +122,7 @@ describe('MapExplorer', () => {
   });
 
   it('stops moving the map when Pause is pressed', async () => {
-    render(<MapExplorer />);
+    renderExplorer();
     fireEvent.change(screen.getByRole('slider'), { target: { value: '0' } });
     fireEvent.click(screen.getByRole('button', { name: /Play/ }));
     fireEvent.click(screen.getByRole('button', { name: /Pause/ }));
@@ -132,7 +149,7 @@ describe('MapExplorer', () => {
     const fillOf = (slug) => screen.getByTestId(`county-${slug}`).dataset.fill;
 
     it('colours the warmest map from the cool end to the warm end of the scale', async () => {
-      render(<MapExplorer />);
+      renderExplorer();
       await act(async () => {});
 
       expect(fillOf('cork')).toBe(TEMPERATURE_RAMP[5]); // 12 on a scale of 9 to 13
@@ -140,7 +157,7 @@ describe('MapExplorer', () => {
     });
 
     it('colours a cooler choice cooler, instead of stretching it over the whole scale', async () => {
-      render(<MapExplorer />);
+      renderExplorer();
       await act(async () => {});
 
       fireEvent.click(screen.getByRole('radio', { name: /Middle path/ }));
@@ -157,12 +174,38 @@ describe('MapExplorer', () => {
         if (scenario === 'baseline') throw new Error('no baseline');
         return answerWith({ cork: 10.2, dublin: 10.4 });
       });
-      render(<MapExplorer />);
+      renderExplorer();
       await act(async () => {});
 
       expect(fillOf('cork')).toBe(TEMPERATURE_RAMP[0]);
       expect(fillOf('dublin')).toBe(TEMPERATURE_RAMP[6]);
       expect(screen.queryByText(/one scale for every scenario and period/)).toBeNull();
+    });
+  });
+
+  describe('the address', () => {
+    it('opens on the scenario and period in the address, and asks the API for that map', () => {
+      renderExplorer('/?rcp=26&year=2050');
+      expect(asked({ variable: 'temperature', scenario: 'rcp26', period: '2021-2050', season: 'annual' })).toBe(true);
+      expect(screen.getByRole('radio', { name: /cuts emissions/ }).checked).toBe(true);
+      expect(screen.getByRole('slider').value).toBe('0');
+    });
+
+    it('writes the scenario to the address when it is switched', () => {
+      renderExplorer();
+      fireEvent.click(screen.getByRole('radio', { name: /Middle path/ }));
+      expect(screen.getByTestId('address').textContent).toBe('?rcp=45');
+    });
+
+    it('writes the period to the address when the slider moves', () => {
+      renderExplorer();
+      fireEvent.change(screen.getByRole('slider'), { target: { value: '0' } });
+      expect(screen.getByTestId('address').textContent).toBe('?year=2050');
+    });
+
+    it('keeps a plain address for the opening view', () => {
+      renderExplorer();
+      expect(screen.getByTestId('address').textContent).toBe('');
     });
   });
 });
