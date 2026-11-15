@@ -17,7 +17,7 @@ from django.db import DatabaseError
 from django.test import TestCase
 
 from climate.management.commands.load_data import COUNTIES
-from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
+from climate.models import ClimateProjection, County, DataSource, ImpactIndicator, SeaLevelProjection
 
 CLIMATE_HEADER = 'county,variable,scenario,period,season,value,unit'
 # Synthetic test data: 2 counties, 4 climate rows.
@@ -217,3 +217,42 @@ class DataSourceFixtureTests(TestCase):
             for name in ('name', 'organisation', 'licence', 'attribution', 'url'):
                 with self.subTest(code=entry['fields']['code'], field=name):
                     self.assertIn(entry['fields'][name], doc)
+
+
+INDICATOR_HEADER = 'county,indicator,scenario,period,value,unit'
+# Synthetic test data: 3 impact-indicator rows.
+INDICATOR_ROWS = [
+    'Cork,frost_days,baseline,1976-2005,30.000,days',
+    'Cork,heating_degree_days,rcp45,2071-2100,1700.000,degC_days',
+    'Kerry,growing_season_length,rcp85,2021-2050,340.000,days',
+]
+
+
+class ImpactIndicatorLoadTests(LoadDataTestCase):
+    """CCD-366: indicators are stored with units and source, and loading is idempotent."""
+
+    def indicators(self, rows=INDICATOR_ROWS):
+        return self.write('impact_indicators.csv', INDICATOR_HEADER, rows)
+
+    def test_stored_with_unit_and_source(self):
+        self.load(self.indicators())
+        row = ImpactIndicator.objects.get(county__name='Cork', indicator='heating_degree_days')
+        self.assertEqual(
+            (row.scenario, row.period, row.season, row.value, row.unit, row.data_source.code),
+            ('rcp45', '2071-2100', 'annual', Decimal('1700.000'), 'degC_days', 'translate'),
+        )
+
+    def test_second_run_creates_nothing(self):
+        path = self.indicators()
+        self.load(path)
+        self.assertEqual(ImpactIndicator.objects.count(), 3)
+
+        out, _ = self.load(path)
+        self.assertEqual(ImpactIndicator.objects.count(), 3)
+        self.assertIn('TOTAL: inserted 0, updated 3, skipped 0', out)
+
+    def test_unit_mismatch_rolls_back_everything(self):
+        rows = [*INDICATOR_ROWS, 'Cork,summer_days,rcp85,2071-2100,14.000,degC_days']
+        with self.assertRaisesMessage(CommandError, "unit 'degC_days' does not match"):
+            self.load(self.indicators(rows))
+        self.assertEqual(ImpactIndicator.objects.count(), 0)

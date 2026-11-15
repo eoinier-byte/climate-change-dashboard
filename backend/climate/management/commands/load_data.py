@@ -1,9 +1,11 @@
-"""Load the processed pipeline CSVs into County, ClimateProjection and SeaLevelProjection (CCD-270).
+"""Load the processed pipeline CSVs into County, ClimateProjection, SeaLevelProjection and ImpactIndicator
+(CCD-270, CCD-366).
 
-    python manage.py load_data                        # both files from pipeline/data/processed/
+    python manage.py load_data                        # all files from pipeline/data/processed/
     python manage.py load_data path/to/sea_level.csv  # only the files given
 
-The file type is decided from its header (climate files have `variable`, sea-level files have `rise_cm`).
+The file type is decided from its header (climate files have `variable`, sea-level files have `rise_cm`,
+impact-indicator files have `indicator`).
 
 Two kinds of problem, handled differently:
 - Row errors (empty or null value, non-numeric value, out of bounds, unknown county): the row is skipped,
@@ -24,12 +26,12 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DatabaseError, transaction
 
-from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
-from common.enums import Scenario, Season, Unit, Variable
+from climate.models import ClimateProjection, County, DataSource, ImpactIndicator, SeaLevelProjection
+from common.enums import Indicator, Scenario, Season, Unit, Variable
 from common.validators import validate_period
 
 DEFAULT_DIR = settings.BASE_DIR.parent / 'pipeline' / 'data' / 'processed'
-DEFAULT_FILES = ('climate_data.csv', 'sea_level.csv')
+DEFAULT_FILES = ('climate_data.csv', 'sea_level.csv', 'impact_indicators.csv')
 
 # The 26 counties of the Republic of Ireland as (name, has_coastline). No local authorities (Fingal etc.).
 # has_coastline: the county borders the open sea, or a sea estuary below the point where it meets a river
@@ -74,6 +76,16 @@ SEA_LEVEL_SEASON = Season.ANNUAL.value  # UKCP18 time-mean sea level is one valu
 # Each variable has exactly one unit (docs/data-flow.md).
 UNIT_FOR_VARIABLE = {Variable.TEMPERATURE: Unit.DEG_C, Variable.PRECIPITATION: Unit.MM}
 
+# Data contract for impact_indicators.csv (CCD-366): annual values only, so the file has no season column.
+INDICATOR_SEASON = Season.ANNUAL.value
+# Each indicator has exactly one unit. Heating degree days are a sum of degrees, not a count of days (CCD-365).
+UNIT_FOR_INDICATOR = {
+    Indicator.FROST_DAYS: Unit.DAYS,
+    Indicator.SUMMER_DAYS: Unit.DAYS,
+    Indicator.HEATING_DEGREE_DAYS: Unit.DEGREE_DAYS,
+    Indicator.GROWING_SEASON_LENGTH: Unit.DAYS,
+}
+
 # Plausibility bounds (inclusive). A value outside them is skipped as a row error.
 # Seasonal/annual mean air temperature in Ireland: the data is 4-18 degC; -10/30 leaves a wide margin.
 TEMPERATURE_BOUNDS_DEGC = (Decimal('-10'), Decimal('30'))
@@ -81,10 +93,17 @@ TEMPERATURE_BOUNDS_DEGC = (Decimal('-10'), Decimal('30'))
 PRECIPITATION_BOUNDS_MM = (Decimal('0'), Decimal('5000'))
 # UKCP18 rise since 1981-2000: small negatives allowed (land uplift); 300 cm is above high-end 2100 estimates.
 SEA_LEVEL_BOUNDS_CM = (Decimal('-50'), Decimal('300'))
+# Day counts can't be negative or exceed a year; the highest heating-degree-day cell in the data is ~3,900.
+DAYS_IN_YEAR_BOUNDS = (Decimal('0'), Decimal('366'))
+HEATING_DEGREE_DAYS_BOUNDS = (Decimal('0'), Decimal('6000'))
 BOUNDS = {
     Variable.TEMPERATURE: TEMPERATURE_BOUNDS_DEGC,
     Variable.PRECIPITATION: PRECIPITATION_BOUNDS_MM,
     'sea_level': SEA_LEVEL_BOUNDS_CM,
+    Indicator.FROST_DAYS: DAYS_IN_YEAR_BOUNDS,
+    Indicator.SUMMER_DAYS: DAYS_IN_YEAR_BOUNDS,
+    Indicator.HEATING_DEGREE_DAYS: HEATING_DEGREE_DAYS_BOUNDS,
+    Indicator.GROWING_SEASON_LENGTH: DAYS_IN_YEAR_BOUNDS,
 }
 
 # Cell text that means "no value". Compared after strip() and lower().
@@ -92,6 +111,7 @@ NULL_TOKENS = {'', 'null', 'none', 'nan', 'na', 'n/a'}
 
 CLIMATE_COLUMNS = ('county', 'variable', 'scenario', 'period', 'season', 'value', 'unit')
 SEA_LEVEL_COLUMNS = ('county', 'scenario', 'year', 'rise_cm', 'source')
+INDICATOR_COLUMNS = ('county', 'indicator', 'scenario', 'period', 'value', 'unit')
 
 # Sea level has no baseline rows: the rise is measured from the 1981-2000 mean (docs/variables.md).
 SEA_LEVEL_SCENARIOS = {Scenario.RCP26.value, Scenario.RCP45.value, Scenario.RCP85.value}
@@ -168,6 +188,8 @@ class Command(BaseCommand):
                 columns, load_row, source = CLIMATE_COLUMNS, self.load_climate_row, sources['translate']
             elif 'rise_cm' in header:
                 columns, load_row, source = SEA_LEVEL_COLUMNS, self.load_sea_level_row, sources['ukcp18']
+            elif 'indicator' in header:
+                columns, load_row, source = INDICATOR_COLUMNS, self.load_indicator_row, sources['translate']
             else:
                 raise CommandError(f'{path}: not a climate or sea-level file (header: {sorted(header)})')
             missing = [c for c in columns if c not in header]
@@ -236,6 +258,27 @@ class Command(BaseCommand):
                 'provenance': values['source'],
                 'data_source': source,
             },
+        )
+        return created
+
+    def load_indicator_row(self, row: dict, source: DataSource, where: str) -> bool:
+        values = required(row, INDICATOR_COLUMNS)
+        indicator = choice(values['indicator'], Indicator, 'indicator', where)
+        scenario = choice(values['scenario'], Scenario, 'scenario', where)
+        period = period_or_error(values['period'], where)
+        unit = values['unit']
+        if unit != UNIT_FOR_INDICATOR[indicator]:
+            raise CommandError(f'{where}: unit {unit!r} does not match indicator {indicator!r}')
+
+        county = self.county(values['county'])
+        value = in_bounds(number(values['value'], 'value'), BOUNDS[indicator], f'{indicator} value', unit)
+
+        _, created = ImpactIndicator.objects.update_or_create(
+            county=county,
+            indicator=indicator,
+            scenario=scenario,
+            period=period,
+            defaults={'value': value, 'unit': unit, 'season': INDICATOR_SEASON, 'data_source': source},
         )
         return created
 

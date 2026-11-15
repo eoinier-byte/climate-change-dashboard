@@ -3,7 +3,6 @@ from typing import Any, Iterable
 
 from django.db.models import Model
 
-from climate.models import ClimateProjection
 from common.enums import Variable
 
 
@@ -17,8 +16,8 @@ def change_from_baseline(value: Decimal, base: Decimal, variable: str) -> Decima
     return round(value - base, 2)
 
 
-def get_period_choices():
-    return [(period, period) for period in distinct('period', ClimateProjection)]
+def get_period_choices(model: type[Model]) -> list[tuple[str, str]]:
+    return [(period, period) for period in distinct('period', model)]
 
 
 def validate_choice(field: str, val: Any, choices: Iterable[str], errors: dict) -> None:

@@ -4,9 +4,9 @@ from typing import Any
 from django.conf import settings
 from rest_framework import serializers
 
-from climate.models import ClimateProjection, County, SeaLevelProjection
+from climate.models import ClimateProjection, County, ImpactIndicator, SeaLevelProjection
 from common.enums import Scenario, Season, Unit, Variable
-from common.serializers import CountySerializer, ProjectionSerializer
+from common.serializers import CountySerializer, ProjectionChangeSerializer, ProjectionSerializer
 from common.utils import change_from_baseline
 
 
@@ -40,29 +40,18 @@ class SeaLevelProjectionSerializer(ProjectionSerializer):
         fields = (*ProjectionSerializer.Meta.fields, 'year', 'provenance')
 
 
-class ClimateProjectionSerializer(ProjectionSerializer):
-    county = serializers.SlugRelatedField(slug_field='slug', read_only=True)
-    baseline_value = serializers.DecimalField(max_digits=8, decimal_places=3, read_only=True)
-    projected_value = serializers.DecimalField(source='value', max_digits=8, decimal_places=3, read_only=True)
-    change = serializers.SerializerMethodField()
+class ClimateProjectionSerializer(ProjectionChangeSerializer):
+    var_field = 'variable'
 
-    class Meta:
+    class Meta(ProjectionChangeSerializer.Meta):
         model = ClimateProjection
-        fields = (
-            *ProjectionSerializer.Meta.fields,
-            'variable',
-            'period',
-            'season',
-            'baseline_value',
-            'projected_value',
-            'change',
-        )
 
-    @staticmethod
-    def get_change(obj) -> Decimal | None:
-        if obj.baseline_value is None:
-            return None
-        return change_from_baseline(obj.value, obj.baseline_value, obj.variable)
+
+class ImpactIndicatorSerializer(ProjectionChangeSerializer):
+    var_field = 'indicator'
+
+    class Meta(ProjectionChangeSerializer.Meta):
+        model = ImpactIndicator
 
 
 class ClimateSeriesSerializer(serializers.ModelSerializer):

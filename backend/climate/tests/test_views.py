@@ -4,9 +4,9 @@ from http import HTTPStatus
 from django.shortcuts import reverse
 from rest_framework.test import APITestCase
 
-from climate.models import ClimateProjection, County, SeaLevelProjection
+from climate.models import ClimateProjection, County, ImpactIndicator, SeaLevelProjection
 from climate.tests.base import ProjectionTestCase
-from common.enums import Scenario, Season, Unit, Variable
+from common.enums import Indicator, Scenario, Season, Unit, Variable
 
 
 class CountyViewSetTestCase(APITestCase):
@@ -600,3 +600,72 @@ class MetaViewCacheTestCase(ProjectionTestCase, APITestCase):
         self.assertEqual(self.client.get(self.url).json()['sea_level_years'], [])
         self.create_sea_level_projection(year=2100)
         self.assertEqual(self.client.get(self.url).json()['sea_level_years'], [2100])
+
+
+class ImpactIndicatorListViewTestCase(ProjectionTestCase, APITestCase):
+    """CCD-368: GET /api/counties/{slug}/impacts/ returns 200, 400 and 404."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+        days = {'county': cls.county, 'data_source': cls.translate, 'season': Season.ANNUAL, 'unit': Unit.DAYS}
+        degree_days = {**days, 'unit': Unit.DEGREE_DAYS}
+        for fields, indicator, scenario, period, value in (
+            (days, Indicator.FROST_DAYS, Scenario.BASELINE, '1976-2005', '30.000'),
+            (days, Indicator.FROST_DAYS, Scenario.RCP45, '2071-2100', '15.000'),
+            (days, Indicator.FROST_DAYS, Scenario.RCP85, '2071-2100', '6.000'),
+            (degree_days, Indicator.HEATING_DEGREE_DAYS, Scenario.BASELINE, '1976-2005', '2100.000'),
+            (degree_days, Indicator.HEATING_DEGREE_DAYS, Scenario.RCP45, '2071-2100', '1700.000'),
+        ):
+            ImpactIndicator.objects.create(
+                **fields, indicator=indicator, scenario=scenario, period=period, value=Decimal(value)
+            )
+        ImpactIndicator.objects.create(
+            **{**days, 'county': cls.kerry},
+            indicator=Indicator.FROST_DAYS,
+            scenario=Scenario.BASELINE,
+            period='1976-2005',
+            value=Decimal('20.000'),
+        )
+
+    def get(self, slug='cork', **params):
+        return self.client.get(reverse('climate:impacts', args=[slug]), params)
+
+    def test_200_returns_only_requested_county(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(len(response.json()), 5)
+        self.assertEqual({row['county'] for row in response.json()}, {'cork'})
+
+    def test_200_row_has_baseline_projected_value_and_change(self):
+        rows = self.get(scenario='rcp45').json()
+        row = next(r for r in rows if r['indicator'] == 'frost_days')
+        self.assertEqual(
+            (row['baseline_value'], row['projected_value'], row['change'], row['units'], row['source']),
+            ('30.000', '15.000', -15.0, 'days', 'translate'),
+        )
+
+    def test_200_filters_by_scenario_and_period(self):
+        response = self.get(scenario='rcp85', period='2071-2100')
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.json())
+        rows = [(r['indicator'], r['scenario'], r['period']) for r in response.json()]
+        self.assertEqual(rows, [('frost_days', 'rcp85', '2071-2100')])
+
+    def test_200_county_without_indicators_returns_empty_list(self):
+        County.objects.create(name='Offaly')
+        response = self.get('offaly')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json(), [])
+
+    def test_400_invalid_filter(self):
+        for field, value in (('scenario', 'rcp60'), ('period', '2000-2001')):
+            with self.subTest(field=field):
+                response = self.get(**{field: value})
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(field, response.json())
+
+    def test_404_unknown_county(self):
+        response = self.get('atlantis')
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertIn('detail', response.json())

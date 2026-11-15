@@ -25,3 +25,12 @@ class Unit(models.TextChoices):
     DEG_C = 'degC', '°C'
     MM = 'mm', 'mm'
     CM = 'cm', 'cm'
+    DAYS = 'days', 'days'
+    DEGREE_DAYS = 'degC_days', '°C·days'
+
+
+class Indicator(models.TextChoices):
+    FROST_DAYS = 'frost_days', 'Frost days'
+    SUMMER_DAYS = 'summer_days', 'Summer days'
+    HEATING_DEGREE_DAYS = 'heating_degree_days', 'Heating degree days'
+    GROWING_SEASON_LENGTH = 'growing_season_length', 'Growing season length'
