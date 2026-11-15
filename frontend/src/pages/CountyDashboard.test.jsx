@@ -1,4 +1,4 @@
-// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406, CCD-375).
+// Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406, CCD-375, CCD-391).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -234,6 +234,21 @@ describe('CountyDashboard', () => {
       'Climate analogue',
       'Share this view',
     ]);
+  });
+
+  it('shows warming stripes for the ticked scenarios (CCD-391)', async () => {
+    renderCounty('cork', '?rcp=85');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Warming stripes for Cork' })).toBeTruthy();
+    expect(screen.getAllByRole('img', { name: /^RCP8\.5, / })).toHaveLength(3);
+    expect(screen.queryAllByRole('img', { name: /^RCP2\.6, / })).toHaveLength(0);
+  });
+
+  it('shows stripes for all three scenarios by default (CCD-391)', async () => {
+    renderCounty('cork');
+    await screen.findByRole('heading', { level: 1, name: 'Cork' });
+    expect(screen.getAllByRole('img', { name: /^RCP/ })).toHaveLength(9);
   });
 
   it('has a "Copy link to this view" button in the actions (CCD-180)', async () => {

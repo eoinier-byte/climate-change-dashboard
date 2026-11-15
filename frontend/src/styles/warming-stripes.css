@@ -1,0 +1,67 @@
+/* Warming stripes (CCD-391). Uses the theme variables; the stripe colours come from stripeColors.js. */
+.warming-stripes {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.warming-stripes__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.warming-stripes__subtitle {
+  margin: var(--space-1) 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.warming-stripes__row {
+  margin-top: var(--space-3);
+}
+
+.warming-stripes__scenario {
+  margin: 0 0 var(--space-1);
+  font-weight: 600;
+}
+
+/* The bars touch each other, so a row reads as one set of stripes */
+.warming-stripes__bars,
+.warming-stripes__axis {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.warming-stripes__bar-item,
+.warming-stripes__axis li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.warming-stripes__bar {
+  height: 3.5rem;
+}
+
+/* No value for this period: a plain grey bar */
+.warming-stripes__bar--empty {
+  background: var(--color-surface);
+}
+
+.warming-stripes__axis {
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.warming-stripes__axis li {
+  text-align: center;
+}
+
+.warming-stripes__caption {
+  margin-top: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
