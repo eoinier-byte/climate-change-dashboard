@@ -1,27 +1,23 @@
-// Loads what the Compare page needs (CCD-207):
+// The data the Compare page needs (CCD-207, CCD-378), as two small hooks.
 //
-//   const { counties, rows, loading, error, retry } = useCompareData('cork');
+//   const counties = useCounties();
+//   const { rows, loading, error, retry } = useProjectionRows('cork');
 //
-//   counties - the county list for the dropdown ([] until it arrives, or if it cannot be loaded; the
-//              page still works without it)
-//   rows     - every projection row for the county (GET /api/projections/?county=cork), or null
-//   loading  - true until the rows for THE CURRENT county have arrived
-//   error    - the error if the rows could not be loaded, otherwise null
-//   retry    - asks for the rows again (for the Retry button of ErrorMessage)
+// useCounties gives the county list for the dropdowns ([] until it arrives, or if it cannot be loaded;
+// the page still works without it).
 //
-// Both scenarios, both periods and every season come in one request, so changing the scenarios or the
-// period never needs another one. Only choosing another county does. If the old county's answer arrives
-// late it is ignored, so the table can never show one county under another's name.
+// useProjectionRows gives every projection row for one county (GET /api/projections/?county=cork), or
+// null while loading. Both scenarios, both periods and every season come in one request, so changing the
+// scenarios or the period never needs another one. Only choosing another county does. If the old county's
+// answer arrives late it is ignored, so the table can never show one county under another's name.
+//   loading - true until the rows for THE CURRENT county have arrived
+//   error   - the error if the rows could not be loaded, otherwise null
+//   retry   - asks for the rows again (for the Retry button of ErrorMessage)
 import { useEffect, useState } from 'react';
 import { getCounties, getProjections } from '../services/api';
 
-export default function useCompareData(slug) {
+export function useCounties() {
   const [counties, setCounties] = useState([]);
-  const [attempt, setAttempt] = useState(0);
-  // { key, rows } when it worked, or { key, error } when it failed
-  const [result, setResult] = useState(null);
-
-  const key = `${slug}|${attempt}`;
 
   // The county list is loaded once
   useEffect(() => {
@@ -32,13 +28,23 @@ export default function useCompareData(slug) {
         if (!ignore) setCounties(list);
       })
       .catch(() => {
-        // Without the list the dropdown is hidden; the comparison itself still works
+        // Without the list the dropdowns are hidden; the comparison itself still works
       });
     return () => {
       ignore = true;
       controller.abort();
     };
   }, []);
+
+  return counties;
+}
+
+export function useProjectionRows(slug) {
+  const [attempt, setAttempt] = useState(0);
+  // { key, rows } when it worked, or { key, error } when it failed
+  const [result, setResult] = useState(null);
+
+  const key = `${slug}|${attempt}`;
 
   useEffect(() => {
     let ignore = false;
@@ -60,7 +66,6 @@ export default function useCompareData(slug) {
   const current = result?.key === key ? result : null;
 
   return {
-    counties,
     rows: current?.rows ?? null,
     loading: current === null,
     error: current?.error ?? null,

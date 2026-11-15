@@ -1,13 +1,53 @@
-// The choices at the top of the Compare page (CCD-207): which county, which two scenarios and which
-// period. They are plain dropdowns and radio buttons, so they work with the keyboard and a screen reader.
-// Props:
-//   counties   - the county list [{ name, slug }]; the county dropdown is hidden while it is empty
-//   county     - the slug chosen now
-//   first, second - the two scenarios chosen now, e.g. 'rcp26' and 'rcp85'
-//   period     - the period chosen now
-//   onCounty, onFirst, onSecond, onPeriod - called with the new choice
+// The choices at the top of the Compare page (CCD-207, CCD-378): the mode (what is being compared), and
+// the controls for that mode. They are plain dropdowns and radio buttons, so they work with the keyboard
+// and a screen reader.
 import { MAP_SCENARIOS, PERIOD_NAMES } from '../hooks/useMapView';
 import { PERIODS } from '../hooks/useCountyView';
+
+const MODE_NAMES = {
+  scenarios: 'Two scenarios in one county',
+  counties: 'Two counties under one scenario',
+};
+
+// Choose what to compare. Props: mode, modes (the list to offer), onChange(mode)
+export function ModeSwitch({ mode, modes, onChange }) {
+  return (
+    <fieldset className="scenario-filter">
+      <legend>Compare</legend>
+      {modes.map((item) => (
+        <label key={item} className="scenario-filter__option">
+          <input type="radio" name="compare-mode" value={item} checked={item === mode} onChange={() => onChange(item)} />
+          {MODE_NAMES[item]}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+// A dropdown of counties. The county list [{ name, slug }] can be empty (still loading, or it could not
+// be loaded), and then nothing is shown.
+function CountyField({ id, label, counties, value, onChange }) {
+  if (counties.length === 0) return null;
+  const known = counties.some((item) => item.slug === value);
+
+  return (
+    <div className="compare-controls__field">
+      <label htmlFor={id}>{label}</label>
+      <select id={id} value={known ? value : ''} onChange={(event) => onChange(event.target.value)}>
+        {!known && (
+          <option value="" disabled>
+            Select…
+          </option>
+        )}
+        {counties.map((item) => (
+          <option key={item.slug} value={item.slug}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function ScenarioSelect({ id, label, value, onChange }) {
   return (
@@ -24,41 +64,52 @@ function ScenarioSelect({ id, label, value, onChange }) {
   );
 }
 
-export default function CompareControls({ counties, county, first, second, period, onCounty, onFirst, onSecond, onPeriod }) {
-  const known = counties.some((item) => item.slug === county);
+function PeriodChoice({ period, onChange }) {
+  return (
+    <fieldset className="scenario-filter">
+      <legend>Period</legend>
+      {PERIODS.map((item) => (
+        <label key={item} className="scenario-filter__option">
+          <input type="radio" name="compare-period" value={item} checked={item === period} onChange={() => onChange(item)} />
+          {PERIOD_NAMES[item] || item} ({item})
+        </label>
+      ))}
+    </fieldset>
+  );
+}
 
+// Comparing two scenarios in one county (CCD-207).
+// Props: counties, county, first, second, period, onCounty, onFirst, onSecond, onPeriod
+export default function CompareControls({ counties, county, first, second, period, onCounty, onFirst, onSecond, onPeriod }) {
   return (
     <div className="compare-controls">
-      {counties.length > 0 && (
-        <div className="compare-controls__field">
-          <label htmlFor="compare-county">County</label>
-          <select id="compare-county" value={known ? county : ''} onChange={(event) => onCounty(event.target.value)}>
-            {!known && (
-              <option value="" disabled>
-                Select…
-              </option>
-            )}
-            {counties.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
+      <CountyField id="compare-county" label="County" counties={counties} value={county} onChange={onCounty} />
       <ScenarioSelect id="compare-first" label="First scenario" value={first} onChange={onFirst} />
       <ScenarioSelect id="compare-second" label="Second scenario" value={second} onChange={onSecond} />
+      <PeriodChoice period={period} onChange={onPeriod} />
+    </div>
+  );
+}
 
-      <fieldset className="scenario-filter">
-        <legend>Period</legend>
-        {PERIODS.map((item) => (
-          <label key={item} className="scenario-filter__option">
-            <input type="radio" name="compare-period" value={item} checked={item === period} onChange={() => onPeriod(item)} />
-            {PERIOD_NAMES[item] || item} ({item})
-          </label>
-        ))}
-      </fieldset>
+// Comparing one scenario in two counties (CCD-378).
+// Props: counties, county, county2, scenario, period, onCounty, onSecondCounty, onScenario, onPeriod
+export function CountyCompareControls({
+  counties,
+  county,
+  county2,
+  scenario,
+  period,
+  onCounty,
+  onSecondCounty,
+  onScenario,
+  onPeriod,
+}) {
+  return (
+    <div className="compare-controls">
+      <CountyField id="compare-county" label="First county" counties={counties} value={county} onChange={onCounty} />
+      <CountyField id="compare-county2" label="Second county" counties={counties} value={county2} onChange={onSecondCounty} />
+      <ScenarioSelect id="compare-scenario" label="Scenario" value={scenario} onChange={onScenario} />
+      <PeriodChoice period={period} onChange={onPeriod} />
     </div>
   );
 }
