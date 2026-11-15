@@ -1,11 +1,12 @@
-// Tests for the county map (CCD-379, CCD-380). Leaflet is replaced by a stand-in in src/test/setup.jsx,
+// Tests for the county map (CCD-379, CCD-380, CCD-381). Leaflet is replaced by a stand-in in src/test/setup.jsx,
 // and the API by a fake, so nothing here needs a browser or the backend.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MapView from './MapView';
 import { getMap } from '../services/api';
 import { fakeMap } from '../test/fakeLeafletMap';
+import { NO_DATA_COLOUR, PRECIPITATION_RAMP, TEMPERATURE_RAMP } from './mapColours';
 
 vi.mock('../services/api', () => ({ getMap: vi.fn() }));
 
@@ -23,6 +24,24 @@ const mapAnswer = {
 
 // Looks like the error services/api.js throws
 const serverError = Object.assign(new Error('API error 500 for /map/'), { name: 'ApiError', status: 500 });
+
+// An answer with the given values, e.g. answerWith({ dublin: 10, cork: 11, donegal: 12 })
+function answerWith(values, extra = {}) {
+  const numbers = Object.values(values);
+  return {
+    ...mapAnswer,
+    min: Math.min(...numbers).toFixed(3),
+    max: Math.max(...numbers).toFixed(3),
+    results: Object.entries(values).map(([slug, value]) => ({
+      county: { name: slug, slug, has_coastline: true },
+      value: value.toFixed(3),
+      unit: 'degC',
+    })),
+    ...extra,
+  };
+}
+
+const fillOf = (slug) => screen.getByTestId(`county-${slug}`).dataset.fill;
 
 describe('MapView', () => {
   beforeEach(() => {
@@ -110,6 +129,90 @@ describe('MapView', () => {
 
       await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
       expect(getMap).toHaveBeenCalledTimes(2);
+    });
+  });
+  describe('colouring the counties (CCD-381)', () => {
+    it('leaves every county plain grey until the values arrive', () => {
+      render(<MapView />);
+      expect(fillOf('cork')).toBe(NO_DATA_COLOUR);
+      expect(fillOf('dublin')).toBe(NO_DATA_COLOUR);
+      expect(screen.queryByRole('group', { name: /temperature/i })).toBeNull();
+    });
+
+    it('colours each county from its value: coolest to warmest', async () => {
+      getMap.mockResolvedValue(answerWith({ dublin: 10, cork: 11, donegal: 12 }));
+      render(<MapView />);
+
+      await waitFor(() => expect(fillOf('dublin')).toBe(TEMPERATURE_RAMP[0]));
+      expect(fillOf('cork')).toBe(TEMPERATURE_RAMP[3]);
+      expect(fillOf('donegal')).toBe(TEMPERATURE_RAMP[6]);
+    });
+
+    it('leaves a county with no value grey', async () => {
+      getMap.mockResolvedValue(answerWith({ dublin: 10, donegal: 12 }));
+      render(<MapView />);
+
+      await waitFor(() => expect(fillOf('dublin')).toBe(TEMPERATURE_RAMP[0]));
+      expect(fillOf('cork')).toBe(NO_DATA_COLOUR);
+    });
+
+    it('uses a different set of colours for rainfall', async () => {
+      getMap.mockResolvedValue(answerWith({ dublin: 800, donegal: 1600 }, { variable: 'precipitation', unit: 'mm' }));
+      render(<MapView variable="precipitation" />);
+
+      await waitFor(() => expect(fillOf('dublin')).toBe(PRECIPITATION_RAMP[0]));
+      expect(fillOf('donegal')).toBe(PRECIPITATION_RAMP[6]);
+    });
+
+    it('shows a legend with the variable, season, scenario, period and units', async () => {
+      getMap.mockResolvedValue(answerWith({ dublin: 10, cork: 11, donegal: 12 }));
+      render(<MapView />);
+
+      const legend = await screen.findByRole('group', {
+        name: 'Average temperature, whole year, RCP8.5, 2071\u20132100 (\u00b0C)',
+      });
+      // One entry per colour, with its range, so colour is not the only way to read the map
+      const entries = within(legend).getAllByRole('listitem');
+      expect(entries).toHaveLength(7);
+      expect(entries[0].textContent).toBe('10.0\u201310.3');
+      expect(entries[6].textContent).toBe('11.7\u201312.0');
+    });
+
+    it('updates the legend when the choice changes', async () => {
+      getMap
+        .mockResolvedValueOnce(answerWith({ dublin: 10, donegal: 12 }))
+        .mockResolvedValueOnce(answerWith({ dublin: 9, donegal: 10 }, { scenario: 'rcp45', period: '2021-2050' }));
+      const { rerender } = render(<MapView />);
+      await screen.findByRole('group', { name: /RCP8\.5, 2071\u20132100/ });
+
+      rerender(<MapView scenario="rcp45" period="2021-2050" />);
+
+      expect(await screen.findByRole('group', { name: /RCP4\.5, 2021\u20132050/ })).toBeTruthy();
+      expect(screen.queryByRole('group', { name: /RCP8\.5/ })).toBeNull();
+    });
+
+    it('says how many counties have no value', async () => {
+      getMap.mockResolvedValue(answerWith({ dublin: 10, donegal: 12 }));
+      render(<MapView />);
+
+      expect(await screen.findByText('24 counties have no value and are shown in grey.')).toBeTruthy();
+    });
+
+    it('says so when there are no values for the choice, and colours nothing', async () => {
+      getMap.mockResolvedValue({ ...mapAnswer, min: null, max: null, results: [] });
+      render(<MapView />);
+
+      expect(await screen.findByText('There are no values for this choice.')).toBeTruthy();
+      expect(fillOf('cork')).toBe(NO_DATA_COLOUR);
+    });
+
+    it('shows no legend and no colours when the request fails', async () => {
+      getMap.mockRejectedValue(serverError);
+      render(<MapView />);
+
+      await screen.findByRole('alert');
+      expect(screen.queryByRole('group')).toBeNull();
+      expect(fillOf('cork')).toBe(NO_DATA_COLOUR);
     });
   });
 });

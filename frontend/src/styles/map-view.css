@@ -1,4 +1,4 @@
-/* The county map (CCD-379, CCD-380). */
+/* The county map (CCD-379, CCD-380, CCD-381). */
 .map-view {
   margin: 0;
 }
@@ -40,4 +40,47 @@
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   border-top: 1px solid var(--color-border);
+}
+
+/* The key to the map colours (CCD-381): a title, then one swatch and number range per colour */
+.map-legend {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.map-legend__title {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+.map-legend__bins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-legend__bin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A dark edge keeps the palest colours visible on a white page */
+.map-legend__swatch {
+  flex: none;
+  width: 1.25rem;
+  height: 1rem;
+  border: 1px solid var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.map-legend__note {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
 }
