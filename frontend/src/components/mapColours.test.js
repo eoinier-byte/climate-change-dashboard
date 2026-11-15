@@ -9,6 +9,7 @@ import {
   NO_DATA_COLOUR,
   PRECIPITATION_RAMP,
   RAMPS,
+  sharedRange,
   TEMPERATURE_RAMP,
 } from './mapColours';
 
@@ -257,5 +258,62 @@ describe('countyLabel', () => {
 
   it('is just the name until the values arrive', () => {
     expect(countyLabel('Cork', 'cork', null, 'temperature', undefined)).toBe('Cork');
+  });
+});
+
+describe('sharing one colour range between choices', () => {
+  it('colours a cool map as cool and a warm map as warm, on the same scale', () => {
+    const range = [9, 13];
+    const cool = buildMapColours(answerWith({ carlow: 9.1, dublin: 9.3 }), SLUGS, range);
+    const warm = buildMapColours(answerWith({ carlow: 12.7, dublin: 12.9 }), SLUGS, range);
+    expect(cool.colourFor('carlow')).toBe(TEMPERATURE_RAMP[0]);
+    expect(warm.colourFor('dublin')).toBe(TEMPERATURE_RAMP[6]);
+  });
+
+  it('without a range, each map uses its own lowest and highest, so both look the same', () => {
+    const cool = buildMapColours(answerWith({ carlow: 9.1, dublin: 9.3 }), SLUGS);
+    const warm = buildMapColours(answerWith({ carlow: 12.7, dublin: 12.9 }), SLUGS);
+    expect(cool.colourFor('carlow')).toBe(warm.colourFor('carlow'));
+    expect(cool.shared).toBe(false);
+  });
+
+  it('draws the legend over the shared range', () => {
+    const colours = buildMapColours(answerWith({ carlow: 10, dublin: 11 }), SLUGS, [9, 13]);
+    expect(colours.shared).toBe(true);
+    expect(colours.bins[0].from).toBe(9);
+    expect(colours.bins[6].to).toBe(13);
+  });
+
+  it('keeps a value outside the range at the nearest end', () => {
+    const colours = buildMapColours(answerWith({ carlow: 5, dublin: 20 }), SLUGS, [9, 13]);
+    expect(colours.colourFor('carlow')).toBe(TEMPERATURE_RAMP[0]);
+    expect(colours.colourFor('dublin')).toBe(TEMPERATURE_RAMP[6]);
+  });
+
+  it('ignores a range that is not usable', () => {
+    const own = buildMapColours(answerWith({ carlow: 10, dublin: 12 }), SLUGS);
+    for (const range of [[5, 5], [8, 3], [NaN, 4], [null, null]]) {
+      const colours = buildMapColours(answerWith({ carlow: 10, dublin: 12 }), SLUGS, range);
+      expect(colours.shared).toBe(false);
+      expect(colours.colourFor('dublin')).toBe(own.colourFor('dublin'));
+    }
+  });
+});
+
+describe('sharedRange', () => {
+  it('gives the lowest minimum and the highest maximum of the answers', () => {
+    const baseline = answerWith({ carlow: 9, dublin: 10 });
+    const warm = answerWith({ carlow: 12, dublin: 13 });
+    expect(sharedRange([baseline, warm])).toEqual([9, 13]);
+  });
+
+  it('gives nothing until every answer has arrived', () => {
+    expect(sharedRange([answerWith({ carlow: 9, dublin: 10 }), null])).toBeNull();
+    expect(sharedRange([])).toBeNull();
+  });
+
+  it('gives nothing when an answer has no usable range', () => {
+    const empty = { variable: 'temperature', unit: 'degC', min: null, max: null, results: [] };
+    expect(sharedRange([answerWith({ carlow: 9, dublin: 10 }), empty])).toBeNull();
   });
 });

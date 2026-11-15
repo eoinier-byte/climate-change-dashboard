@@ -19,8 +19,10 @@ import '../styles/map-view.css';
 // reached with the keyboard: Tab to it, Enter to open it (CCD-382). The scenario controls come from
 // CCD-383 and CCD-384.
 //
-// Props: the choice to load. The defaults are the end-of-century temperature under RCP8.5; the
-// scenario and period controls (CCD-383) will pass their own.
+// Props: the choice to load (variable, scenario, period, season). The defaults are the end-of-century
+// temperature under RCP8.5; the scenario and period controls (CCD-383) pass their own.
+// Optional "colourRange" ([min, max]) colours every choice on the same scale, so a warmer scenario looks
+// warmer. Without it each choice is coloured between its own lowest and highest county.
 
 // The island of Ireland as [[south, west], [north, east]]. The map zooms to fit this,
 // so it fills a phone and a desktop screen alike.
@@ -62,13 +64,19 @@ function FitToIreland() {
   return null;
 }
 
-export default function MapView({ variable = 'temperature', scenario = 'rcp85', period = DEFAULT_PERIOD, season = 'annual' }) {
+export default function MapView({
+  variable = 'temperature',
+  scenario = 'rcp85',
+  period = DEFAULT_PERIOD,
+  season = 'annual',
+  colourRange = null,
+}) {
   const { data, loading, error, retry } = useMapData(variable, scenario, period, season);
   const navigate = useNavigate();
 
   // The colours for these values; null until they arrive, so the counties start plain grey.
   // Leaflet only redraws when the style function changes, so this is rebuilt only with new data.
-  const colours = useMemo(() => buildMapColours(data, COUNTY_SLUGS), [data]);
+  const colours = useMemo(() => buildMapColours(data, COUNTY_SLUGS, colourRange), [data, colourRange]);
   const styleCounty = useCallback(
     (feature) => ({ ...OUTLINE_STYLE, fillColor: colours ? colours.colourFor(feature.properties.slug) : NO_DATA_COLOUR }),
     [colours],

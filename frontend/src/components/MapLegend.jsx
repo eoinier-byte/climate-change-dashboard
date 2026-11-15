@@ -23,6 +23,9 @@ export default function MapLegend({ choice, colours }) {
       ) : (
         <p className="map-legend__note">There are no values for this choice.</p>
       )}
+      {colours.hasValues && colours.shared && (
+        <p className="map-legend__note">The colours use one scale for every scenario and period, so maps can be compared.</p>
+      )}
       {colours.hasValues && colours.missing > 0 && (
         <p className="map-legend__note">
           {colours.missing === 1 ? 'One county has' : `${colours.missing} counties have`} no value and{' '}
