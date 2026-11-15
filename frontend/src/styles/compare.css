@@ -115,3 +115,17 @@
   color: var(--color-text-muted);
   font-size: 0.875rem;
 }
+
+/* Comparing counties (CCD-378): a coloured top edge in each county's chart colour. The heading also says
+   the county's name, so colour is not the only cue. */
+.compare-table__scenario--county1 {
+  border-top-color: #0b5d4b;
+}
+.compare-table__scenario--county2 {
+  border-top-color: #1d4ed8;
+}
+
+/* The mode choice sits above the other controls */
+.compare-page > .scenario-filter {
+  margin-top: var(--space-4);
+}

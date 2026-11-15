@@ -3,7 +3,14 @@ import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PERIOD } from './useCountyView';
-import useCompareView, { DEFAULT_COUNTY, DEFAULT_FIRST, DEFAULT_SECOND } from './useCompareView';
+import useCompareView, {
+  DEFAULT_COUNTY,
+  DEFAULT_FIRST,
+  DEFAULT_MODE,
+  DEFAULT_SCENARIO,
+  DEFAULT_SECOND,
+  DEFAULT_SECOND_COUNTY,
+} from './useCompareView';
 
 // The hook on a page opened at the given address. Gives back the hook's values and the address the page
 // is at now, so a test can check both what the hook returns and what it wrote into the URL.
@@ -81,5 +88,68 @@ describe('useCompareView', () => {
     const { result } = renderView('/compare?utm_source=newsletter');
     act(() => result.current.setCounty('kerry'));
     expect(new URLSearchParams(result.current.address).get('utm_source')).toBe('newsletter');
+  });
+});
+
+describe('useCompareView: comparing counties (CCD-378)', () => {
+  it('starts on comparing scenarios, with Cork and Kerry and RCP8.5 ready for the other mode', () => {
+    const { result } = renderView();
+    expect(result.current).toMatchObject({ mode: 'scenarios', county2: 'kerry', scenario: 'rcp85' });
+    expect([DEFAULT_MODE, DEFAULT_SECOND_COUNTY, DEFAULT_SCENARIO]).toEqual(['scenarios', 'kerry', 'rcp85']);
+  });
+
+  it('reads the mode, both counties and the scenario from the address', () => {
+    const { result } = renderView('/compare?mode=counties&county=donegal&county2=kerry&rcp=45&period=2021-2050');
+    expect(result.current).toMatchObject({
+      mode: 'counties',
+      county: 'donegal',
+      county2: 'kerry',
+      scenario: 'rcp45',
+      period: '2021-2050',
+    });
+  });
+
+  it('uses the default mode for a mode it does not know', () => {
+    expect(renderView('/compare?mode=weather').result.current.mode).toBe('scenarios');
+  });
+
+  it('never compares a county with itself', () => {
+    expect(renderView('/compare?county=dublin&county2=dublin').result.current).toMatchObject({ county: 'dublin', county2: 'kerry' });
+    expect(renderView('/compare?county=kerry&county2=kerry').result.current).toMatchObject({ county: 'kerry', county2: 'cork' });
+  });
+
+  it('writes the mode to the address, and leaves it out for the default', () => {
+    const { result } = renderView();
+    act(() => result.current.setMode('counties'));
+    expect(result.current.address).toBe('?mode=counties');
+    act(() => result.current.setMode('scenarios'));
+    expect(result.current.address).toBe('');
+  });
+
+  it('writes the second county and the scenario to the address', () => {
+    const { result } = renderView('/compare?mode=counties');
+    act(() => result.current.setSecondCounty('kildare'));
+    expect(new URLSearchParams(result.current.address).get('county2')).toBe('kildare');
+    act(() => result.current.setScenario('rcp45'));
+    expect(new URLSearchParams(result.current.address).get('rcp')).toBe('45');
+    act(() => result.current.setScenario('rcp85'));
+    expect(new URLSearchParams(result.current.address).has('rcp')).toBe(false);
+  });
+
+  it('swaps the counties when one is chosen that is already the other', () => {
+    const { result } = renderView('/compare?mode=counties');
+    act(() => result.current.setSecondCounty('cork'));
+    expect(result.current).toMatchObject({ county: 'kerry', county2: 'cork' });
+    expect(result.current.address).toBe('?mode=counties&county=kerry&county2=cork');
+
+    act(() => result.current.setCounty('cork'));
+    expect(result.current).toMatchObject({ county: 'cork', county2: 'kerry' });
+    expect(result.current.address).toBe('?mode=counties');
+  });
+
+  it('keeps the second county out of the address when comparing scenarios', () => {
+    const { result } = renderView();
+    act(() => result.current.setCounty('kerry'));
+    expect(result.current.address).toBe('?county=kerry');
   });
 });

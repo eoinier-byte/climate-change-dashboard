@@ -26,6 +26,10 @@ export const VARIABLE_NAMES = {
 
 const BASELINE_PERIOD = '1976-2005';
 
+// The two colours for the two counties in the county comparison (CCD-378): the chart bars and the table
+// headings. They are not the scenario colours, which mean scenarios everywhere else on the site.
+export const COUNTY_COLOURS = { first: '#0b5d4b', second: '#1d4ed8' };
+
 // Rounds to 3 decimal places (the precision the API stores), so 12.525 - 10.545 gives 1.98 and not
 // 1.9800000000000004
 const tidy = (number) => Math.round(number * 1000) / 1000;
@@ -36,56 +40,82 @@ const findRow = (rows, variable, season, scenario, period) =>
     (row) => row.variable === variable && row.season === season && row.scenario === scenario && row.period === period,
   );
 
-// What one scenario projects, in numbers: { value, change }, or null if the API has no row for it
+// What one side projects, in numbers: { value, change }, or null if the API has no row for it
 function projected(row) {
   if (!row) return null;
   return { value: Number(row.value), change: Number(row.change) };
 }
 
-// B minus A for every measure, for one period.
-//   rows   - the rows from the projections API for one county
-//   a, b   - the two scenarios, e.g. 'rcp26' and 'rcp85'
-//   period - e.g. '2071-2100'
-// Gives back one object per measure:
-//   { variable, season, unit, changeUnit, baseline, a: { value, change }, b: { value, change }, difference }
-// where unit is the symbol people see ('°C', 'mm'), changeUnit is the unit of "change" ('°C' for
-// temperature, '%' for rainfall), and difference is b.value - a.value in "unit". A scenario with no row
-// is null, and then so is the difference, so the page can say "No data" instead of showing a wrong number.
-export function compareScenarios(rows, a, b, period) {
+// Everything the table needs about one side (one scenario of one county) for one measure
+function sideData(side, variable, season, period) {
+  const baselineRow = findRow(side.rows, variable, season, 'baseline', BASELINE_PERIOD);
+  const row = findRow(side.rows, variable, season, side.scenario, period);
+  // The baseline comes from its own row when the API sends one. Every scenario row also carries the
+  // baseline it was measured against (baseline_value), so that is used when there is no baseline row.
+  const raw = baselineRow ? baselineRow.value : row?.baseline_value;
+  return {
+    baselineRow,
+    row,
+    baseline: raw === undefined || raw === null ? null : Number(raw),
+    projected: projected(row),
+  };
+}
+
+// B minus A for every measure. Each side is { rows, scenario }: the rows of one county and the scenario
+// to read from them. The two sides can share their rows (two scenarios of one county) or not (one
+// scenario of two counties).
+function buildMeasures(sideA, sideB, period, sameBaseline) {
   const measures = [];
 
   VARIABLES.forEach((variable) => {
     SEASONS.forEach((season) => {
-      const baselineRow = findRow(rows, variable, season, 'baseline', BASELINE_PERIOD);
-      const rowA = findRow(rows, variable, season, a, period);
-      const rowB = findRow(rows, variable, season, b, period);
-      const first = projected(rowA);
-      const second = projected(rowB);
+      const first = sideData(sideA, variable, season, period);
+      const second = sideData(sideB, variable, season, period);
+      const found = [first.baselineRow, first.row, second.baselineRow, second.row].filter(Boolean);
 
       // Nothing at all for this measure (e.g. no seasonal rows for this period): leave it out
-      if (!baselineRow && !rowA && !rowB) return;
+      if (found.length === 0) return;
 
-      // The baseline comes from its own row when the API sends one. Every scenario row also carries the
-      // baseline it was measured against (baseline_value), so that is used when there is no baseline row.
-      const baseline = baselineRow ?? rowA ?? rowB;
-      const baselineValue = baselineRow ? baselineRow.value : (rowA ?? rowB).baseline_value;
-      const units = baseline.units;
+      const units = found[0].units;
       const unit = UNIT_LABELS[units] || units;
+      // Two scenarios of one county are measured against the same baseline
+      const baseline = sameBaseline ? (first.baseline ?? second.baseline) : first.baseline;
+      const baselineB = sameBaseline ? baseline : second.baseline;
 
       measures.push({
         variable,
         season,
         unit,
         changeUnit: variable === 'precipitation' ? '%' : unit,
-        baseline: baselineValue === undefined || baselineValue === null ? null : Number(baselineValue),
-        a: first,
-        b: second,
-        difference: first && second ? tidy(second.value - first.value) : null,
+        baseline,
+        baselineB,
+        a: first.projected,
+        b: second.projected,
+        difference: first.projected && second.projected ? tidy(second.projected.value - first.projected.value) : null,
       });
     });
   });
 
   return measures;
+}
+
+// B minus A for two scenarios of one county, for one period.
+//   rows   - the rows from the projections API for one county
+//   a, b   - the two scenarios, e.g. 'rcp26' and 'rcp85'
+//   period - e.g. '2071-2100'
+// Gives back one object per measure:
+//   { variable, season, unit, changeUnit, baseline, baselineB, a: { value, change }, b: { value, change }, difference }
+// where unit is the symbol people see ('°C', 'mm'), changeUnit is the unit of "change" ('°C' for
+// temperature, '%' for rainfall), and difference is b.value - a.value in "unit". A side with no row is
+// null, and then so is the difference, so the page can say "No data" instead of showing a wrong number.
+export function compareScenarios(rows, a, b, period) {
+  return buildMeasures({ rows, scenario: a }, { rows, scenario: b }, period, true);
+}
+
+// The same, for one scenario in two counties (CCD-378): "a" is the first county and "b" the second.
+// Each county has its own baseline (baseline for the first, baselineB for the second).
+export function compareCounties(rowsA, rowsB, scenario, period) {
+  return buildMeasures({ rows: rowsA, scenario }, { rows: rowsB, scenario }, period, false);
 }
 
 // Plain-language sentences for the headline measures (the whole-year temperature and rainfall), e.g.
@@ -117,6 +147,34 @@ export function summaryLines(measures, labelA, labelB, countyName) {
       const verb = measure.variable === 'temperature' ? 'is' : 'has';
       lines.push(`Over the whole year, ${labelB} ${verb} ${phrase} in County ${countyName}.`);
     });
+
+  return lines;
+}
+
+// Sentences about two counties under one scenario (CCD-378), from the stored changes of the whole year:
+//   "Under RCP8.5, Donegal warms 0.4 °C more than Kerry."
+//   "Under RCP8.5, annual rainfall changes by +8.0% in Donegal and +5.2% in Kerry."
+// "Warms more" compares how much each county warms from its own baseline, not which county is warmer.
+export function countySummaryLines(measures, scenarioLabel, nameA, nameB) {
+  const lines = [];
+  const annualTemperature = measures.find((m) => m.variable === 'temperature' && m.season === 'annual');
+  const annualRain = measures.find((m) => m.variable === 'precipitation' && m.season === 'annual');
+
+  if (annualTemperature?.a && annualTemperature?.b) {
+    const gap = tidy(annualTemperature.b.change - annualTemperature.a.change);
+    const size = group(Math.abs(gap), 2);
+    if (Number(Math.abs(gap).toFixed(2)) === 0) {
+      lines.push(`Under ${scenarioLabel}, ${nameA} and ${nameB} warm by the same amount.`);
+    } else {
+      lines.push(`Under ${scenarioLabel}, ${nameB} warms ${size} °C ${gap > 0 ? 'more' : 'less'} than ${nameA}.`);
+    }
+  }
+
+  if (annualRain?.a && annualRain?.b) {
+    lines.push(
+      `Under ${scenarioLabel}, annual rainfall changes by ${formatChange(annualRain.b.change, annualRain)} in ${nameB} and ${formatChange(annualRain.a.change, annualRain)} in ${nameA}.`,
+    );
+  }
 
   return lines;
 }
