@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildMapColours,
+  countyLabel,
   describeChoice,
+  formatCountyValue,
   formatValue,
   NO_DATA_COLOUR,
   PRECIPITATION_RAMP,
@@ -208,5 +210,52 @@ describe('describeChoice', () => {
 
   it('falls back to the usual unit for the variable when the answer has none', () => {
     expect(describeChoice({ variable: 'precipitation', scenario: 'rcp26', period: '2071-2100', season: 'annual' })).toContain('(mm)');
+  });
+});
+
+describe('valueFor', () => {
+  it('gives a county its value as a number, and undefined when it has none', () => {
+    const colours = buildMapColours(answerWith({ carlow: 10.25, dublin: 12 }), SLUGS);
+    expect(colours.valueFor('carlow')).toBe(10.25);
+    expect(colours.valueFor('cork')).toBeUndefined();
+  });
+
+  it('gives nothing when there are no results', () => {
+    const colours = buildMapColours({ variable: 'temperature', unit: 'degC', results: [] }, SLUGS);
+    expect(colours.valueFor('cork')).toBeUndefined();
+  });
+});
+
+describe('formatCountyValue', () => {
+  it('writes temperature with one decimal and the unit', () => {
+    expect(formatCountyValue(11.234, 'temperature', 'degC')).toBe('11.2 \u00b0C');
+  });
+
+  it('uses a proper minus sign for a temperature below zero', () => {
+    expect(formatCountyValue(-0.6, 'temperature', 'degC')).toBe('\u22120.6 \u00b0C');
+  });
+
+  it('writes rainfall as whole millimetres with a thousands separator', () => {
+    expect(formatCountyValue(1369.4, 'precipitation', 'mm')).toBe('1,369 mm');
+  });
+
+  it('falls back to the usual unit for the variable', () => {
+    expect(formatCountyValue(900, 'precipitation')).toBe('900 mm');
+  });
+});
+
+describe('countyLabel', () => {
+  const colours = buildMapColours(answerWith({ cork: 11.234, dublin: 12 }), SLUGS);
+
+  it('gives the name and value', () => {
+    expect(countyLabel('Cork', 'cork', colours, 'temperature', 'degC')).toBe('Cork: 11.2 \u00b0C');
+  });
+
+  it('says so when the county has no value', () => {
+    expect(countyLabel('Carlow', 'carlow', colours, 'temperature', 'degC')).toBe('Carlow: no value');
+  });
+
+  it('is just the name until the values arrive', () => {
+    expect(countyLabel('Cork', 'cork', null, 'temperature', undefined)).toBe('Cork');
   });
 });

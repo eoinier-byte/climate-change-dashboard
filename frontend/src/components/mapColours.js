@@ -58,6 +58,25 @@ export function formatValue(value, variable, step) {
   return value.toFixed(decimals).replace('-', '−');
 }
 
+// One county's value for a tooltip, with its unit: "11.2 °C" or "1,369 mm" (as on the county page)
+export function formatCountyValue(value, variable, unit) {
+  const unitLabel = UNIT_LABELS[unit ?? DEFAULT_UNITS[variable]] ?? unit ?? '';
+  const text =
+    variable === 'precipitation'
+      ? Math.round(value).toLocaleString('en-IE')
+      : value.toFixed(1).replace('-', '\u2212');
+  return unitLabel ? `${text} ${unitLabel}` : text;
+}
+
+// What the tooltip and the screen reader say about one county, e.g. "Cork: 11.2 °C".
+// Before the values arrive it is just the name. "colours" is what buildMapColours gave back (or null).
+export function countyLabel(name, slug, colours, variable, unit) {
+  if (!colours) return name;
+  const value = colours.valueFor(slug);
+  if (value === undefined) return `${name}: no value`;
+  return `${name}: ${formatCountyValue(value, variable, unit)}`;
+}
+
 // The API sends numbers as text ("9.400"). Anything that is not a number gives NaN.
 function toNumber(value) {
   return value === null || value === undefined || value === '' ? NaN : Number(value);
@@ -67,6 +86,7 @@ function toNumber(value) {
 // "slugs" are the counties on the map. Returns null until the answer has arrived.
 //   colourFor(slug) - the colour for a county ('' value gives NO_DATA_COLOUR)
 //   bins            - [{ colour, from, to, label }] for the legend, lowest first
+//   valueFor(slug)  - the county's value as a number, or undefined when it has none (for the tooltip)
 //   missing         - how many of the counties have no value
 //   hasValues       - false when the answer has no results (e.g. an unknown choice has no rows)
 export function buildMapColours(answer, slugs) {
@@ -81,7 +101,7 @@ export function buildMapColours(answer, slugs) {
   const missing = slugs.filter((slug) => valueBySlug[slug] === undefined).length;
 
   if (numbers.length === 0) {
-    return { colourFor: () => NO_DATA_COLOUR, bins: [], missing, hasValues: false };
+    return { colourFor: () => NO_DATA_COLOUR, valueFor: () => undefined, bins: [], missing, hasValues: false };
   }
 
   // The API gives the lowest and highest value; use them so the colours match across a choice.
@@ -96,6 +116,7 @@ export function buildMapColours(answer, slugs) {
     const label = formatValue(min, answer.variable, 1);
     return {
       colourFor: (slug) => (valueBySlug[slug] === undefined ? NO_DATA_COLOUR : middle),
+      valueFor: (slug) => valueBySlug[slug],
       bins: [{ colour: middle, from: min, to: max, label }],
       missing,
       hasValues: true,
@@ -114,6 +135,7 @@ export function buildMapColours(answer, slugs) {
 
   return {
     colourFor: (slug) => (valueBySlug[slug] === undefined ? NO_DATA_COLOUR : scale(valueBySlug[slug])),
+    valueFor: (slug) => valueBySlug[slug],
     bins,
     missing,
     hasValues: true,

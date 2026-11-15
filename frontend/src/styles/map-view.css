@@ -1,4 +1,4 @@
-/* The county map (CCD-379, CCD-380, CCD-381). */
+/* The county map (CCD-379 to CCD-382). */
 .map-view {
   margin: 0;
 }
@@ -40,6 +40,12 @@
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   border-top: 1px solid var(--color-border);
+}
+
+/* A county reached with the keyboard (CCD-382) gets the same focus ring as the rest of the site */
+.map-view__map .leaflet-interactive:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* The key to the map colours (CCD-381): a title, then one swatch and number range per colour */

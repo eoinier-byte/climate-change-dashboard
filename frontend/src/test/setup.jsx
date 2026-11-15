@@ -10,18 +10,41 @@ import { vi } from 'vitest';
 vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 
 vi.mock('react-leaflet', async () => {
-  const { fakeMap } = await import('./fakeLeafletMap');
+  const { fakeLayers, fakeMap, makeFakeLayer } = await import('./fakeLeafletMap');
+  const { useEffect, useRef } = await import('react');
   return {
     MapContainer: ({ children }) => <div data-testid="map">{children}</div>,
     // When the style is a function (as in MapView), also show each county's fill colour, so tests can check it
-    GeoJSON: ({ data, style }) => (
-      <div data-testid="county-outlines" data-counties={data.features.length}>
-        {typeof style === 'function' &&
-          data.features.map((feature) => (
-            <span key={feature.properties.slug} data-testid={`county-${feature.properties.slug}`} data-fill={style(feature).fillColor} />
-          ))}
-      </div>
-    ),
+    // It also gives each county a fake layer (onEachFeature, as Leaflet does) and puts its element on the
+    // page, so tests can use the tooltips, clicks and keyboard (CCD-382)
+    GeoJSON: function GeoJSON({ data, style, onEachFeature }) {
+      const holder = useRef(null);
+      useEffect(() => {
+        if (!onEachFeature) return undefined;
+        fakeLayers.clear();
+        data.features.forEach((feature) => {
+          const layer = makeFakeLayer();
+          onEachFeature(feature, layer);
+          layer.fire('add'); // Leaflet fires this once the shape is on the map
+          fakeLayers.set(feature.properties.slug, layer);
+          holder.current.appendChild(layer.element);
+        });
+        return () => {
+          fakeLayers.clear();
+          holder.current?.replaceChildren();
+        };
+      }, [data, onEachFeature]);
+
+      return (
+        <div data-testid="county-outlines" data-counties={data.features.length}>
+          {typeof style === 'function' &&
+            data.features.map((feature) => (
+              <span key={feature.properties.slug} data-testid={`county-${feature.properties.slug}`} data-fill={style(feature).fillColor} />
+            ))}
+          <div ref={holder} />
+        </div>
+      );
+    },
     useMap: () => fakeMap,
   };
 });

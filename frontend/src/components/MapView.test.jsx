@@ -1,14 +1,18 @@
-// Tests for the county map (CCD-379, CCD-380, CCD-381). Leaflet is replaced by a stand-in in src/test/setup.jsx,
+// Tests for the county map (CCD-379 to CCD-382). Leaflet is replaced by a stand-in in src/test/setup.jsx,
 // and the API by a fake, so nothing here needs a browser or the backend.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MapView from './MapView';
 import { getMap } from '../services/api';
-import { fakeMap } from '../test/fakeLeafletMap';
+import { fakeLayers, fakeMap } from '../test/fakeLeafletMap';
 import { NO_DATA_COLOUR, PRECIPITATION_RAMP, TEMPERATURE_RAMP } from './mapColours';
 
 vi.mock('../services/api', () => ({ getMap: vi.fn() }));
+
+// Clicking a county calls navigate; the test only checks where it would go
+const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
+vi.mock('react-router-dom', async (importOriginal) => ({ ...(await importOriginal()), useNavigate: () => navigate }));
 
 // A short answer in the shape of GET /api/map/ (the real one has 26 results)
 const mapAnswer = {
@@ -42,6 +46,9 @@ function answerWith(values, extra = {}) {
 }
 
 const fillOf = (slug) => screen.getByTestId(`county-${slug}`).dataset.fill;
+
+// What the tooltip of a county says right now
+const tooltipOf = (slug) => fakeLayers.get(slug).tooltip.content();
 
 describe('MapView', () => {
   beforeEach(() => {
@@ -213,6 +220,98 @@ describe('MapView', () => {
       await screen.findByRole('alert');
       expect(screen.queryByRole('group')).toBeNull();
       expect(fillOf('cork')).toBe(NO_DATA_COLOUR);
+    });
+  });
+  describe('tooltips and click-through (CCD-382)', () => {
+    it('gives every county a tooltip, which is just the name until the values arrive', () => {
+      render(<MapView />);
+      expect(fakeLayers.size).toBe(26);
+      expect(tooltipOf('cork')).toBe('Cork');
+    });
+
+    it('shows the name and value of the county, with its unit', async () => {
+      getMap.mockResolvedValue(answerWith({ cork: 11.234, dublin: 12 }));
+      render(<MapView />);
+
+      await waitFor(() => expect(tooltipOf('cork')).toBe('Cork: 11.2 \u00b0C'));
+      expect(tooltipOf('dublin')).toBe('Dublin: 12.0 \u00b0C');
+    });
+
+    it('writes rainfall in whole millimetres', async () => {
+      getMap.mockResolvedValue(answerWith({ cork: 1369.4, dublin: 800 }, { variable: 'precipitation', unit: 'mm' }));
+      render(<MapView variable="precipitation" />);
+
+      await waitFor(() => expect(tooltipOf('cork')).toBe('Cork: 1,369 mm'));
+    });
+
+    it('says when a county has no value', async () => {
+      getMap.mockResolvedValue(answerWith({ cork: 11, dublin: 12 }));
+      render(<MapView />);
+
+      await waitFor(() => expect(tooltipOf('cork')).toBe('Cork: 11.0 \u00b0C'));
+      expect(tooltipOf('donegal')).toBe('Donegal: no value');
+    });
+
+    it('shows the new value when the choice changes', async () => {
+      getMap
+        .mockResolvedValueOnce(answerWith({ cork: 11, dublin: 12 }))
+        .mockResolvedValueOnce(answerWith({ cork: 9.5, dublin: 10 }, { scenario: 'rcp45' }));
+      const { rerender } = render(<MapView />);
+      await waitFor(() => expect(tooltipOf('cork')).toBe('Cork: 11.0 \u00b0C'));
+
+      rerender(<MapView scenario="rcp45" />);
+
+      await waitFor(() => expect(tooltipOf('cork')).toBe('Cork: 9.5 \u00b0C'));
+    });
+
+    it('opens the county page when a county is clicked', () => {
+      render(<MapView />);
+      fakeLayers.get('cork').fire('click');
+      expect(navigate).toHaveBeenCalledWith('/county/cork');
+    });
+
+    it('opens the right county for each one', () => {
+      render(<MapView />);
+      fakeLayers.get('donegal').fire('click');
+      expect(navigate).toHaveBeenLastCalledWith('/county/donegal');
+    });
+
+    it('makes every county a link that the keyboard can reach', () => {
+      render(<MapView />);
+      const links = screen.getAllByRole('link');
+      expect(links).toHaveLength(26);
+      links.forEach((link) => expect(link.getAttribute('tabindex')).toBe('0'));
+    });
+
+    it('tells a screen reader the county, its value and what Enter does', async () => {
+      getMap.mockResolvedValue(answerWith({ cork: 11.234, dublin: 12 }));
+      render(<MapView />);
+
+      expect(await screen.findByRole('link', { name: 'Cork: 11.2 \u00b0C, open county page' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Donegal: no value, open county page' })).toBeTruthy();
+    });
+
+    it('opens the county page when Enter is pressed on a focused county, and not for other keys', async () => {
+      const user = userEvent.setup();
+      render(<MapView />);
+      screen.getByRole('link', { name: /^Cork/ }).focus();
+
+      await user.keyboard('a');
+      expect(navigate).not.toHaveBeenCalled();
+      await user.keyboard('{Enter}');
+      expect(navigate).toHaveBeenCalledWith('/county/cork');
+    });
+
+    it('shows the tooltip while a county has the keyboard focus, and hides it afterwards', () => {
+      render(<MapView />);
+      const layer = fakeLayers.get('kerry');
+
+      layer.element.focus();
+      expect(layer.openTooltip).toHaveBeenCalled();
+      expect(layer.bringToFront).toHaveBeenCalled();
+
+      layer.element.blur();
+      expect(layer.closeTooltip).toHaveBeenCalled();
     });
   });
 });
