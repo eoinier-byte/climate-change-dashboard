@@ -1,6 +1,31 @@
-/* The county map (CCD-379). */
+/* The county map (CCD-379, CCD-380). */
 .map-view {
   margin: 0;
+}
+
+/* The box the map and its loading or error message share, so the message can sit on top of the map */
+.map-view__stage {
+  position: relative;
+}
+
+/* Loading and error messages, centred over the map. Leaflet's own controls go up to z-index 1000.
+   The covering layer lets clicks through to the map; only the message itself takes clicks (Retry). */
+.map-view__status {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  pointer-events: none;
+}
+
+.map-view__status > * {
+  max-width: 28rem;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  pointer-events: auto;
 }
 
 /* Leaflet needs the map to have a height. It grows with the screen but stays between

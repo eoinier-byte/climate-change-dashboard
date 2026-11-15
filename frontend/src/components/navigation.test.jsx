@@ -12,6 +12,7 @@ vi.mock('../services/api', () => ({
   getCounty: vi.fn(() => new Promise(() => {})),
   getProjections: vi.fn(() => new Promise(() => {})),
   getSeaLevel: vi.fn(() => new Promise(() => {})),
+  getMap: vi.fn(() => new Promise(() => {})), // the home page map (CCD-380)
 }));
 
 // Click-through tests: move between pages the way a visitor would.
