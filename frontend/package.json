@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": { "test": "vitest run",
+  "scripts": {
+    "test": "vitest run",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -11,9 +12,11 @@
   },
   "dependencies": {
     "chart.js": "^4.6.1",
+    "leaflet": "^1.9.4",
     "react": "^19.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.3.1",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {

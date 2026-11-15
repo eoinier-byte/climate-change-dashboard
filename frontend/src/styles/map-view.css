@@ -1,0 +1,18 @@
+/* The county map (CCD-379). */
+.map-view {
+  margin: 0;
+}
+
+/* Leaflet needs the map to have a height. It grows with the screen but stays between
+   sensible limits, so it fits a phone and a desktop. */
+.map-view__map {
+  height: clamp(20rem, 65vh, 40rem);
+  background: var(--color-surface);
+}
+
+.map-view__credit {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
