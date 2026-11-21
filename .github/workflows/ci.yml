@@ -61,6 +61,14 @@ jobs:
       DB_HOST: localhost
       DB_PORT: "5432"
       CORS_ALLOWED_ORIGINS: http://localhost:5173
+      # With DEBUG off, settings.py reads the SMTP settings; tests never send real mail
+      # (Django swaps in the in-memory backend), so dummy values are enough
+      EMAIL_HOST: localhost
+      EMAIL_PORT: "587"
+      EMAIL_HOST_USER: ci@example.com
+      EMAIL_HOST_PASSWORD: ci-only-not-secret
+      EMAIL_USE_TLS: "True"
+      # Celery tasks run inline in tests (CELERY_TASK_ALWAYS_EAGER), so no Redis service is needed
     defaults:
       run:
         working-directory: backend

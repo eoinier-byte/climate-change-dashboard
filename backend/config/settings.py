@@ -68,6 +68,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'django_filters',
+    'django_celery_results',
+    'celery',
     'users',
     'climate',
 ]
@@ -215,3 +217,11 @@ else:
     EMAIL_HOST_USER = env('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
     EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+
+# Celery
+CELERY_BROKER_URL = f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0'
+CELERY_TASK_ALWAYS_EAGER = TESTING or DEBUG
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_TASK_TRACK_STARTED = True

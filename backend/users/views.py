@@ -7,10 +7,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.utils import send_email
 from common.views import AuthView
 from users.models import EmailVerification, User
 from users.serializers import EmailSerializer, UserLoginSerializer, UserRegisterSerializer
+from users.tasks import async_send_email
 
 
 class UserRegisterView(AuthView):
@@ -36,7 +36,7 @@ class RecoveryView(GenericAPIView):
 
         user = User.objects.filter(email__iexact=serializer.validated_data['email']).first()
         if user:
-            send_email(user.id, EmailVerification.RESET_PASSWORD)
+            async_send_email.delay(user.id, EmailVerification.RESET_PASSWORD)
 
         return Response({'detail': 'If this email is registered, you will receive a link.'})
 

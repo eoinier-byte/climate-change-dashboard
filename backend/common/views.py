@@ -6,9 +6,9 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from common.utils import send_email
 from users.models import EmailVerification
 from users.serializers import UserRegisterSerializer
+from users.tasks import async_send_email
 
 
 class EnforceCsrfMixin:
@@ -30,7 +30,7 @@ class AuthView(EnforceCsrfMixin, GenericAPIView):
             user = serializer.save()
             message = 'User registered successfully'
             status = HTTPStatus.CREATED
-            transaction.on_commit(lambda: send_email(user.id, EmailVerification.REGISTER))
+            transaction.on_commit(lambda: async_send_email.delay(user.id, EmailVerification.REGISTER))
         else:
             user = serializer.validated_data['user']
             message = 'User signed in successfully'
