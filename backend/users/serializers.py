@@ -51,3 +51,7 @@ class UserLoginSerializer(serializers.Serializer):
             attrs['user'] = user
             return attrs
         raise serializers.ValidationError({'detail': 'Invalid login or password'})
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()

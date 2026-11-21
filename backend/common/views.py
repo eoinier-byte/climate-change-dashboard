@@ -1,10 +1,13 @@
 from http import HTTPStatus
 
 from django.contrib.auth import login
+from django.db import transaction
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
+from common.utils import send_email
+from users.models import EmailVerification
 from users.serializers import UserRegisterSerializer
 
 
@@ -14,12 +17,11 @@ class EnforceCsrfMixin:
         super().initial(request, *args, **kwargs)
 
 
-class AuthView(EnforceCsrfMixin, APIView):
+class AuthView(EnforceCsrfMixin, GenericAPIView):
     http_method_names = ['post']
-    serializer_class = None
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer = self.get_serializer(data=request.data, context={'request': request})
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
@@ -28,6 +30,7 @@ class AuthView(EnforceCsrfMixin, APIView):
             user = serializer.save()
             message = 'User registered successfully'
             status = HTTPStatus.CREATED
+            transaction.on_commit(lambda: send_email(user.id, EmailVerification.REGISTER))
         else:
             user = serializer.validated_data['user']
             message = 'User signed in successfully'

@@ -48,6 +48,7 @@ DEBUG = env('DJANGO_DEBUG')
 ALLOWED_HOSTS = ['*']
 
 DOMAIN_NAME = env('DOMAIN_NAME')
+SITE_NAME = 'Ireland Climate Futures'
 
 INTERNAL_IPS = [
     '127.0.0.1',
@@ -154,15 +155,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
-
 # React dev server
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 CORS_ALLOW_CREDENTIALS = True
@@ -213,3 +205,13 @@ else:
 # Production runs on HTTPS: send session and CSRF cookies over HTTPS only
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# Email
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_HOST = env('EMAIL_HOST')
+    EMAIL_PORT = env('EMAIL_PORT')
+    EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+    EMAIL_USE_TLS = env('EMAIL_USE_TLS')
