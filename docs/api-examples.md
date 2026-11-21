@@ -13,7 +13,7 @@ One JSON example for every endpoint the frontend uses or will use, so frontend w
 | `GET /sea-level/{slug}/` | Built | CCD-91 | Taras |
 | `GET /map/?variable=&scenario=&period=&season=` | Built | CCD-338 | Taras |
 | `GET /counties/{slug}/impacts/?scenario=&period=` | Built | CCD-364 / CCD-367 / CCD-368 | Taras |
-| `GET /analogues/?county={slug}` | **Proposed** (not built yet) | CCD-354 / CCD-358 | Artur |
+| `GET /counties/{slug}/analogues/?scenario=&period=` | **Proposed** (not built yet) | CCD-354 / CCD-358 | Artur |
 | `POST /reports/` | **Proposed** (not built yet) | CCD-295 / CCD-307 | Taras |
 
 The built endpoints were written from the backend code (`climate/serializers.py`, `climate/views.py`) and the real data. The remaining proposed ones follow the same style as `/projections/`: a flat list or one object per county, selected with `?county=`. The owner confirms or changes each shape in a comment on CCD-405, and this file is then updated.
@@ -355,31 +355,83 @@ Both `scenario` and `period` are optional filters. An unknown choice is a 400 th
 
 ## Proposed endpoints (to be confirmed by their owners)
 
-### `GET /analogues/?county={slug}` (CCD-358, Artur)
+### `GET /counties/{slug}/analogues/?scenario=&period=` (CCD-358, Artur)
 
-The European city whose present climate most closely matches the county's projected climate, one row per scenario and period (shortened here to two).
+The three European cities whose present-day climate is closest to the county's projected climate for one scenario and period, as a flat list ordered by `rank` (1 = closest). Both parameters are required.
+
+- `scenario`: `rcp26`, `rcp45` or `rcp85`. `baseline` is not accepted, because the county's present climate is not a projection.
+- `period`: `2021-2050` or `2071-2100`.
+- Errors: **404** for an unknown county; **400** for a missing or invalid `scenario` or `period`, naming the field.
+
+How the numbers are made (CCD-357): `city_*` are WorldClim 2.1 averages for 1970–2000 at the city (`city_baseline_period`). `county_*` are the county's WorldClim 1970–2000 value plus the TRANSLATE change between 1976–2005 (`change_baseline_period`) and the chosen scenario and period: added for temperature, multiplied as a ratio for precipitation. `summer` is June–August and `winter` is December–February; precipitation is the annual total. `similarity` is 1 / (1 + distance) over the three standardised variables, so it is between 0 and 1 and higher is closer.
 
 <!-- example: analogues -->
 ```json
 [
   {
     "county": "cork",
-    "scenario": "rcp26",
-    "period": "2021-2050",
+    "scenario": "rcp45",
+    "period": "2071-2100",
+    "rank": 1,
     "city": "Brest",
     "country": "France",
     "latitude": "48.390",
     "longitude": "-4.486",
+    "similarity": "0.812",
+    "city_summer_temp": "16.200",
+    "city_winter_temp": "7.300",
+    "city_annual_precip": "1210.000",
+    "county_summer_temp": "16.020",
+    "county_winter_temp": "7.110",
+    "county_annual_precip": "1352.400",
+    "temperature_unit": "degC",
+    "precipitation_unit": "mm",
+    "city_baseline_period": "1970-2000",
+    "change_baseline_period": "1976-2005",
     "source": "worldclim"
   },
   {
     "county": "cork",
-    "scenario": "rcp26",
+    "scenario": "rcp45",
     "period": "2071-2100",
+    "rank": 2,
     "city": "Plymouth",
     "country": "United Kingdom",
     "latitude": "50.376",
     "longitude": "-4.143",
+    "similarity": "0.745",
+    "city_summer_temp": "15.700",
+    "city_winter_temp": "6.400",
+    "city_annual_precip": "1010.000",
+    "county_summer_temp": "16.020",
+    "county_winter_temp": "7.110",
+    "county_annual_precip": "1352.400",
+    "temperature_unit": "degC",
+    "precipitation_unit": "mm",
+    "city_baseline_period": "1970-2000",
+    "change_baseline_period": "1976-2005",
+    "source": "worldclim"
+  },
+  {
+    "county": "cork",
+    "scenario": "rcp45",
+    "period": "2071-2100",
+    "rank": 3,
+    "city": "Quimper",
+    "country": "France",
+    "latitude": "47.996",
+    "longitude": "-4.102",
+    "similarity": "0.701",
+    "city_summer_temp": "16.600",
+    "city_winter_temp": "6.900",
+    "city_annual_precip": "1420.000",
+    "county_summer_temp": "16.020",
+    "county_winter_temp": "7.110",
+    "county_annual_precip": "1352.400",
+    "temperature_unit": "degC",
+    "precipitation_unit": "mm",
+    "city_baseline_period": "1970-2000",
+    "change_baseline_period": "1976-2005",
     "source": "worldclim"
   }
 ]
@@ -418,5 +470,5 @@ Response (202 Accepted):
 | Endpoint | Confirmed by | Date |
 |---|---|---|
 | Built endpoints (counties, county, meta, projections, sea-level, map, impacts) | | |
-| `/analogues/` | | |
+| `/counties/{slug}/analogues/` | | |
 | `POST /reports/` | | |

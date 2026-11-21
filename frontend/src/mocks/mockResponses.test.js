@@ -8,6 +8,7 @@ import { mockCork } from './countyRows';
 import { mockCounties, mockGet, mockMeta, mockReportRequest, mockReportResponse } from './mockResponses';
 
 const MAP = '/map/?variable=temperature&scenario=rcp45&period=2021-2050&season=annual';
+const ANALOGUES = '/counties/cork/analogues/?scenario=rcp45&period=2071-2100';
 const body = (path) => mockGet(path).body;
 
 describe('docs/api-examples.md and the mocks agree', () => {
@@ -37,7 +38,7 @@ describe('docs/api-examples.md and the mocks agree', () => {
     ['seaLevelInland', '/sea-level/kildare/'],
     ['map', MAP],
     ['impacts', '/counties/cork/impacts/'],
-    ['analogues', '/analogues/?county=cork'],
+    ['analogues', ANALOGUES],
   ];
 
   it.each(pairs)('the "%s" example has the same shape as the mock answer', (name, path) => {
@@ -90,13 +91,13 @@ describe('not found and missing parameters', () => {
     '/sea-level/atlantis/',
     '/projections/?county=atlantis',
     '/counties/atlantis/impacts/',
-    '/analogues/?county=atlantis',
+    '/counties/atlantis/analogues/?scenario=rcp45&period=2071-2100',
     '/nothing-here/',
   ])('%s is a 404', (path) => {
     expect(mockGet(path).status).toBe(404);
   });
 
-  it.each(['/projections/', '/analogues/'])('%s without ?county= is a 400', (path) => {
+  it.each(['/projections/'])('%s without ?county= is a 400', (path) => {
     expect(mockGet(path).status).toBe(400);
   });
 });
@@ -229,11 +230,38 @@ describe('impacts (built: GET /counties/{slug}/impacts/)', () => {
   });
 });
 
-describe('proposed endpoints', () => {
-  it('analogues: one row for each scenario and period, for the county asked for', () => {
-    const rows = body('/analogues/?county=kerry');
-    expect(rows).toHaveLength(6);
-    expect(new Set(rows.map((row) => `${row.scenario} ${row.period}`)).size).toBe(6);
-    expect(rows.every((row) => row.county === 'kerry' && row.city && row.country)).toBe(true);
+describe('analogues (proposed: GET /counties/{slug}/analogues/)', () => {
+  it('gives three cities ordered by rank, for the county, scenario and period asked for', () => {
+    const rows = body('/counties/kerry/analogues/?scenario=rcp85&period=2021-2050');
+    expect(rows.map((row) => row.rank)).toEqual([1, 2, 3]);
+    expect(rows.every((row) => row.county === 'kerry' && row.scenario === 'rcp85' && row.period === '2021-2050')).toBe(true);
+    expect(rows.every((row) => row.city && row.country)).toBe(true);
+  });
+
+  it('puts the most similar city first', () => {
+    const similarity = body(ANALOGUES).map((row) => Number(row.similarity));
+    expect(similarity).toEqual([...similarity].sort((a, b) => b - a));
+  });
+
+  it('sends decimal strings and names both baseline periods', () => {
+    const [row] = body(ANALOGUES);
+    expect(row.city_summer_temp).toMatch(/^-?\d+\.\d{3}$/);
+    expect(row.county_annual_precip).toMatch(/^-?\d+\.\d{3}$/);
+    expect(row).toMatchObject({
+      temperature_unit: 'degC', precipitation_unit: 'mm',
+      city_baseline_period: '1970-2000', change_baseline_period: '1976-2005', source: 'worldclim',
+    });
+  });
+
+  it.each([
+    ['scenario', 'scenario=baseline&period=2071-2100'],
+    ['scenario', 'scenario=rcp60&period=2071-2100'],
+    ['period', 'scenario=rcp45&period=1976-2005'],
+    ['scenario', 'period=2071-2100'],
+    ['period', 'scenario=rcp45'],
+  ])('a missing or invalid %s (%s) is a 400 that names the field', (field, query) => {
+    const answer = mockGet(`/counties/cork/analogues/?${query}`);
+    expect(answer.status).toBe(400);
+    expect(answer.body[field]).toBeDefined();
   });
 });
