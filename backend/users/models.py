@@ -5,7 +5,7 @@ from django.db import models
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, null=True)
+    email = models.EmailField(unique=True)
     name = models.CharField(max_length=50, blank=True, null=True)
     avatar = models.ImageField(upload_to='users', blank=True, null=True)
     is_verified = models.BooleanField(default=False)
