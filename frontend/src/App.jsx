@@ -1,9 +1,8 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from './routes';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import CountyDashboard from './pages/CountyDashboard';
-import Compare from './pages/Compare';
 import SeaLevel from './pages/SeaLevel';
 import About from './pages/About';
 import Login from './pages/Login';
@@ -17,7 +16,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path={ROUTES.home} element={<Home />} />
         <Route path={ROUTES.county} element={<CountyDashboard />} />
-        <Route path={ROUTES.compare} element={<Compare />} />
+        {/* The Compare page moved into the home page. Old links to /compare go to the home page. */}
+        <Route path="/compare" element={<Navigate to={ROUTES.home} replace />} />
         <Route path={ROUTES.seaLevel} element={<SeaLevel />} />
         <Route path={ROUTES.about} element={<About />} />
         <Route path={ROUTES.login} element={<Login />} />

@@ -1,0 +1,406 @@
+/* The Compare section (components/CompareExplorer.jsx). Uses the theme variables from theme.css only. */
+
+.explorer {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.explorer__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  align-items: flex-start;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.explorer__controls fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explorer__controls legend,
+.explorer__field > label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0;
+  margin-bottom: var(--space-1);
+}
+
+.explorer__field {
+  display: flex;
+  flex-direction: column;
+}
+
+.explorer__field select {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-width: 11rem;
+}
+
+.explorer__mode label,
+.explorer__combo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.9375rem;
+}
+
+.explorer__combos {
+  flex: 1 1 22rem;
+}
+
+.explorer__combos {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4) !important;
+}
+
+.explorer__combos legend {
+  flex-basis: 100%;
+}
+
+.explorer__hint {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.explorer__marker {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  border: 2px solid;
+  flex: none;
+}
+
+.explorer__headline {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.explorer__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+}
+
+.explorer__tile {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.explorer__tile p {
+  margin: 0;
+}
+
+.explorer__tile-label,
+.explorer__tile-detail {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__tile-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: var(--space-1) 0 !important;
+}
+
+.explorer__panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-4);
+}
+
+.explorer__panel,
+.explorer__scatter {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+.explorer__panel h4,
+.explorer__scatter h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  align-items: baseline;
+}
+
+.explorer__panel h4 span,
+.explorer__scatter h4 span {
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__key {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  font-size: 0.8125rem;
+}
+
+.explorer__key li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.explorer__row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 3.5rem;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 2rem;
+  font-size: 0.875rem;
+}
+
+.explorer__row-label {
+  font-weight: 600;
+}
+
+.explorer__gap {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.explorer__track {
+  position: relative;
+  height: 1.5rem;
+  background: var(--color-surface);
+  border-radius: 999px;
+}
+
+.explorer__zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.explorer__dot {
+  position: absolute;
+  top: 50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin: -0.4375rem 0 0 -0.4375rem;
+  border-radius: 50%;
+  border: 2px solid;
+  box-sizing: border-box;
+}
+
+.explorer__row--scale {
+  min-height: 0;
+}
+
+.explorer__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__seasons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: 0.875rem;
+}
+
+.explorer__seasons button {
+  font: inherit;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.explorer__seasons button[aria-pressed='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.explorer__axis {
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__axis--x {
+  margin: var(--space-2) 0 0;
+  text-align: right;
+}
+
+.explorer__plot-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  grid-template-rows: 18rem 1.5rem;
+}
+
+.explorer__yticks,
+.explorer__xticks {
+  position: relative;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.explorer__yticks span {
+  position: absolute;
+  right: var(--space-2);
+  transform: translateY(-50%);
+}
+
+.explorer__xticks {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.explorer__xticks span {
+  position: absolute;
+  transform: translateX(-50%);
+  top: var(--space-1);
+  white-space: nowrap;
+}
+
+.explorer__plot {
+  position: relative;
+  border-left: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.explorer__plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.explorer__gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--color-border);
+}
+
+.explorer__point {
+  position: absolute;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: -0.875rem 0 0 -0.875rem;
+  padding: 0;
+  border: 2px solid;
+  border-radius: 50%;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.explorer__tip {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 1.25rem));
+  display: flex;
+  flex-direction: column;
+  background: #1b2a24;
+  color: #ffffff;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.explorer__note {
+  margin: 0;
+  max-width: 48rem;
+}
+
+.explorer__details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.explorer__table-wrap {
+  overflow-x: auto;
+  margin-top: var(--space-3);
+}
+
+.explorer__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.explorer__table caption {
+  text-align: left;
+  color: var(--color-text-muted);
+  padding-bottom: var(--space-2);
+}
+
+.explorer__table th,
+.explorer__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.explorer__table thead th {
+  background: var(--color-surface);
+}
+
+.explorer__table tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .explorer__plot-wrap {
+    grid-template-rows: 14rem 1.5rem;
+    grid-template-columns: 3.25rem 1fr;
+  }
+
+  .explorer__row {
+    grid-template-columns: 3.75rem 1fr 3rem;
+    gap: var(--space-2);
+  }
+}

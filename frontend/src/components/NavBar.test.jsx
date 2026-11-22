@@ -8,7 +8,6 @@ import { ROUTES, countyPath } from '../routes';
 // [link text, where it goes, heading of the page it opens]
 const links = [
   ['Map', ROUTES.home, /climate projections/i],
-  ['Compare', ROUTES.compare, 'Compare'],
   ['Flooding', ROUTES.seaLevel, 'Flooding'],
   ['About', ROUTES.about, 'About'],
   ['Login', ROUTES.login, 'Log in'],
@@ -41,9 +40,9 @@ describe('navigation bar', () => {
   });
 
   it('highlights the current page only', () => {
-    renderAt(ROUTES.compare);
+    renderAt(ROUTES.about);
     const nav = within(mainNav());
-    expect(nav.getByRole('link', { name: 'Compare' }).getAttribute('aria-current')).toBe('page');
+    expect(nav.getByRole('link', { name: 'About' }).getAttribute('aria-current')).toBe('page');
     expect(nav.getByRole('link', { name: 'Map' }).getAttribute('aria-current')).toBeNull();
   });
 

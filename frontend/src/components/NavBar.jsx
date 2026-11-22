@@ -7,7 +7,6 @@ import '../styles/nav.css';
 // instead of "Login" for a signed-in user.
 const NAV_ITEMS = [
   { label: 'Map', to: ROUTES.home, end: true },
-  { label: 'Compare', to: ROUTES.compare },
   { label: 'Flooding', to: ROUTES.seaLevel },
   { label: 'About', to: ROUTES.about },
   { label: 'Login', to: ROUTES.login },

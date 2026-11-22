@@ -4,7 +4,6 @@
 export const ROUTES = {
   home: '/',
   county: '/county/:slug',
-  compare: '/compare',
   seaLevel: '/sea-level',
   about: '/about',
   login: '/login',

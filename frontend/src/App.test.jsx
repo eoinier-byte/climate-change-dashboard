@@ -27,7 +27,6 @@ const pages = [
 // Pages that are built, so they have their own tests next to the page file
 const builtPages = [
   [countyPath('cork'), 'County dashboard'],
-  [ROUTES.compare, 'Compare'], // CCD-207
 ];
 
 function renderAt(path) {
@@ -55,6 +54,12 @@ describe('routes', () => {
   it('renders the home page at /', () => {
     renderAt(ROUTES.home);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/climate projections/i);
+  });
+
+  it('sends the old /compare address to the home page, where Compare now is', () => {
+    renderAt('/compare');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/climate projections/i);
+    expect(screen.getByRole('region', { name: 'Compare' })).toBeTruthy();
   });
 
   it('has a test for every route in the route table', () => {
