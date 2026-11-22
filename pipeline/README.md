@@ -24,6 +24,7 @@ Run each one from this `pipeline/` folder. Steps 01–07 only **look** at the da
 | 07 | `07_inspect_sea_level_json.py` | Prints the UKCP18 sea level file's layout, a sample row, the number of points and the X/Y ranges | 212 sea points (not counties), 3 scenarios × 3 percentiles, rise in cm since 1981–2000. The file says 27700 (British National Grid), but that's only for shapes it doesn't include: **X and Y are lat/lon** |
 | 08 | `08_sea_level_json_to_csv.py` | Turns the sea level JSON into a smaller CSV | 842 KB JSON → 230 KB CSV |
 | 09 | `process_climate_data.py` | Builds the two outputs | 1,820 + 405 rows (see below) |
+| 10 | `worldclim_baseline.py` | WorldClim 2.1 (1970–2000) summer and winter mean temperature and annual rainfall for the analogue cities (`data/analogue_cities.csv`, located with Natural Earth) and the 26 counties (CCD-355). Downloads to `data/raw/` if missing | 49 cities, 26 counties (4–39 cells each), no city needed a nearby cell |
 
 `filename_info.py` is a helper: `get_file_details()` reads the variable, scenario, period and season from a file name. It's used by `process_climate_data.py`.
 
@@ -33,6 +34,7 @@ Run each one from this `pipeline/` folder. Steps 01–07 only **look** at the da
 pip install -r requirements.txt
 python 08_sea_level_json_to_csv.py
 python process_climate_data.py
+python worldclim_baseline.py
 ```
 
 The inspection steps (01–07) are optional; run them to see the data for yourself.
