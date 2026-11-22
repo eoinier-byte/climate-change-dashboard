@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import CompareSection from '../components/CompareSection';
 import CountySearch from '../components/CountySearch';
-import MapExplorer from '../components/MapExplorer';
+import HomeMaps from '../components/HomeMaps';
 import { COUNTIES } from '../data/counties';
 import { countyPath } from '../routes';
 import '../styles/home.css';
 
-// Home page shell. The map (CCD-379) is drawn inside #map-root, with its scenario and period controls (CCD-383).
+// Home page. The maps (CCD-379) are drawn inside #map-root, with their scenario and period controls (CCD-383).
 export default function Home() {
   return (
     <main className="home">
@@ -18,11 +19,17 @@ export default function Home() {
         <CountySearch />
       </section>
 
-      <section className="map-area" aria-labelledby="map-title">
-        <h2 id="map-title">Map of the 26 counties</h2>
-        <div id="map-root" className="map-area__canvas" role="region" aria-label="County map">
-          <MapExplorer />
-        </div>
+      <section id="map-root" className="map-area" aria-label="Maps of the 26 counties">
+        <HomeMaps />
+      </section>
+
+      <section id="compare" className="compare-page home-compare" aria-labelledby="home-compare-title">
+        <h2 id="home-compare-title">Compare</h2>
+        <p className="compare-page__intro">
+          See how the climate is projected to change under two emissions scenarios, or compare two counties
+          under the same scenario, and how big the difference between them is.
+        </p>
+        <CompareSection prefix="cmp_" />
       </section>
 
       <section aria-labelledby="list-title">

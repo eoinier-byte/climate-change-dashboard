@@ -45,7 +45,7 @@ describe('moving around the site', () => {
 
   it('the brand link goes back to the home page', async () => {
     const user = userEvent.setup();
-    renderAt(ROUTES.compare);
+    renderAt(ROUTES.about);
     await user.click(mainNav().getByRole('link', { name: 'Ireland Climate Futures' }));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/climate projections/i);
   });

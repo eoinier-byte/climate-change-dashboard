@@ -8,10 +8,10 @@ test.describe('from the map to a county page', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: "Explore Ireland's climate projections" })).toBeVisible();
 
-    // 2. Wait for the map to load its values. Each county on the map is a link named like
-    //    "Cork: 12.5 °C, open county page". Before the values arrive it is just "Cork, open county page",
+    // 2. Wait for the map to load its values. Each county on each map is a link named like
+    //    "Cork, RCP8.5: 12.5 °C, open county page". Before the values arrive it has no ":",
     //    so waiting for the ":" means the map has loaded its data.
-    const cork = page.getByRole('region', { name: 'County map' }).getByRole('link', { name: /^Cork: .*open county page$/ });
+    const cork = page.getByRole('region', { name: 'County maps' }).getByRole('link', { name: /^Cork, RCP8.5: .*open county page$/ }).first();
     await expect(cork).toBeVisible();
 
     // 3. Open Cork. Using the keyboard (Tab to it, then Enter) is how the map is built to work, and it is
