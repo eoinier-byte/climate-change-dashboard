@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright (CCD-233): reports and screenshots from test runs, made fresh each time
+playwright-report/
+test-results/
+blob-report/

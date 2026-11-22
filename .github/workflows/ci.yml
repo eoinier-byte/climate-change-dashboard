@@ -97,6 +97,32 @@ jobs:
       - if: ${{ hashFiles('frontend/package.json') != '' }}
         run: npm test --if-present
 
+  # End-to-end tests (CCD-232): open the site in a real Chrome and click through it.
+  # They use the example data (VITE_USE_MOCKS=true), so no backend or database is needed.
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Install the frontend's packages, including Playwright
+      - run: npm ci
+      # Download Chrome and the Linux libraries it needs
+      - run: npx playwright install --with-deps chromium
+      # Start the site and run the tests (playwright.config.js starts the site itself)
+      - run: npm run test:e2e
+      # If a test failed, keep the report and screenshots so we can see what went wrong
+      - if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
   # C++ flood module (CCD-277): only runs once the module exists.
   # The C++ code lives in flood_engine/ (CCD-396); the tests use Catch2, which CMake downloads.
   cpp:
@@ -140,7 +166,7 @@ jobs:
   # Needs a repo secret called DISCORD_WEBHOOK_URL (see docs/ci-cd.md).
   notify:
     runs-on: ubuntu-latest
-    needs: [lint, pipeline, backend, frontend, cpp]
+    needs: [lint, pipeline, backend, frontend, e2e, cpp]
     # failure() is true when any job in "needs" failed
     if: ${{ failure() }}
     steps:
