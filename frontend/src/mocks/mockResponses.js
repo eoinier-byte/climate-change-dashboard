@@ -155,12 +155,6 @@ function mapResponse(params) {
 // ---- PROPOSED endpoints (not built yet; the owners confirm the shapes on CCD-405) ----
 // Invented example numbers, only to show the shape.
 
-const FUTURE_ROWS = [
-  ['rcp26', '2021-2050'], ['rcp26', '2071-2100'],
-  ['rcp45', '2021-2050'], ['rcp45', '2071-2100'],
-  ['rcp85', '2021-2050'], ['rcp85', '2071-2100'],
-];
-
 // GET /counties/{slug}/impacts/?scenario=&period= (CCD-364, CCD-367, Taras): everyday indicators
 // (frost days, summer days, heating degree days, growing season length) as a flat list like
 // /projections/. Both filters are optional. Every row has its baseline, projected value and change.
@@ -189,19 +183,56 @@ function impacts(county, params) {
   return { status: 200, body: rows };
 }
 
-// GET /analogues/?county={slug} (CCD-358, Artur): the European city whose present climate
-// most closely matches the county's projected future climate
+// GET /counties/{slug}/analogues/?scenario=&period= (CCD-358, Artur): the three European cities
+// whose present climate (WorldClim 1970-2000) is closest to the county's projected climate, ordered
+// by rank. Both parameters are required; baseline is not a valid scenario. The numbers are made up.
+const ANALOGUE_SCENARIOS = ['rcp26', 'rcp45', 'rcp85'];
+const ANALOGUE_PERIODS = ['2021-2050', '2071-2100'];
 const ANALOGUE_CITIES = [
-  ['Brest', 'France', '48.390', '-4.486'], ['Plymouth', 'United Kingdom', '50.376', '-4.143'],
-  ['Brest', 'France', '48.390', '-4.486'], ['Bordeaux', 'France', '44.838', '-0.579'],
-  ['Nantes', 'France', '47.218', '-1.554'], ['Porto', 'Portugal', '41.150', '-8.611'],
+  // [city, country, latitude, longitude, similarity, summer degC, winter degC, annual mm]
+  ['Brest', 'France', '48.390', '-4.486', '0.812', '16.200', '7.300', '1210.000'],
+  ['Plymouth', 'United Kingdom', '50.376', '-4.143', '0.745', '15.700', '6.400', '1010.000'],
+  ['Quimper', 'France', '47.996', '-4.102', '0.701', '16.600', '6.900', '1420.000'],
 ];
 
-function analogues(county) {
-  return FUTURE_ROWS.map(([scenario, period], index) => {
-    const [city, country, latitude, longitude] = ANALOGUE_CITIES[index];
-    return { county: county.slug, scenario, period, city, country, latitude, longitude, source: 'worldclim' };
+function analogues(county, params) {
+  const checks = [
+    ['scenario', ANALOGUE_SCENARIOS],
+    ['period', ANALOGUE_PERIODS],
+  ];
+  const errors = {};
+  checks.forEach(([field, valid]) => {
+    const value = params.get(field);
+    if (!value) errors[field] = ['This field is required.'];
+    else if (!valid.includes(value)) {
+      errors[field] = [`Select a valid choice. ${value} is not one of the available choices.`];
+    }
   });
+  if (Object.keys(errors).length > 0) return { status: 400, body: errors };
+
+  const rows = ANALOGUE_CITIES.map(([city, country, latitude, longitude, similarity, summer, winter, precip], index) => ({
+    county: county.slug,
+    scenario: params.get('scenario'),
+    period: params.get('period'),
+    rank: index + 1,
+    city,
+    country,
+    latitude,
+    longitude,
+    similarity,
+    city_summer_temp: summer,
+    city_winter_temp: winter,
+    city_annual_precip: precip,
+    county_summer_temp: '16.020',
+    county_winter_temp: '7.110',
+    county_annual_precip: '1352.400',
+    temperature_unit: 'degC',
+    precipitation_unit: 'mm',
+    city_baseline_period: '1970-2000',
+    change_baseline_period: '1976-2005',
+    source: 'worldclim',
+  }));
+  return { status: 200, body: rows };
 }
 
 // POST /reports/ (CCD-307, Taras): not routed below, because services/api.js has no POST function yet.
@@ -236,6 +267,12 @@ export function mockGet(path) {
     return county ? impacts(county, params) : notFound();
   }
 
+  const analoguesMatch = url.pathname.match(/^\/counties\/([^/]+)\/analogues\/$/);
+  if (analoguesMatch) {
+    const county = bySlug(analoguesMatch[1]);
+    return county ? analogues(county, params) : notFound();
+  }
+
   const sea = url.pathname.match(/^\/sea-level\/([^/]+)\/$/);
   if (sea) {
     const county = bySlug(sea[1]);
@@ -245,7 +282,6 @@ export function mockGet(path) {
   // These need ?county=slug: 400 if it is missing, 404 if there is no such county
   const needsCounty = {
     '/projections/': (county) => projectionRows(county, params),
-    '/analogues/': analogues,
   }[url.pathname];
   if (needsCounty) {
     if (!params.get('county')) return { status: 400, body: { county: 'This query parameter is required.' } };
