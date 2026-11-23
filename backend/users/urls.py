@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from users.views import (
     CsrfView,
     EmailVerificationView,
+    PasswordResetView,
     ProfileViewSet,
     RecoveryView,
     UserLoginView,
@@ -24,4 +25,5 @@ urlpatterns = [
     path('recovery/', RecoveryView.as_view(), name='recovery'),
     path('csrf/', CsrfView.as_view(), name='token'),
     path('verify/<int:user_id>/<uuid:code>/', EmailVerificationView.as_view(), name='verify'),
+    path('reset/<int:user_id>/<uuid:code>/', PasswordResetView.as_view(), name='reset'),
 ]

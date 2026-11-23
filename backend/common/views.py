@@ -28,12 +28,12 @@ class AuthView(EnforceCsrfMixin, GenericAPIView):
 
         if isinstance(serializer, UserRegisterSerializer):
             user = serializer.save()
-            message = 'User registered successfully'
+            message = 'Your account has been created.'
             status = HTTPStatus.CREATED
             transaction.on_commit(lambda: async_send_email.delay(user.id, EmailVerification.REGISTER))
         else:
             user = serializer.validated_data['user']
-            message = 'User signed in successfully'
+            message = 'You have signed in.'
             status = HTTPStatus.OK
 
         login(request, user)

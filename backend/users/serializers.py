@@ -5,6 +5,7 @@ from django.core.validators import validate_email
 from django.db import transaction
 from rest_framework import serializers
 
+from common.serializers import PasswordSerializer
 from users.models import EmailVerification, User
 
 
@@ -19,12 +20,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         email = value.lower()
         if User.objects.filter(email__iexact=email).exists():
-            raise serializers.ValidationError('user with this email already exists.')
+            raise serializers.ValidationError('A user with this email already exists.')
         return email
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({'password': "Password fields didn't match."})
+            raise serializers.ValidationError({'password': 'Passwords do not match.'})
+
         return attrs
 
     def create(self, validated_data):
@@ -43,7 +45,7 @@ class UserLoginSerializer(serializers.Serializer):
         if '@' in login:
             user = User.objects.filter(email__iexact=login).first()
             if user is None:
-                raise serializers.ValidationError({'detail': 'Invalid login or password'})
+                raise serializers.ValidationError({'detail': 'Invalid login or password.'})
             validate_email(login)
             username = user.username
         else:
@@ -56,27 +58,24 @@ class UserLoginSerializer(serializers.Serializer):
         if user:
             attrs['user'] = user
             return attrs
-        raise serializers.ValidationError({'detail': 'Invalid login or password'})
+        raise serializers.ValidationError({'detail': 'Invalid login or password.'})
 
 
 class ResetEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(write_only=True)
 
 
 class UpdateEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(write_only=True)
 
+    @transaction.atomic
     def save(self, **kwargs):
         user = self.context['request'].user
-        with transaction.atomic():
-            (
-                EmailVerification.objects.filter(user=user, type=EmailVerification.VERIFY_EMAIL, used=False).update(
-                    used=True
-                )
-            )
 
-            user.pending_email = self.validated_data['email']
-            user.save(update_fields=['pending_email'])
+        (EmailVerification.objects.filter(user=user, type=EmailVerification.VERIFY_EMAIL, used=False).update(used=True))
+
+        user.pending_email = self.validated_data['email']
+        user.save(update_fields=['pending_email'])
         return user
 
     def validate_email(self, value):
@@ -86,13 +85,31 @@ class UpdateEmailSerializer(serializers.Serializer):
         if user.email.lower() == email:
             raise serializers.ValidationError('The new email must be different from your current one.')
 
-        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
-            raise serializers.ValidationError('Email already exists')
+        if User.objects.filter(email__iexact=email).exclude(id=user.id).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
 
         return email
 
 
-class PasswordSerializer(serializers.Serializer): ...
+class ResetPasswordSerializer(PasswordSerializer): ...
+
+
+class UpdatePasswordSerializer(PasswordSerializer):
+    old_password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs['old_password'] == attrs['new_password']:
+            raise serializers.ValidationError(
+                {'new_password': 'The new password must be different from the current one.'}
+            )
+        return attrs
+
+    def validate_old_password(self, value):
+        user = self.context['user']
+        if not user.check_password(value):
+            raise serializers.ValidationError('Current password is incorrect.')
+        return value
 
 
 class ProfileSerializer(serializers.Serializer): ...

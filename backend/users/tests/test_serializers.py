@@ -5,7 +5,12 @@ from django.test import RequestFactory, TestCase
 from django.utils.timezone import now
 
 from users.models import EmailVerification, User
-from users.serializers import UpdateEmailSerializer, UserRegisterSerializer
+from users.serializers import (
+    ResetPasswordSerializer,
+    UpdateEmailSerializer,
+    UpdatePasswordSerializer,
+    UserRegisterSerializer,
+)
 
 PASSWORD = 'Str0ng-pass-123'
 
@@ -107,3 +112,66 @@ class UserRegisterSerializerTests(TestCase):
 
         self.assertFalse(serializer.is_valid())
         self.assertIn('email', serializer.errors)
+
+
+class UpdatePasswordSerializerTests(TestCase):
+    new_password = 'N3w-Str0ng-pass-456'
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+
+    def serializer(self, old=PASSWORD, new=None, new2=None):
+        new = new or self.new_password
+        data = {'old_password': old, 'new_password': new, 'new_password2': new2 or new}
+        return UpdatePasswordSerializer(data=data, context={'user': self.user})
+
+    def test_valid_change_sets_password(self):
+        serializer = self.serializer()
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))
+
+    def test_wrong_current_password(self):
+        serializer = self.serializer(old='Wrong-pass-123')
+
+        self.assertFalse(serializer.is_valid())
+        self.assertEqual(serializer.errors['old_password'], ['Current password is incorrect.'])
+
+    def test_new_password_equal_to_current(self):
+        serializer = self.serializer(new=PASSWORD)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('new_password', serializer.errors)
+
+    def test_mismatched_passwords(self):
+        serializer = self.serializer(new2='Different-pass-789')
+
+        self.assertFalse(serializer.is_valid())
+        self.assertEqual(serializer.errors['new_password'], ['Passwords do not match.'])
+
+    def test_password_validators_run_against_user(self):
+        serializer = self.serializer(new='alice7319')
+
+        self.assertFalse(serializer.is_valid())
+
+
+class ResetPasswordSerializerTests(TestCase):
+    new_password = 'N3w-Str0ng-pass-456'
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+
+    def test_sets_password_without_current_one(self):
+        data = {'new_password': self.new_password, 'new_password2': self.new_password}
+        serializer = ResetPasswordSerializer(data=data, context={'user': self.user})
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))

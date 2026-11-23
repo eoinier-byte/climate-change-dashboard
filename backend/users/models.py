@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.mail import send_mail
@@ -5,6 +7,11 @@ from django.db import models
 from django.utils.timezone import now
 
 # Create your models here.
+
+
+class EmailVerificationQuerySet(models.query.QuerySet):
+    def find_record(self, user_id: int, code: str, types: Iterable[str]) -> 'EmailVerification | None':
+        return self.select_related('user').filter(code=code, user_id=user_id, type__in=types).first()
 
 
 class User(AbstractUser):
@@ -45,6 +52,8 @@ class EmailVerification(models.Model):
     type = models.CharField(max_length=40, choices=TYPE_CHOICES, default=None)
     used = models.BooleanField(default=False)
 
+    objects = EmailVerificationQuerySet.as_manager()
+
     def _wrap_message(self, message: str) -> str:
         return (
             f'Dear {self.user.name or self.user.username},\n\n'
@@ -60,7 +69,6 @@ class EmailVerification(models.Model):
 
     @property
     def recipient(self) -> str:
-        # An email change is confirmed from the new address; everything else goes to the current one.
         if self.type == self.VERIFY_EMAIL:
             return self.user.pending_email
         return self.user.email

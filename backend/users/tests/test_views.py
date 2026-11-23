@@ -144,7 +144,7 @@ class LogoutTests(AuthTestCase):
 
 @override_settings(DOMAIN_NAME='http://frontend.test')
 class RecoveryTests(AuthTestCase):
-    message = {'detail': 'If this email is registered, you will receive a link.'}
+    message = {'detail': 'If an account with this email exists, a password reset link has been sent to it.'}
 
     @classmethod
     def setUpTestData(cls):
@@ -154,7 +154,7 @@ class RecoveryTests(AuthTestCase):
         response = self.post('recovery', {'email': 'Bob@Example.com'})
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(response.json(), {**self.message, 'email': 'Bob@Example.com'})
+        self.assertEqual(response.json(), self.message)
         record = EmailVerification.objects.get(user=self.user)
         self.assertEqual(record.type, EmailVerification.RESET_PASSWORD)
         self.assertFalse(record.used)
@@ -166,7 +166,7 @@ class RecoveryTests(AuthTestCase):
         response = self.post('recovery', {'email': 'nobody@example.com'})
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(response.json(), {**self.message, 'email': 'nobody@example.com'})
+        self.assertEqual(response.json(), self.message)
         self.assertFalse(EmailVerification.objects.exists())
         self.assertEqual(mail.outbox, [])
 
@@ -389,3 +389,188 @@ class ChangeEmailTests(TestCase):
                 self.user.refresh_from_db()
                 self.assertIsNone(self.user.pending_email)
                 self.assertEqual(mail.outbox, [])
+
+
+class PasswordResetViewTests(TestCase):
+    new_password = 'N3w-Str0ng-pass-456'
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+        cls.other = User.objects.create_user(username='bob', email='bob@example.com', password=PASSWORD)
+
+    def make(self, email_type=EmailVerification.RESET_PASSWORD, expires_in=timedelta(hours=1), user=None, used=False):
+        return EmailVerification.objects.create(
+            code=uuid.uuid4(), user=user or self.user, expiration=now() + expires_in, type=email_type, used=used
+        )
+
+    def url(self, code):
+        return reverse('users:reset', kwargs={'user_id': self.user.id, 'code': code})
+
+    def reset(self, code, password=None, password2=None):
+        password = password or self.new_password
+        data = {'new_password': password, 'new_password2': password2 or password}
+        return self.client.post(self.url(code), data, content_type='application/json')
+
+    def assert_password_unchanged(self, user=None):
+        user = user or self.user
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(PASSWORD))
+
+    def test_get_confirms_valid_link_without_using_it(self):
+        record = self.make()
+
+        response = self.client.get(self.url(record.code))
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        record.refresh_from_db()
+        self.assertFalse(record.used)
+
+    def test_unknown_or_foreign_code_is_not_found(self):
+        cases = {
+            'unknown code': uuid.uuid4(),
+            'code of another user': self.make(user=self.other).code,
+            'email verification code': self.make(EmailVerification.REGISTER).code,
+        }
+        for name, code in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.client.get(self.url(code)).status_code, HTTPStatus.NOT_FOUND)
+                self.assertEqual(self.reset(code).status_code, HTTPStatus.NOT_FOUND)
+
+        self.assert_password_unchanged()
+        self.assert_password_unchanged(self.other)
+
+    def test_used_and_expired_links_are_gone(self):
+        for record in (self.make(used=True), self.make(expires_in=timedelta(seconds=-1))):
+            with self.subTest(used=record.used):
+                self.assertEqual(self.client.get(self.url(record.code)).status_code, HTTPStatus.GONE)
+                self.assertEqual(self.reset(record.code).status_code, HTTPStatus.GONE)
+
+        self.assert_password_unchanged()
+
+    def test_sets_new_password_and_uses_all_reset_links(self):
+        record = self.make()
+        older = self.make()
+        verification = self.make(EmailVerification.REGISTER)
+
+        response = self.reset(record.code)
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))
+        for link, used in ((record, True), (older, True), (verification, False)):
+            link.refresh_from_db()
+            self.assertEqual(link.used, used)
+
+    def test_link_works_only_once(self):
+        record = self.make()
+        self.reset(record.code)
+
+        response = self.reset(record.code, password='An0ther-pass-789')
+
+        self.assertEqual(response.status_code, HTTPStatus.GONE)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))
+
+    def test_invalid_password_keeps_link_usable(self):
+        cases = {
+            'mismatch': (self.new_password, 'Different-pass-789'),
+            'too common': ('password', None),
+            'numeric': ('1234567890', None),
+            'similar to username': ('alice7319', None),
+        }
+        record = self.make()
+        for name, (password, password2) in cases.items():
+            with self.subTest(name):
+                response = self.reset(record.code, password, password2)
+
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                record.refresh_from_db()
+                self.assertFalse(record.used)
+
+        self.assert_password_unchanged()
+        self.assertEqual(self.reset(record.code).status_code, HTTPStatus.OK)
+
+    def test_changes_link_owner_not_signed_in_user(self):
+        self.client.force_login(self.other)
+
+        response = self.reset(self.make().code)
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))
+        self.assert_password_unchanged(self.other)
+
+    def test_signs_out_existing_sessions(self):
+        session = Client()
+        session.force_login(self.user)
+
+        self.reset(self.make().code)
+
+        self.assertEqual(session.post(reverse('users:logout')).status_code, HTTPStatus.FORBIDDEN)
+
+
+class ChangePasswordTests(TestCase):
+    new_password = 'N3w-Str0ng-pass-456'
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def change(self, old=PASSWORD, new=None, new2=None):
+        new = new or self.new_password
+        data = {'old_password': old, 'new_password': new, 'new_password2': new2 or new}
+        return self.client.post(reverse('users:profile-change-password'), data, content_type='application/json')
+
+    def assert_password_unchanged(self):
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(PASSWORD))
+
+    def test_needs_a_session(self):
+        self.client.logout()
+
+        response = self.change()
+
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+        self.assert_password_unchanged()
+
+    def test_changes_password_and_keeps_current_session(self):
+        response = self.change()
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.new_password))
+        self.assertEqual(self.client.post(reverse('users:logout')).status_code, HTTPStatus.OK)
+
+    def test_signs_out_other_sessions(self):
+        other_session = Client()
+        other_session.force_login(self.user)
+
+        self.change()
+
+        self.assertEqual(other_session.post(reverse('users:logout')).status_code, HTTPStatus.FORBIDDEN)
+
+    def test_rejects_invalid_input(self):
+        cases = {
+            'wrong current password': ('Wrong-pass-123', self.new_password, None, 'old_password'),
+            'same as current': (PASSWORD, PASSWORD, None, 'new_password'),
+            'mismatch': (PASSWORD, self.new_password, 'Different-pass-789', 'new_password'),
+        }
+        for name, (old, new, new2, field) in cases.items():
+            with self.subTest(name):
+                response = self.change(old, new, new2)
+
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(field, response.json())
+
+        self.assert_password_unchanged()
+
+    def test_rejects_weak_password(self):
+        for password in ('password', '1234567890', 'alice7319'):
+            with self.subTest(password=password):
+                self.assertEqual(self.change(new=password).status_code, HTTPStatus.BAD_REQUEST)
+
+        self.assert_password_unchanged()
