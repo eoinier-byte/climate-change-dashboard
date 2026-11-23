@@ -9,6 +9,7 @@ from django.utils.timezone import now
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
+    pending_email = models.EmailField(blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True)
     avatar = models.ImageField(upload_to='users', blank=True, null=True)
     is_verified = models.BooleanField(default=False)
@@ -37,9 +38,6 @@ class EmailVerification(models.Model):
         VERIFY_EMAIL: '/email-updated',
     }
 
-    EXPIRED = 'expired'
-    USED = 'used'
-
     code = models.UUIDField(editable=False, unique=True)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
     expiration = models.DateTimeField()
@@ -59,6 +57,13 @@ class EmailVerification(models.Model):
     def _build_link(self) -> str:
         path = self.FRONTEND_PATHS[self.type]
         return f'{settings.DOMAIN_NAME.rstrip("/")}{path}/{self.user.id}/{self.code}'
+
+    @property
+    def recipient(self) -> str:
+        # An email change is confirmed from the new address; everything else goes to the current one.
+        if self.type == self.VERIFY_EMAIL:
+            return self.user.pending_email
+        return self.user.email
 
     def send_email(self) -> None:
         link = self._build_link()
@@ -98,7 +103,7 @@ class EmailVerification(models.Model):
             subject=subject,
             message=message,
             from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[self.user.email],
+            recipient_list=[self.recipient],
         )
 
     def is_expired(self) -> bool:

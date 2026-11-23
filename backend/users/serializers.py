@@ -2,9 +2,10 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import validate_email
+from django.db import transaction
 from rest_framework import serializers
 
-from users.models import User
+from users.models import EmailVerification, User
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -14,6 +15,12 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'email', 'password', 'password2']
         extra_kwargs = {'password': {'write_only': True, 'style': {'input_type': 'password'}}}
+
+    def validate_email(self, value):
+        email = value.lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError('user with this email already exists.')
+        return email
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -34,9 +41,8 @@ class UserLoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         login = attrs['login']
         if '@' in login:
-            try:
-                user = User.objects.get(email=login)
-            except User.DoesNotExist:
+            user = User.objects.filter(email__iexact=login).first()
+            if user is None:
                 raise serializers.ValidationError({'detail': 'Invalid login or password'})
             validate_email(login)
             username = user.username
@@ -53,5 +59,40 @@ class UserLoginSerializer(serializers.Serializer):
         raise serializers.ValidationError({'detail': 'Invalid login or password'})
 
 
-class EmailSerializer(serializers.Serializer):
+class ResetEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class UpdateEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        with transaction.atomic():
+            (
+                EmailVerification.objects.filter(user=user, type=EmailVerification.VERIFY_EMAIL, used=False).update(
+                    used=True
+                )
+            )
+
+            user.pending_email = self.validated_data['email']
+            user.save(update_fields=['pending_email'])
+        return user
+
+    def validate_email(self, value):
+        email = value.lower()
+        user = self.context['request'].user
+
+        if user.email.lower() == email:
+            raise serializers.ValidationError('The new email must be different from your current one.')
+
+        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError('Email already exists')
+
+        return email
+
+
+class PasswordSerializer(serializers.Serializer): ...
+
+
+class ProfileSerializer(serializers.Serializer): ...
