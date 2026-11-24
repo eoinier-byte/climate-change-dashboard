@@ -17,6 +17,7 @@ from common.exceptions import Gone
 from common.views import AuthView
 from users.models import EmailVerification, User
 from users.serializers import (
+    AvatarSerializer,
     ProfileSerializer,
     ResetEmailSerializer,
     ResetPasswordSerializer,
@@ -133,18 +134,55 @@ class PasswordResetView(GenericAPIView):
         return Response({'detail': 'Your password has been reset.'}, status=HTTPStatus.OK)
 
 
-class ProfileViewSet(viewsets.ModelViewSet):
+class ProfileViewSet(viewsets.GenericViewSet):
     serializer_classes = {
-        'profile': ProfileSerializer,
+        'me': ProfileSerializer,
+        'update_me': ProfileSerializer,
         'change_password': UpdatePasswordSerializer,
         'change_email': UpdateEmailSerializer,
+        'change_avatar': AvatarSerializer,
     }
     permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
-        return self.serializer_classes[self.action]
+        return self.serializer_classes.get(self.action)
 
-    @action(detail=False, methods=['post'], url_path='change-password')
+    @action(detail=False, methods=['delete'], url_path='me/delete')
+    def delete_me(self, request):
+        user = request.user
+        logout(request)
+        user.delete()
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+    @action(detail=False, methods=['delete'], url_path='me/delete-avatar')
+    def delete_avatar(self, request):
+        if self.request.user.avatar:
+            self.request.user.avatar.delete()
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def me(self, request):
+        serializer = self.get_serializer(self.request.user)
+        return Response(serializer.data, status=HTTPStatus.OK)
+
+    @action(detail=False, methods=['patch', 'put'], url_path='me/update')
+    def update_me(self, request):
+        partial = request.method == 'PATCH'
+        serializer = self.get_serializer(request.user, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=HTTPStatus.OK)
+
+    @action(detail=False, methods=['patch', 'put'], url_path='me/change-avatar')
+    def change_avatar(self, request):
+        partial = request.method == 'PATCH'
+        serializer = self.get_serializer(request.user, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=HTTPStatus.OK)
+
+    @action(detail=False, methods=['patch', 'put'], url_path='me/change-password')
     def change_password(self, request):
         serializer = self.get_serializer(data=request.data, context={'user': request.user})
         serializer.is_valid(raise_exception=True)
@@ -153,7 +191,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
         return Response({'detail': 'Your password has been changed.'}, status=HTTPStatus.OK)
 
-    @action(detail=False, methods=['post'], url_path='change-email')
+    @action(detail=False, methods=['patch', 'put'], url_path='me/change-email')
     def change_email(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)

@@ -1,11 +1,18 @@
+import io
+import shutil
+import tempfile
 import uuid
 from datetime import timedelta
 from http import HTTPStatus
+from pathlib import Path
 
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
+from PIL import Image
+from rest_framework.test import APIClient
 
 from users.models import EmailVerification, User
 
@@ -328,7 +335,7 @@ class ChangeEmailTests(TestCase):
 
     def change(self, email):
         with self.captureOnCommitCallbacks(execute=True):
-            return self.client.post(
+            return self.client.patch(
                 reverse('users:profile-change-email'), {'email': email}, content_type='application/json'
             )
 
@@ -523,7 +530,7 @@ class ChangePasswordTests(TestCase):
     def change(self, old=PASSWORD, new=None, new2=None):
         new = new or self.new_password
         data = {'old_password': old, 'new_password': new, 'new_password2': new2 or new}
-        return self.client.post(reverse('users:profile-change-password'), data, content_type='application/json')
+        return self.client.patch(reverse('users:profile-change-password'), data, content_type='application/json')
 
     def assert_password_unchanged(self):
         self.user.refresh_from_db()
@@ -574,3 +581,347 @@ class ChangePasswordTests(TestCase):
                 self.assertEqual(self.change(new=password).status_code, HTTPStatus.BAD_REQUEST)
 
         self.assert_password_unchanged()
+
+
+def make_image(name='avatar.png', size=(300, 300), image_format='PNG'):
+    buffer = io.BytesIO()
+    Image.new('RGB', size, 'red').save(buffer, image_format)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type=f'image/{image_format.lower()}')
+
+
+class ProfileTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='alice', email='alice@example.com', password=PASSWORD, name='Alice', is_verified=True
+        )
+        User.objects.create_user(username='bob', email='bob@example.com', password=PASSWORD)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def update(self, data, method='patch'):
+        return getattr(self.client, method)(reverse('users:profile-update-me'), data, content_type='application/json')
+
+    def test_needs_a_session(self):
+        self.client.logout()
+
+        self.assertEqual(self.client.get(reverse('users:profile-me')).status_code, HTTPStatus.FORBIDDEN)
+        self.assertEqual(self.update({'name': 'Mallory'}).status_code, HTTPStatus.FORBIDDEN)
+
+    def test_me_returns_own_profile(self):
+        response = self.client.get(reverse('users:profile-me'))
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(
+            response.json(),
+            {
+                'username': 'alice',
+                'name': 'Alice',
+                'email': 'alice@example.com',
+                'avatar': None,
+                'is_verified': True,
+                'pending_email': None,
+            },
+        )
+
+    def test_patch_updates_name_and_username(self):
+        response = self.update({'name': 'Alice Smith', 'username': 'alice.smith'})
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json()['name'], 'Alice Smith')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, 'Alice Smith')
+        self.assertEqual(self.user.username, 'alice.smith')
+
+    def test_put_requires_username(self):
+        response = self.update({'name': 'Alice Smith'}, method='put')
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertIn('username', response.json())
+
+    def test_read_only_fields_are_ignored(self):
+        response = self.update(
+            {'email': 'mallory@example.com', 'is_verified': False, 'pending_email': 'mallory@example.com'}
+        )
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'alice@example.com')
+        self.assertTrue(self.user.is_verified)
+        self.assertIsNone(self.user.pending_email)
+
+    def test_rejects_invalid_username_and_name(self):
+        cases = {
+            'taken username': {'username': 'bob'},
+            'invalid username': {'username': 'not valid!'},
+            'name too long': {'name': 'x' * 51},
+        }
+        for case, data in cases.items():
+            with self.subTest(case):
+                response = self.update(data)
+
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(next(iter(data)), response.json())
+
+        self.user.refresh_from_db()
+        self.assertEqual((self.user.username, self.user.name), ('alice', 'Alice'))
+
+
+class ProfileRoutesTests(TestCase):
+    """The profile endpoints act on the signed-in user only; other users must not be reachable."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+        cls.other = User.objects.create_user(username='bob', email='bob@example.com', password=PASSWORD)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_users_cannot_be_listed(self):
+        response = self.client.get('/api/auth/profile/')
+
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+
+    def test_other_user_cannot_be_read_changed_or_deleted(self):
+        url = f'/api/auth/profile/{self.other.pk}/'
+        requests = {
+            'get': lambda: self.client.get(url),
+            'patch': lambda: self.client.patch(url, {'username': 'hacked'}, content_type='application/json'),
+            'delete': lambda: self.client.delete(url),
+        }
+        for method, send in requests.items():
+            with self.subTest(method):
+                self.assertEqual(send().status_code, HTTPStatus.NOT_FOUND)
+
+        self.assertTrue(User.objects.filter(pk=self.other.pk, username='bob').exists())
+
+
+MEDIA_ROOT = tempfile.mkdtemp()
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class ChangeAvatarTests(TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_login(self.user)
+
+    def upload(self, image, method='patch'):
+        with self.captureOnCommitCallbacks(execute=True):
+            return getattr(self.client, method)(
+                reverse('users:profile-change-avatar'), {'avatar': image}, format='multipart'
+            )
+
+    def avatar(self):
+        self.user.refresh_from_db()
+        return self.user.avatar
+
+    def test_needs_a_session(self):
+        self.client.logout()
+
+        response = self.upload(make_image())
+
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+        self.assertFalse(self.avatar())
+
+    def test_large_image_is_cropped_to_avatar_size(self):
+        for size in ((300, 300), (800, 400), (250, 600)):
+            with self.subTest(size=size):
+                response = self.upload(make_image(size=size))
+
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                with Image.open(self.avatar().path) as saved:
+                    self.assertEqual(saved.size, (User.AVATAR_WIDTH, User.AVATAR_HEIGHT))
+
+    def test_small_image_is_kept_as_is(self):
+        response = self.upload(make_image(size=(150, 150)))
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        with Image.open(self.avatar().path) as saved:
+            self.assertEqual(saved.size, (150, 150))
+
+    def test_heic_photo_is_stored_as_jpeg(self):
+        for size in ((300, 300), (150, 120)):
+            with self.subTest(size=size):
+                response = self.upload(make_image('photo.heic', size=size, image_format='HEIF'))
+
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                avatar = self.avatar()
+                self.assertEqual(Path(avatar.name).suffix, '.jpg')
+                with Image.open(avatar.path) as saved:
+                    self.assertEqual(saved.format, 'JPEG')
+                    self.assertEqual(saved.size, (min(size[0], User.AVATAR_WIDTH), min(size[1], User.AVATAR_HEIGHT)))
+
+        self.assertEqual(list(Path(MEDIA_ROOT).rglob('*.heic')), [])
+
+    def test_put_works_like_patch(self):
+        self.assertEqual(self.upload(make_image(), method='put').status_code, HTTPStatus.OK)
+        self.assertTrue(self.avatar())
+
+    def test_new_avatar_replaces_and_deletes_old_file(self):
+        self.upload(make_image('first.png'))
+        old_path = self.avatar().path
+
+        self.upload(make_image('second.png'))
+
+        new = self.avatar()
+        self.assertNotEqual(new.path, old_path)
+        self.assertFalse(Path(old_path).exists())
+        self.assertTrue(Path(new.path).exists())
+
+    def test_profile_shows_avatar_url(self):
+        self.upload(make_image())
+
+        response = self.client.get(reverse('users:profile-me'))
+
+        self.assertTrue(response.json()['avatar'].endswith(Path(self.avatar().name).name))
+
+    def test_rejects_too_small_image(self):
+        size = (User.MIN_AVATAR_WIDTH - 1, User.MIN_AVATAR_HEIGHT)
+
+        response = self.upload(make_image(size=size))
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertIn('avatar', response.json())
+        self.assertFalse(self.avatar())
+
+    def test_rejects_file_that_is_not_an_image(self):
+        fake = SimpleUploadedFile('avatar.png', b'not an image', content_type='image/png')
+
+        response = self.upload(fake)
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertFalse(self.avatar())
+
+    def test_rejects_disallowed_extension(self):
+        response = self.upload(make_image('avatar.gif', image_format='GIF'))
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+        self.assertFalse(self.avatar())
+
+    def test_put_without_file_is_rejected(self):
+        response = self.client.put(reverse('users:profile-change-avatar'), {}, format='multipart')
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class DeleteAvatarTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+        self.client.force_login(self.user)
+
+    def give_avatar(self):
+        self.user.avatar.save('avatar.png', make_image(), save=True)
+        return Path(self.user.avatar.path)
+
+    def delete_avatar(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.delete(reverse('users:profile-delete-avatar'))
+
+    def test_needs_a_session(self):
+        path = self.give_avatar()
+        self.client.logout()
+
+        response = self.delete_avatar()
+
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+        self.assertTrue(path.exists())
+
+    def test_removes_avatar_and_its_file(self):
+        path = self.give_avatar()
+
+        response = self.delete_avatar()
+
+        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.avatar)
+        self.assertFalse(path.exists())
+        self.assertIsNone(self.client.get(reverse('users:profile-me')).json()['avatar'])
+
+    def test_without_avatar_does_nothing(self):
+        response = self.delete_avatar()
+
+        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.avatar)
+
+    def test_new_avatar_can_be_uploaded_after_deletion(self):
+        self.give_avatar()
+        self.delete_avatar()
+        client = APIClient()
+        client.force_login(self.user)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.patch(
+                reverse('users:profile-change-avatar'), {'avatar': make_image('new.png')}, format='multipart'
+            )
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.user.refresh_from_db()
+        self.assertTrue(Path(self.user.avatar.path).exists())
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class DeleteAccountTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='alice', email='alice@example.com', password=PASSWORD)
+        self.other = User.objects.create_user(username='bob', email='bob@example.com', password=PASSWORD)
+        self.client.force_login(self.user)
+
+    def delete_account(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.delete(reverse('users:profile-delete-me'))
+
+    def test_needs_a_session(self):
+        self.client.logout()
+
+        response = self.delete_account()
+
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_deletes_only_own_account_and_its_links(self):
+        EmailVerification.objects.create(
+            code=uuid.uuid4(), user=self.user, expiration=now() + timedelta(hours=1), type=EmailVerification.REGISTER
+        )
+
+        response = self.delete_account()
+
+        self.assertEqual(response.status_code, HTTPStatus.NO_CONTENT)
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertFalse(EmailVerification.objects.filter(user_id=self.user.pk).exists())
+        self.assertTrue(User.objects.filter(pk=self.other.pk).exists())
+
+    def test_removes_avatar_file(self):
+        self.user.avatar.save('avatar.png', make_image(), save=True)
+        path = Path(self.user.avatar.path)
+
+        self.delete_account()
+
+        self.assertFalse(path.exists())
+
+    def test_ends_the_session(self):
+        self.delete_account()
+
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(self.client.get(reverse('users:profile-me')).status_code, HTTPStatus.FORBIDDEN)
+
+    def test_account_cannot_sign_in_afterwards(self):
+        self.delete_account()
+
+        response = Client().post(
+            reverse('users:login'), {'login': 'alice', 'password': PASSWORD}, content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)

@@ -15,6 +15,12 @@ class EmailVerificationQuerySet(models.query.QuerySet):
 
 
 class User(AbstractUser):
+    AVATAR_HEIGHT = 200
+    AVATAR_WIDTH = 200
+    MIN_AVATAR_WIDTH = 100
+    MIN_AVATAR_HEIGHT = 100
+    MAX_AVATAR_SIZE = 50
+
     email = models.EmailField(unique=True)
     pending_email = models.EmailField(blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True)

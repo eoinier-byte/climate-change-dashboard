@@ -1,10 +1,12 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.core.validators import validate_email
+from django.core.validators import FileExtensionValidator, validate_email
 from django.db import transaction
 from rest_framework import serializers
 
+from common.files import ValidateImageSize, resize_image
 from common.serializers import PasswordSerializer
 from users.models import EmailVerification, User
 
@@ -112,4 +114,30 @@ class UpdatePasswordSerializer(PasswordSerializer):
         return value
 
 
-class ProfileSerializer(serializers.Serializer): ...
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'name', 'email', 'avatar', 'is_verified', 'pending_email']
+        read_only_fields = ['email', 'avatar', 'is_verified', 'pending_email']
+
+
+class AvatarSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(
+        validators=[
+            FileExtensionValidator(allowed_extensions=settings.ALLOWED_IMAGE_EXTENSIONS),
+            ValidateImageSize(
+                max_size_mb=User.MAX_AVATAR_SIZE, min_w=User.MIN_AVATAR_WIDTH, min_h=User.MIN_AVATAR_HEIGHT
+            ),
+        ]
+    )
+
+    def save(self, **kwargs):
+        old_avatar = self.instance.avatar
+        user = super().save(**kwargs)
+        transaction.on_commit(
+            lambda: resize_image(new=user.avatar, old=old_avatar, resolution=(User.AVATAR_WIDTH, User.AVATAR_HEIGHT))
+        )
+
+    class Meta:
+        model = User
+        fields = ['avatar']
