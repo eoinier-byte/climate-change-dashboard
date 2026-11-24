@@ -3,6 +3,7 @@ erDiagram
     County ||--o{ SeaLevelProjection : "has 0 or 27"
     DataSource ||--|{ ClimateProjection : "provides"
     DataSource ||--|{ SeaLevelProjection : "provides"
+    User ||--o{ EmailVerification : "gets links"
 
     County {
         integer id PK
@@ -47,11 +48,23 @@ erDiagram
         date accessed_on
     }
 
-    User["User (planned Sprint 3)"] {
-        integer id PK
+    User {
+        bigint id PK
+        varchar(150) username UK
         varchar(254) email UK
         varchar(128) password "Django hash"
-        varchar(150) first_name
-        varchar(150) last_name
-        boolean email_reports
+        varchar(50) name "nullable"
+        varchar(100) avatar "file path, nullable"
+        boolean is_verified
+        varchar(254) pending_email "nullable"
+    }
+
+    EmailVerification {
+        bigint id PK
+        bigint user_id FK "CASCADE"
+        uuid code UK
+        varchar(40) type "registration, verification, reset"
+        timestamptz expiration
+        timestamptz created_at
+        boolean used
     }

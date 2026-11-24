@@ -12,7 +12,12 @@ from users.models import EmailVerification, User
 class EmailVerificationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password='Str0ng-pass-123')
+        cls.user = User.objects.create_user(
+            username='alice',
+            email='alice@example.com',
+            password='Str0ng-pass-123',
+            pending_email='new@example.com',
+        )
 
     def make(self, email_type, expires_in=timedelta(hours=1)):
         return EmailVerification.objects.create(
@@ -28,11 +33,11 @@ class EmailVerificationTests(TestCase):
 
     def test_each_type_sends_one_email_with_its_link(self):
         cases = [
-            (EmailVerification.RESET_PASSWORD, 'password reset request', '/recovery/'),
-            (EmailVerification.REGISTER, 'please verify your email address', '/verify-email/'),
-            (EmailVerification.VERIFY_EMAIL, 'confirm your new email address', '/email-updated/'),
+            (EmailVerification.RESET_PASSWORD, 'password reset request', '/recovery/', 'alice@example.com'),
+            (EmailVerification.REGISTER, 'please verify your email address', '/verify-email/', 'alice@example.com'),
+            (EmailVerification.VERIFY_EMAIL, 'confirm your new email address', '/email-updated/', 'new@example.com'),
         ]
-        for email_type, subject, path in cases:
+        for email_type, subject, path, recipient in cases:
             with self.subTest(email_type=email_type):
                 mail.outbox = []
                 record = self.make(email_type)
@@ -41,7 +46,7 @@ class EmailVerificationTests(TestCase):
 
                 self.assertEqual(len(mail.outbox), 1)
                 message = mail.outbox[0]
-                self.assertEqual(message.to, ['alice@example.com'])
+                self.assertEqual(message.to, [recipient])
                 self.assertIn(subject, message.subject)
                 self.assertIn(f'http://frontend.test{path}{self.user.id}/{record.code}', message.body)
                 self.assertIn('Dear alice', message.body)

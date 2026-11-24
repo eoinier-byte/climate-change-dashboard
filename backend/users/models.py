@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.mail import send_mail
@@ -7,8 +9,20 @@ from django.utils.timezone import now
 # Create your models here.
 
 
+class EmailVerificationQuerySet(models.query.QuerySet):
+    def find_record(self, user_id: int, code: str, types: Iterable[str]) -> 'EmailVerification | None':
+        return self.select_related('user').filter(code=code, user_id=user_id, type__in=types).first()
+
+
 class User(AbstractUser):
+    AVATAR_HEIGHT = 200
+    AVATAR_WIDTH = 200
+    MIN_AVATAR_WIDTH = 100
+    MIN_AVATAR_HEIGHT = 100
+    MAX_AVATAR_SIZE = 50
+
     email = models.EmailField(unique=True)
+    pending_email = models.EmailField(blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True)
     avatar = models.ImageField(upload_to='users', blank=True, null=True)
     is_verified = models.BooleanField(default=False)
@@ -37,15 +51,14 @@ class EmailVerification(models.Model):
         VERIFY_EMAIL: '/email-updated',
     }
 
-    EXPIRED = 'expired'
-    USED = 'used'
-
     code = models.UUIDField(editable=False, unique=True)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
     expiration = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=40, choices=TYPE_CHOICES, default=None)
     used = models.BooleanField(default=False)
+
+    objects = EmailVerificationQuerySet.as_manager()
 
     def _wrap_message(self, message: str) -> str:
         return (
@@ -59,6 +72,12 @@ class EmailVerification(models.Model):
     def _build_link(self) -> str:
         path = self.FRONTEND_PATHS[self.type]
         return f'{settings.DOMAIN_NAME.rstrip("/")}{path}/{self.user.id}/{self.code}'
+
+    @property
+    def recipient(self) -> str:
+        if self.type == self.VERIFY_EMAIL:
+            return self.user.pending_email
+        return self.user.email
 
     def send_email(self) -> None:
         link = self._build_link()
@@ -98,7 +117,7 @@ class EmailVerification(models.Model):
             subject=subject,
             message=message,
             from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[self.user.email],
+            recipient_list=[self.recipient],
         )
 
     def is_expired(self) -> bool:

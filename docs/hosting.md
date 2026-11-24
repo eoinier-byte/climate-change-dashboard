@@ -52,6 +52,8 @@ Reasons:
 
 Trade-off we accept: the backend sleeps after 15 minutes idle, so the first request takes about a minute. Before a demo or marking, open the site a few minutes early.
 
+**Still open: user avatars (CCD-428).** Avatars are saved to `backend/media/` on the server's disk. Render's free web service wipes its disk on every deploy and restart, so uploaded avatars would disappear. Before going live, either store them in an object store (e.g. Cloudinary or S3 with `django-storages`) or accept that avatars reset after a deploy. The account emails also need a Celery worker and Redis in production (CCD-437): with `DJANGO_DEBUG=False` the emails are only queued, and without a worker they are never sent.
+
 Accounts are created by Eoin (deployment owner) using his GitHub login. Secrets (database URL, Django secret key, API keys) are stored on Render and in GitHub Secrets, never in the repo.
 
 ## Agreed by

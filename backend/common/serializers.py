@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from climate.models import County
@@ -51,3 +52,21 @@ class ProjectionChangeSerializer(ProjectionSerializer):
         if obj.baseline_value is None:
             return None
         return change_from_baseline(obj.value, obj.baseline_value, getattr(obj, self.var_field))
+
+
+class PasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    new_password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({'new_password': 'Passwords do not match.'})
+        validate_password(attrs['new_password'], user=self.context['user'])
+
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user

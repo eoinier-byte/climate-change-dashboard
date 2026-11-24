@@ -3,8 +3,10 @@
 | Layer | Tech | Responsibility |
 |---|---|---|
 | Data pipeline | Python, Pandas, Xarray, GeoPandas | Process EPA NetCDF/CSV, aggregate to counties, load PostgreSQL |
-| Database | PostgreSQL | County projections, sea level, users |
-| API | Django + DRF | REST endpoints, auth (hashed passwords), email reports |
+| Database | PostgreSQL | County projections, sea level, users, email links |
+| API | Django + DRF | REST endpoints, session auth with CSRF, profile and avatars, email links ([api.md](api.md#accounts-ccd-294-ccd-427-ccd-441)) |
+| Background jobs | Celery worker + Redis | Sends account and report emails outside the request (`worker` service in `docker-compose.yml`) |
+| Cache | Redis | `/meta/` and `/map/` responses; optional |
 | Frontend | React + Chart.js | Dashboard, charts, scenario comparison |
 | CI | GitHub Actions | Tests and build on every pull request |
 

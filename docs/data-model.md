@@ -2,7 +2,7 @@
 
 The final database model. This page is the summary. Every attribute's unit, allowed values and CSV source, plus the reasoning behind each choice, are in [entities.md](entities.md). Keep the two files in step: change both in the same pull request.
 
-PostgreSQL. No column allows NULL. All foreign keys are `PROTECT`.
+PostgreSQL. In the climate tables no column allows NULL and every foreign key is `PROTECT`. The account tables (User, EmailVerification) are the exception, see [User and EmailVerification](#user-and-emailverification-sprint-3).
 
 ## ER diagram
 
@@ -14,6 +14,7 @@ erDiagram
     County ||--o{ SeaLevelProjection : "has 0 or 27"
     DataSource ||--|{ ClimateProjection : "provides"
     DataSource ||--|{ SeaLevelProjection : "provides"
+    User ||--o{ EmailVerification : "gets links"
 
     County {
         integer id PK
@@ -58,13 +59,25 @@ erDiagram
         date accessed_on
     }
 
-    User["User (planned Sprint 3)"] {
-        integer id PK
+    User {
+        bigint id PK
+        varchar(150) username UK
         varchar(254) email UK
         varchar(128) password "Django hash"
-        varchar(150) first_name
-        varchar(150) last_name
-        boolean email_reports
+        varchar(50) name "nullable"
+        varchar(100) avatar "file path, nullable"
+        boolean is_verified
+        varchar(254) pending_email "nullable"
+    }
+
+    EmailVerification {
+        bigint id PK
+        bigint user_id FK "CASCADE"
+        uuid code UK
+        varchar(40) type "registration, verification, reset"
+        timestamptz expiration
+        timestamptz created_at
+        boolean used
     }
 ```
 
@@ -129,13 +142,14 @@ erDiagram
 | County | SeaLevelProjection | 1–N, where N can be 0 (27 per coastal county, 0 inland) |
 | DataSource | ClimateProjection | 1–N |
 | DataSource | SeaLevelProjection | 1–N |
+| User | EmailVerification | 1–N, where N can be 0 (one row per email link sent) |
 
 Sea level is stored per county because UKCP18 (adopted in CCD-19, 27 Oct 2026) gives values for coastal locations. Inland counties show "No coastline", never 0.
 
 ## Constraints
 
 Unique:
-- County (`name`), County (`slug`), DataSource (`code`), User (`email`)
+- County (`name`), County (`slug`), DataSource (`code`), User (`username`), User (`email`), EmailVerification (`code`)
 - ClimateProjection (`county_id`, `variable`, `scenario`, `period`, `season`)
 - SeaLevelProjection (`county_id`, `scenario`, `year`)
 
@@ -149,7 +163,9 @@ Enforced by the loader, not the database: sea level rows only for counties with 
 
 ## Delete rules
 
-Every foreign key is `on_delete=PROTECT` (RESTRICT). A County or DataSource can't be deleted while projections refer to it. Data changes come from re-running the loader (`update_or_create`), never from deleting parents, so a cascade could only cause silent data loss.
+Every foreign key of the climate tables is `on_delete=PROTECT` (RESTRICT). A County or DataSource can't be deleted while projections refer to it. Data changes come from re-running the loader (`update_or_create`), never from deleting parents, so a cascade could only cause silent data loss.
+
+EmailVerification → User is the one `CASCADE`: deleting an account also deletes its email links, which are useless without the user.
 
 ## Conventions
 
@@ -159,8 +175,19 @@ Every foreign key is `on_delete=PROTECT` (RESTRICT). A County or DataSource can'
 - **Absolute values only** for temperature and precipitation. Sea level is already a change from its baseline.
 - **No NULLs.** "Not applicable" is a constant or a missing row.
 
-## Planned (Sprint 3): User
-Django's built-in user model (`AbstractUser`, hashed passwords). Store only what is needed: email (unique), first and last name, and `email_reports` (boolean, default `false`). No links to other tables yet.
+## User and EmailVerification (Sprint 3)
+
+**User** (`users.User`, CCD-294, CCD-427) extends Django's `AbstractUser` (hashed passwords; `is_active`, `is_staff`, `date_joined` and the other built-in columns are not shown above). It drops `first_name` and `last_name` and adds:
+
+- `email`: unique, stored lower case; sign-in works with the username or the email.
+- `name`: display name, optional.
+- `avatar`: path of the picture in `media/users/`, optional (rules in [api.md](api.md#avatars)).
+- `is_verified`: set once the user opens the link from the registration email.
+- `pending_email`: a requested new email, moved into `email` only when the link sent to it is opened (CCD-431).
+
+`email_reports` and saved counties are not in the model yet (CCD-319, CCD-442).
+
+**EmailVerification** (CCD-441) is one row per link sent by email: a one-time UUID `code`, the `type` (`registration`, `verification` for an email change, `reset` for a password reset), an `expiration` one hour after it is sent, and a `used` flag. The link flow is described in [api.md](api.md#links-sent-by-email).
 
 ## Changes from the draft
 - Sea level is **per county** instead of national (SeaLevelProjection now has `county_id`).
