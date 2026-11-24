@@ -2,7 +2,7 @@
 
 Every number on the dashboard traces back to one of the sources below. Column-level details are in [docs/variables.md](docs/variables.md), and the full dataset review is in [docs/data-review.md](docs/data-review.md).
 
-Last updated: 10 November 2026 · Owner: Eoin Ryan
+Last updated: 21 November 2026 · Owner: Eoin Ryan
 
 ---
 
@@ -56,7 +56,7 @@ Last updated: 10 November 2026 · Owner: Eoin Ryan
 
 ## 4. Footer text (combined)
 
-> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0. Elevation data (flood layers): produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. Northern Ireland outline (flood layers): © Ordnance Survey of Northern Ireland, OSNI Open Data – Largescale Boundaries – NI Outline, released under the Open Government Licence v3.0.
+> Climate projections: Met Éireann TRANSLATE via EPA Climate Ireland (O'Brien & Nolan, 2023). Sea level: contains Met Office UKCP18 data licensed under the Open Government Licence v3.0. County boundaries: © Tailte Éireann, Counties – National Statutory Boundaries – 2019 – Generalised 20m, licensed under CC BY 4.0. Elevation data (flood layers): produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. Northern Ireland outline (flood layers): © Ordnance Survey of Northern Ireland, OSNI Open Data – Largescale Boundaries – NI Outline, released under the Open Government Licence v3.0. Present-day climate (climate analogues): WorldClim 2.1 (Fick & Hijmans, 2017), worldclim.org. City locations: Made with Natural Earth.
 
 ## 5. Considered and not used
 
@@ -123,3 +123,41 @@ Limitations:
 - **Estuaries inside county boundaries count as land.** The statutory county boundaries run across the inner parts of some estuaries (seen in the CCD-420 check images: the Shannon and Fergus estuaries, upper Cork Harbour), so that water is "land" in this polygon. The DEM gives water about 0 m, so these areas show as flooded already at 0.0 m: in the CCD-420 run, 184 km² in Clare, 58 km² in Limerick and 56 km² in Kerry at 0.0 m are mostly estuary water, not land. Proposed for Sprint 3 (not done): treat those areas as sea, or show flooding relative to the 0.0 m layer.
 - **Generalised ROI coastline.** The ROI part is generalised to 20 m, finer than the 90 m flood grid.
 - **Conflicting OSNI licence statement.** NISRA's Crown copyright page (https://www.nisra.gov.uk/crown-copyright) says OSNI-branded mapping is exempt from the OGL. The dataset itself is marked OGL v3.0 by OSNI, which we follow; UNVERIFIED with LPS.
+
+## 9. WorldClim 2.1 — present-day climate for the climate analogues (CCD-355)
+
+| | |
+|---|---|
+| **Organisation** | WorldClim (worldclim.org); data by S.E. Fick and R.J. Hijmans |
+| **Dataset** | WorldClim version 2.1 historical climate data, monthly average temperature (`tavg`, °C) and precipitation (`prec`, mm), 10-minute resolution |
+| **Used for** | Summer (June–August) and winter (December–February) mean temperature and annual precipitation of the analogue cities and the 26 counties: `pipeline/worldclim_baseline.py` writes `pipeline/data/processed/worldclim_cities.csv` and `worldclim_counties.csv` |
+| **URL** | https://www.worldclim.org/data/worldclim21.html · files: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip and https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_prec.zip |
+| **Period** | 1970–2000 averages ("This is WorldClim version 2.1 climate data for 1970-2000. This version was released in January 2020.") |
+| **Date accessed** | 21 November 2026 (pages read and files downloaded) |
+| **Format** | ZIP of 12 GeoTIFFs per variable (one per month), WGS84 (EPSG:4326), 10 arc-minute cells ("10 minutes (~340 km2)" on the page). Saved to `pipeline/data/raw/worldclim/` (git-ignored) |
+| **Licence / reuse terms** | **No named licence.** The data page shows only "© Copyright 2020-2025, worldclim.org." The About page (https://www.worldclim.org/about.html), section "License", says: "The data are freely available for academic use and other non-commercial use." and "Redistribution or commercial use is not allowed without prior permission." Questions go to info@worldclim.org. The raw files are never committed. **Open question:** whether committing the two derived CSVs counts as redistribution; permission asked from WorldClim / module lead, CSVs not committed until answered |
+| **Required citation** | Fick, S.E. and R.J. Hijmans, 2017. WorldClim 2: new 1km spatial resolution climate surfaces for global land areas. *International Journal of Climatology* 37 (12): 4302-4315. https://doi.org/10.1002/joc.5086 |
+| **Why chosen** | One observed dataset covering both Ireland and the European cities, so a county and a city are compared on the same basis. Free, widely cited, monthly values let us build the same seasons (JJA, DJF) as the TRANSLATE files |
+
+**Footer attribution:** Present-day climate (climate analogues): WorldClim 2.1 (Fick & Hijmans, 2017), worldclim.org.
+
+Limitations:
+
+- **Different baselines.** WorldClim covers 1970–2000; the TRANSLATE change added to it (CCD-357) is measured from 1976–2005.
+- **Coarse cells.** A 10-minute cell is about 12 × 18 km at Irish latitudes. A city's value is its cell's value; Carlow and Louth have only 4 cell centres inside them.
+
+## 10. Natural Earth — city locations for the climate analogues (CCD-355)
+
+| | |
+|---|---|
+| **Organisation** | Natural Earth (naturalearthdata.com), supported by NACIS |
+| **Dataset** | 1:10m Cultural Vectors, Populated Places (`ne_10m_populated_places`), version 5.1.2 |
+| **Used for** | Latitude and longitude of each city in `pipeline/data/analogue_cities.csv`, matched by exact `NAME` and `ADM0NAME` (country) |
+| **URL** | https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/ · file from the official CDN: https://naciscdn.org/naturalearth/10m/cultural/ne_10m_populated_places.zip (the link on the page has a broken `http//` path) |
+| **Date accessed** | 21 November 2026 |
+| **Format** | Shapefile in a ZIP, WGS84. Saved to `pipeline/data/raw/natural_earth/` (git-ignored) |
+| **Licence / reuse terms** | **Public domain.** Terms of use (https://www.naturalearthdata.com/about/terms-of-use/): "All versions of Natural Earth raster + vector map data found on this website are in the public domain." and "No permission is needed to use Natural Earth. Crediting the authors is unnecessary." |
+| **Suggested credit** | "Made with Natural Earth." (optional) |
+| **Why chosen** | Coordinates come from a published dataset instead of being typed in. Six cities first planned are not in it (Truro, Aberystwyth, Quimper, Saint-Malo, Vannes, Bayonne) and were left out |
+
+**Footer attribution (optional):** City locations: Made with Natural Earth.
