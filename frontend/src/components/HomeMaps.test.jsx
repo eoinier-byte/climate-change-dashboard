@@ -3,10 +3,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { toPng } from 'html-to-image';
 import HomeMaps from './HomeMaps';
 import { getMap } from '../services/api';
 
 vi.mock('../services/api', () => ({ getMap: vi.fn() }));
+vi.mock('html-to-image', () => ({ toPng: vi.fn() })); // a real picture needs a real browser (CCD-392)
 
 // Shows the address, so tests can read what the page wrote into the URL
 function Address() {
@@ -260,5 +262,41 @@ describe('HomeMaps', () => {
     expect(screen.getByRole('button', { name: /Pause/ })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Pause/ }));
     expect(screen.getByRole('button', { name: /Play/ })).toBeTruthy();
+  });
+
+  describe('Share image (CCD-392)', () => {
+    it('has a Share image button under the maps, and a line above them saying the year', async () => {
+      renderMaps('/?year=2050');
+      await settle();
+      expect(screen.getByRole('button', { name: 'Share image' })).toBeTruthy();
+      expect(screen.getByText("Average yearly temperature in Ireland's counties, 2050")).toBeTruthy();
+    });
+
+    it('saves the maps with their legend and credit, named after the year, and leaves out the hover line', async () => {
+      toPng.mockResolvedValue('data:image/png;base64,AAA');
+      const downloads = [];
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+        downloads.push(this.download);
+      });
+      renderMaps('/?year=2050');
+      await settle();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Share image' }));
+      expect(await screen.findByText('Image downloaded.')).toBeTruthy();
+
+      const photographed = toPng.mock.calls[0][0];
+      expect(within(photographed).getByRole('region', { name: 'County maps' })).toBeTruthy();
+      expect(within(photographed).getByText(/One colour scale for every scenario and year/)).toBeTruthy();
+      expect(within(photographed).queryByRole('button')).toBeNull();
+      expect(toPng.mock.calls[0][1].filter(document.querySelector('[data-share-exclude]'))).toBe(false);
+      expect(downloads).toEqual(['county-maps-2050.png']);
+      vi.restoreAllMocks();
+    });
+
+    it('has no Share image button when no map is shown', async () => {
+      renderMaps('/?rcp=none');
+      await settle();
+      expect(screen.queryByRole('button', { name: 'Share image' })).toBeNull();
+    });
   });
 });

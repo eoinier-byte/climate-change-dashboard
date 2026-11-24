@@ -1,0 +1,24 @@
+/* The "Share image" and "Copy link" buttons under the warming stripes and the map (CCD-392). */
+
+/* Buttons side by side, wrapping on phones */
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+/* Inside the map's bordered box the buttons need their own padding */
+.map-area__canvas .share-actions {
+  margin-top: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.share-image__status,
+.share-actions .share-link__status {
+  margin: var(--space-2) 0 0;
+  min-height: 1.5em; /* keeps the space, so the page doesn't jump when the message appears */
+  color: var(--color-text-muted);
+}

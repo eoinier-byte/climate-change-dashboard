@@ -8,12 +8,13 @@
 // The lowest and highest value across every scenario and period (the baseline and RCP8.5 at the end of the
 // century) set the colour scale, so a warmer choice looks warmer.
 // The choices live in the URL (useHomeMapView), so a link opens the same maps.
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import useHomeMapView, { HOME_PERIODS } from '../hooks/useHomeMapView';
 import useMapData from '../hooks/useMapData';
 import { MAP_SCENARIOS } from '../hooks/useMapView';
 import { SCENARIO_COLORS } from '../styles/scenarioColors';
 import MapTile from './MapTile';
+import ShareImage from './ShareImage';
 import { formatDegrees, valuesBySlug } from './homeMapData';
 import { COUNTY_SHAPES } from './countyShapes';
 import { YEAR_MAX, YEAR_MIN, blendAt } from './periodBlend';
@@ -33,6 +34,8 @@ export default function HomeMaps() {
   const scenarioName = useId();
   const sliderId = useId();
   const [hoverSlug, setHoverSlug] = useState(null);
+  // The maps with their legend and credit: what "Share image" saves as a PNG (CCD-392)
+  const pictureRef = useRef(null);
 
   // Which two averages the year is between, and the nearer one (its numbers are the ones shown)
   const blend = blendAt(view.yearExact);
@@ -130,53 +133,64 @@ export default function HomeMaps() {
         </div>
       </div>
 
-      <div className="home-maps__surface" role="region" aria-label="County maps">
-        {shown.length === 0 ? (
-          <div className="home-maps__empty">
-            <p className="home-maps__empty-title">No scenario selected</p>
-            <p>Tick at least one scenario above to draw its map. Tick several to compare them side by side.</p>
-            <button type="button" className="btn btn--secondary" onClick={view.showAll}>
-              Show all three
-            </button>
-          </div>
-        ) : (
-          <div className="home-maps__grid">
-            {shown.map(({ value, plain, rcp }) => (
-              <MapTile
-                key={value}
-                scenario={value}
-                name={plain}
-                rcp={rcp}
-                color={SCENARIO_COLORS[value]}
-                answers={answers[value]}
-                blend={blend}
-                range={scale ?? range}
-                onHover={setHoverSlug}
-              />
-            ))}
-          </div>
-        )}
+      <div ref={pictureRef}>
+        <div className="home-maps__surface" role="region" aria-label="County maps">
+          {shown.length > 0 && (
+            <p className="home-maps__caption">Average yearly temperature in Ireland's counties, {view.year}</p>
+          )}
+          {shown.length === 0 ? (
+            <div className="home-maps__empty">
+              <p className="home-maps__empty-title">No scenario selected</p>
+              <p>Tick at least one scenario above to draw its map. Tick several to compare them side by side.</p>
+              <button type="button" className="btn btn--secondary" onClick={view.showAll}>
+                Show all three
+              </button>
+            </div>
+          ) : (
+            <div className="home-maps__grid">
+              {shown.map(({ value, plain, rcp }) => (
+                <MapTile
+                  key={value}
+                  scenario={value}
+                  name={plain}
+                  rcp={rcp}
+                  color={SCENARIO_COLORS[value]}
+                  answers={answers[value]}
+                  blend={blend}
+                  range={scale ?? range}
+                  onHover={setHoverSlug}
+                />
+              ))}
+            </div>
+          )}
 
-        {shown.length > 0 && (
-          <div className="home-maps__key">
-            <p className="home-maps__hover" aria-live="off">
-              {hoverText}
-            </p>
-            {scale && (
-              <div className="home-maps__legend">
-                <span>{formatDegrees(scale[0])}</span>
-                <span className="home-maps__gradient" style={{ background: WARM_GRADIENT }} aria-hidden="true" />
-                <span>{formatDegrees(scale[1])}</span>
-                <span>annual average temperature</span>
-              </div>
-            )}
-          </div>
-        )}
-        <p className="home-maps__credit">
-          One colour scale for every scenario and year, so maps can be compared. The data is three 30-year averages; years between them blend their colours. County boundaries &copy; Tailte
-          &Eacute;ireann, CC BY 4.0. Source: TRANSLATE.
-        </p>
+          {shown.length > 0 && (
+            <div className="home-maps__key">
+              <p className="home-maps__hover" aria-live="off" data-share-exclude>
+                {hoverText}
+              </p>
+              {scale && (
+                <div className="home-maps__legend">
+                  <span>{formatDegrees(scale[0])}</span>
+                  <span className="home-maps__gradient" style={{ background: WARM_GRADIENT }} aria-hidden="true" />
+                  <span>{formatDegrees(scale[1])}</span>
+                  <span>annual average temperature</span>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="home-maps__credit">
+            One colour scale for every scenario and year, so maps can be compared. The data is three 30-year averages; years between them blend their colours. County boundaries &copy; Tailte
+            &Eacute;ireann, CC BY 4.0. Source: TRANSLATE.
+          </p>
+        </div>
       </div>
+
+      {shown.length > 0 && (
+        <div className="share-actions">
+          <ShareImage targetRef={pictureRef} filename={`county-maps-${view.year}`} />
+        </div>
+      )}
     </div>
   );
 }

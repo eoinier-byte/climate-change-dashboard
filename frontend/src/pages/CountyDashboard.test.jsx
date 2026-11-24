@@ -78,7 +78,8 @@ describe('CountyDashboard', () => {
   it('shows the "What this means for you" impacts block for the county (CCD-375)', async () => {
     renderCounty('cork');
     // The block loads its own data, so wait for one of its cards
-    expect(await screen.findByRole('heading', { name: 'Frost days' })).toBeTruthy();
+    // The first test in the file also pays for loading the page's code, so it is given longer than the 1 second default
+    expect(await screen.findByRole('heading', { name: 'Frost days' }, { timeout: 5000 })).toBeTruthy();
     expect(getImpacts).toHaveBeenCalledWith('cork');
   });
 

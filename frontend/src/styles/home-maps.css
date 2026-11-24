@@ -307,3 +307,9 @@
     padding: var(--space-4);
   }
 }
+
+/* The line above the maps, which is also in the saved picture (CCD-392) */
+.home-maps__caption {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+}

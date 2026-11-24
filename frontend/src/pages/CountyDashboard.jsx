@@ -29,7 +29,7 @@ import ScenarioFilter from '../components/ScenarioFilter';
 import SeaLevelChart from '../components/SeaLevelChart';
 import SeasonalChart from '../components/SeasonalChart';
 import ShareLink from '../components/ShareLink';
-import WarmingStripes from '../components/WarmingStripes';
+import ShareableStripes from '../components/ShareableStripes';
 import { buildSeries, filterScenarios, seasonalRows } from '../components/countyChartData';
 import useCountyView, { PERIODS } from '../hooks/useCountyView';
 import { getCounty, getProjections, getSeaLevel } from '../services/api';
@@ -186,10 +186,11 @@ export default function CountyDashboard() {
         <ImpactsBlock slug={slug} scenarios={selectedScenarios} period={period} baselinePeriod={summary.period} />
       </CountySlot>
 
-      {/* 4. Warming stripes (CCD-391). They get the series with every scenario, so their colours stay the
-          same when one is unticked. 5. The climate analogue slot is still reserved. */}
+      {/* 4. Warming stripes (CCD-391), with a "Share image" button that saves them as a PNG (CCD-392).
+          They get the series with every scenario, so their colours stay the same when one is unticked.
+          5. The climate analogue slot is still reserved. */}
       <CountySlot name="stripes" title="Warming stripes" story="CCD-374">
-        {temperatureSeries && <WarmingStripes series={temperatureSeries} selected={selectedScenarios} />}
+        {temperatureSeries && <ShareableStripes series={temperatureSeries} selected={selectedScenarios} slug={slug} />}
       </CountySlot>
       <CountySlot name="analogue" title="Climate analogue" story="CCD-373" />
 
