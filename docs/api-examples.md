@@ -15,6 +15,7 @@ One JSON example for every endpoint the frontend uses or will use, so frontend w
 | `GET /counties/{slug}/impacts/?scenario=&period=` | Built | CCD-364 / CCD-367 / CCD-368 | Taras |
 | `GET /analogues/?county={slug}` | **Proposed** (not built yet) | CCD-354 / CCD-358 | Artur |
 | `POST /reports/` | **Proposed** (not built yet) | CCD-295 / CCD-307 | Taras |
+| `/auth/...` (accounts, profile, email links) | Built | CCD-294 / CCD-427 / CCD-441 | Taras |
 
 The built endpoints were written from the backend code (`climate/serializers.py`, `climate/views.py`) and the real data. The remaining proposed ones follow the same style as `/projections/`: a flat list or one object per county, selected with `?county=`. The owner confirms or changes each shape in a comment on CCD-405, and this file is then updated.
 
@@ -412,6 +413,45 @@ Response (202 Accepted):
   "county": "cork"
 }
 ```
+
+### Accounts: `/auth/...` (CCD-294, CCD-427, CCD-441, Taras)
+
+Session cookie + CSRF header, no tokens; the full list of endpoints, rules and error codes is in [api.md](api.md#accounts-ccd-294-ccd-427-ccd-441). These are not in the mock mode.
+
+`POST /auth/register/`:
+
+```json
+{ "username": "alice", "email": "alice@example.com", "password": "Str0ng-pass-123", "password2": "Str0ng-pass-123" }
+```
+
+Response (201 Created): `{ "detail": "Your account has been created." }`. Login answers `{ "detail": "You have signed in." }`, logout `{ "detail": "You have signed out." }`.
+
+`GET /auth/profile/me/`:
+
+```json
+{
+  "username": "alice",
+  "name": "Alice Smith",
+  "email": "alice@example.com",
+  "avatar": "http://localhost:8000/media/users/avatar.jpg",
+  "is_verified": true,
+  "pending_email": null
+}
+```
+
+`PATCH /auth/profile/me/change-email/` with `{ "email": "new@example.com" }`, response (202 Accepted):
+
+```json
+{ "email": "new@example.com", "detail": "A confirmation link has been sent to your new email address." }
+```
+
+Field errors (400), for example a wrong current password in `PATCH /auth/profile/me/change-password/`:
+
+```json
+{ "old_password": ["Current password is incorrect."] }
+```
+
+No session (403): `{ "detail": "Authentication credentials were not provided." }`. A used or expired email link (410): `{ "detail": "This password reset link has expired." }`.
 
 ## Confirmed shapes
 

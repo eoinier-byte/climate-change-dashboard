@@ -30,7 +30,7 @@ Profiled with pandas at `7fe7a1e`.
 
 ```
 DataSource 1 ──< ClimateProjection >── 1 County 1 ──< SeaLevelProjection >── 1 DataSource
-                                                        User (Sprint 3, no links yet)
+                                      User 1 ──< EmailVerification (Sprint 3, no links to climate tables)
 ```
 
 | Entity | Rows | Loaded from |
@@ -39,7 +39,8 @@ DataSource 1 ──< ClimateProjection >── 1 County 1 ──< SeaLevelProjec
 | ClimateProjection | 1,820 | `climate_data.csv` |
 | SeaLevelProjection | 405 | `sea_level.csv` |
 | DataSource | 2 | seeded from DATA_SOURCES.md (lookup) |
-| User | 0 | created by the app (planned, Sprint 3) |
+| User | – | created by the app (sign-up) |
+| EmailVerification | – | created by the app (one row per link sent by email) |
 
 Types are PostgreSQL. **NULL allowed** is `never` for every attribute, so a projection can't be stored without its value, unit, scenario, period, season or source. "Not applicable" is handled by a constant or a missing row, never by NULL (e.g. inland counties have no sea level rows).
 
@@ -125,18 +126,32 @@ County boundaries (Tailte Éireann) are not a DataSource row: no projection poin
 
 ## 7. Users
 
-Django's built-in user model (`AbstractUser`), with one added field. Only what the app needs is stored (data-model.md). No CSV input.
+Django's user model (`AbstractUser`) without `first_name` and `last_name`, plus the fields below (`users.User`). Only what the app needs is stored (data-model.md). No CSV input. The built-in columns (`is_active`, `is_staff`, `is_superuser`, `last_login`, `date_joined`) are left out of the table.
 
 | Attribute | DB type | Unit | NULL allowed | Allowed values | Source |
 |---|---|---|---|---|---|
-| `id` | `integer` PK (identity) | – | never | – | created by the app |
-| `email` | `varchar(254)` UNIQUE | – | never | valid email address | user sign-up |
-| `password` | `varchar(128)` | – | never | Django password hash (never plain text) | user sign-up |
-| `first_name` | `varchar(150)` | – | never | any; `''` if not given | user sign-up |
-| `last_name` | `varchar(150)` | – | never | any; `''` if not given | user sign-up |
-| `email_reports` | `boolean` | – | never | `true` / `false`, default `false` | user settings |
+| `id` | `bigint` PK (identity) | – | never | – | created by the app |
+| `username` | `varchar(150)` UNIQUE | – | never | letters, digits and `@.+-_` | user sign-up, profile |
+| `email` | `varchar(254)` UNIQUE | – | never | valid email address, lower case | user sign-up; changed only by a confirmed link |
+| `password` | `varchar(128)` | – | never | Django password hash (never plain text) | user sign-up, reset, change |
+| `name` | `varchar(50)` | – | yes | any display name | profile |
+| `avatar` | `varchar(100)` | – | yes | path in `media/users/`; JPEG or PNG, at most 200×200 px | profile |
+| `is_verified` | `boolean` | – | never | `true` once the registration link is opened, default `false` | email link |
+| `pending_email` | `varchar(254)` | – | yes | the requested new email, until its link is opened | profile |
 
-Links to County (e.g. saved counties) are out of scope until Sprint 3 stories exist.
+**EmailVerification**: one row per link sent by email (CCD-441).
+
+| Attribute | DB type | Unit | NULL allowed | Allowed values | Source |
+|---|---|---|---|---|---|
+| `id` | `bigint` PK (identity) | – | never | – | created by the app |
+| `user_id` | `bigint` FK → User, CASCADE | – | never | – | the user the email goes to |
+| `code` | `uuid` UNIQUE | – | never | random UUID4, part of the link | created by the app |
+| `type` | `varchar(40)` | – | never | `registration`, `verification` (email change), `reset` (password) | created by the app |
+| `expiration` | `timestamptz` | – | never | one hour after sending | created by the app |
+| `created_at` | `timestamptz` | – | never | – | created by the app |
+| `used` | `boolean` | – | never | `true` once opened, expired, or replaced by a newer link | created by the app |
+
+`email_reports` and saved counties are not in the model yet (CCD-319, CCD-442).
 
 ---
 
@@ -181,8 +196,9 @@ The baseline period is the only one of the five that isn't a column on the proje
 | County | SeaLevelProjection | 1–N, where N can be 0; each projection has exactly 1 county | 27 rows per coastal county (3 scenarios × 9 years). **Inland counties have 0 rows** (11 counties) |
 | DataSource | ClimateProjection | 1–N; each projection has exactly 1 source | `translate` → 1,820 rows |
 | DataSource | SeaLevelProjection | 1–N; each projection has exactly 1 source | `ukcp18` → 405 rows |
+| User | EmailVerification | 1–N, where N can be 0; deleting a user deletes its links (CASCADE) | – |
 
-User has no relationships yet (§7).
+User has no relationships with the climate tables (§7).
 
 ### Sea level: per county, not national
 
@@ -199,7 +215,9 @@ User has no relationships yet (§7).
 | `DataSource` UNIQUE (`code`) | a second `ukcp18` source row |
 | `ClimateProjection` UNIQUE (`county_id`, `variable`, `scenario`, `period`, `season`) | a second Cork / temperature / rcp85 / 2071-2100 / annual row |
 | `SeaLevelProjection` UNIQUE (`county_id`, `scenario`, `year`) | a second Cork / rcp85 / 2100 row |
-| `User` UNIQUE (`email`) | a second account for the same email address |
+| `User` UNIQUE (`email`) | a second account for the same email address (the app also rejects one that differs only in letter case) |
+| `User` UNIQUE (`username`) | a second account with the same username |
+| `EmailVerification` UNIQUE (`code`) | two links with the same code |
 
 ### CHECK constraints
 
@@ -223,7 +241,7 @@ Not database constraints:
 
 ### Delete behaviour
 
-Every foreign key is **RESTRICT / PROTECT** (Django `on_delete=models.PROTECT`): ClimateProjection → County, ClimateProjection → DataSource, SeaLevelProjection → County and SeaLevelProjection → DataSource.
+Every foreign key of the climate tables is **RESTRICT / PROTECT** (Django `on_delete=models.PROTECT`): ClimateProjection → County, ClimateProjection → DataSource, SeaLevelProjection → County and SeaLevelProjection → DataSource. The only exception is EmailVerification → User, which is CASCADE: an account's email links mean nothing once the account is deleted.
 
 **Why:** a County or DataSource can't be deleted while projections point to it. CASCADE would silently remove 70+ projection rows, or a dataset's attribution, and the dashboard would show gaps with no error. The data only changes when the pipeline re-runs, and the loader's `update_or_create` handles that, so nothing in normal use ever needs to delete a parent. A real removal has to delete the projections first, on purpose.
 

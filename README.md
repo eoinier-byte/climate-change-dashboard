@@ -55,6 +55,8 @@ cd frontend && npm install && npm run dev
 
 Each folder's README has the details. Commands are filled in as each part is built (Sprint 1).
 
+**Accounts and emails.** With `DJANGO_DEBUG=True` the account emails (verify email, new email, password reset) are sent at once and printed in the `runserver` console; copy the link from there. With `DEBUG` off they go through Celery: start Redis and the worker with `docker compose up -d redis worker`, and fill in the `EMAIL_*` values in `.env`. The links point to `DOMAIN_NAME` (the frontend). How sign-in, CSRF and the profile endpoints work: [docs/api.md](docs/api.md#accounts-ccd-294-ccd-427-ccd-441).
+
 ## Tests
 
 ```bash

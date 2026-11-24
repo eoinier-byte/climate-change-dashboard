@@ -28,6 +28,11 @@ env = environ.Env(
     ANTHROPIC_API_KEY=(str, ''),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
+    EMAIL_HOST=(str),
+    EMAIL_PORT=(int),
+    EMAIL_HOST_USER=(str),
+    EMAIL_HOST_PASSWORD=(str),
+    EMAIL_USE_TLS=(bool),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
