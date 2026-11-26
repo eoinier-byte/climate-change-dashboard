@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
+from climate.models import CityClimate, ClimateProjection, County, CountyAnalogue, DataSource, SeaLevelProjection
 
 # Register your models here.
 
@@ -28,3 +28,17 @@ class SeaLevelProjectionAdmin(admin.ModelAdmin):
     list_display = ('county', 'scenario', 'year', 'value', 'unit', 'provenance')
     list_filter = ('scenario', 'year')
     list_select_related = ('county',)
+
+
+@admin.register(CityClimate)
+class CityClimateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'country', 'latitude', 'longitude', 'summer_temp', 'winter_temp', 'annual_precip')
+    list_filter = ('country',)
+    search_fields = ('name',)
+
+
+@admin.register(CountyAnalogue)
+class CountyAnalogueAdmin(admin.ModelAdmin):
+    list_display = ('county', 'scenario', 'period', 'rank', 'city', 'similarity')
+    list_filter = ('scenario', 'period', 'county')
+    list_select_related = ('county', 'city')
