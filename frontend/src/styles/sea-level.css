@@ -1,0 +1,108 @@
+/* Flood page at /sea-level (CCD-152). Uses the theme variables from theme.css only. */
+
+.sea-level-page__intro {
+  max-width: 48rem;
+  color: var(--color-text-muted);
+}
+
+/* The county dropdown and the "Show scenarios" tick boxes: side by side, stacked on small screens */
+.sea-level-page__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+/* "Coastal county" dropdown: label above the box (same look as the county page dropdown) */
+.sea-level-page__county {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 12rem;
+}
+
+.sea-level-page__county label {
+  font-weight: 600;
+}
+
+.sea-level-page__county select {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Space between the sections of the page */
+.sea-level-page__section {
+  margin-top: var(--space-8);
+}
+
+/* The 2050 and 2100 cards: side by side on wide screens, one above the other on phones */
+.sea-level-page__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+/* One card */
+.sea-level-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.sea-level-card h3 {
+  margin-top: 0;
+}
+
+/* One line per scenario: swatch, name, value */
+.sea-level-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sea-level-card__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+/* The coloured square that matches the chart line */
+.sea-level-card__swatch {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 2px;
+}
+
+/* The value sits at the right-hand end of its line, in large type */
+.sea-level-card__value {
+  margin-left: auto;
+  font-size: 1.25rem;
+}
+
+/* Unit, baseline and source under the values */
+.sea-level-card__note {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* The "on the way" box where the flood map will go */
+.sea-level-page__placeholder {
+  padding: var(--space-6);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.sea-level-page__back {
+  margin-top: var(--space-8);
+}
