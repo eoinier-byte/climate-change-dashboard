@@ -103,3 +103,11 @@ export const getMap = (choices = {}, opts) => {
 // heating degree days and growing season length. A flat list like /projections/: one row per
 // indicator, scenario and period, each with baseline_value, projected_value and change.
 export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, opts);
+
+
+// Climate analogues for one county (CCD-358, CCD-373): the three European cities whose climate today
+// is closest to the county's projected climate, for one scenario and one period, closest first.
+// Both choices are needed, e.g. getAnalogues('cork', { scenario: 'rcp45', period: '2071-2100' }).
+// The answer is a list of cities; an empty list means there is no close match.
+export const getAnalogues = (slug, { scenario, period }, opts) =>
+  apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);

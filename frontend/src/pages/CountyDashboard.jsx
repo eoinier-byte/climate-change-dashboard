@@ -13,7 +13,7 @@
 //   2. Charts            - scenario/period controls, temperature, rainfall, sea level
 //   3. "What this means for you" - everyday impacts (CCD-375), see components/ImpactsBlock.jsx
 //   4. Warming stripes   - temperature stripes for the ticked scenarios (CCD-391)
-//   5. Climate analogue  - slot for CCD-373
+//   5. Climate analogue  - the European city with the closest climate today (CCD-373)
 //   6. Actions           - copy link (share); Download PDF goes here (CCD-408)
 // Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
@@ -21,6 +21,7 @@ import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
+import ClimateAnalogue from '../components/ClimateAnalogue';
 import ImpactsBlock from '../components/ImpactsBlock';
 import Loading from '../components/Loading';
 import ProjectionChart from '../components/ProjectionChart';
@@ -186,13 +187,17 @@ export default function CountyDashboard() {
         <ImpactsBlock slug={slug} scenarios={selectedScenarios} period={period} baselinePeriod={summary.period} />
       </CountySlot>
 
-      {/* 4. Warming stripes (CCD-391), with a "Share image" button that saves them as a PNG (CCD-392).
-          They get the series with every scenario, so their colours stay the same when one is unticked.
-          5. The climate analogue slot is still reserved. */}
+            {/* 4. Warming stripes (CCD-391), with a "Share image" button that saves them as a PNG (CCD-392).
+          They get the series with every scenario, so their colours stay the same when one is unticked. */}
       <CountySlot name="stripes" title="Warming stripes" story="CCD-374">
         {temperatureSeries && <ShareableStripes series={temperatureSeries} selected={selectedScenarios} slug={slug} />}
       </CountySlot>
-      <CountySlot name="analogue" title="Climate analogue" story="CCD-373" />
+
+      {/* 5. Climate analogue (CCD-373). It loads its own data and follows the same scenario and period
+          controls as the charts. */}
+      <CountySlot name="analogue" title="Climate analogue" story="CCD-373">
+        <ClimateAnalogue slug={slug} countyName={county.name} selected={selectedScenarios} period={period} />
+      </CountySlot>
 
       {/* 6. Actions */}
       <section className="county-page__actions" aria-labelledby="actions-heading">

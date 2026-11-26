@@ -1,0 +1,106 @@
+/* Climate analogue block on the county page (CCD-151, CCD-373). Uses the theme variables from theme.css only. */
+
+.analogue {
+  max-width: 48rem;
+}
+
+/* "Under RCP8.5, by 2071-2100 County Cork's climate is projected to be most like ..." */
+.analogue__headline {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+/* Similarity: word, bar and the Low / Moderate / High labels under it */
+.analogue__similarity {
+  max-width: 24rem;
+  margin: var(--space-4) 0;
+}
+
+.analogue__similarity p {
+  margin: 0 0 var(--space-2);
+}
+
+/* The empty bar: a thin box with a border */
+.analogue__bar {
+  height: 0.75rem;
+  border: 1px solid var(--color-text);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* The filled part of the bar; its width is set in ClimateAnalogue.jsx */
+.analogue__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-text);
+}
+
+/* Low on the left, Moderate in the middle, High on the right */
+.analogue__bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Comparison table: the county's future against the city today */
+.analogue__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-4) 0;
+}
+
+.analogue__table caption {
+  text-align: left;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.analogue__table th,
+.analogue__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+/* Numbers line up on the right so they are easy to compare,
+   and so do the headings above them (every column except "Measure") */
+.analogue__table td,
+.analogue__table thead th:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* On phones the table can scroll sideways instead of squashing */
+@media (max-width: 40rem) {
+  .analogue__table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+.analogue__others {
+  color: var(--color-text-muted);
+}
+
+/* "How matching works" note */
+.analogue__how {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+/* No close analogue: a dashed box, as in wireframe 08 */
+.analogue--none {
+  padding: var(--space-6);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+}
+
+.analogue--none h3 {
+  margin-top: 0;
+}
