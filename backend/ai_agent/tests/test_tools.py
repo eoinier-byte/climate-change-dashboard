@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 
-from ai_agent.tools import get_projections, get_sea_level, rank_counties
+from ai_agent.tools import get_projections, get_sea_level, rank_counties, show_on_map
 from climate.models import County
 from climate.tests.base import ProjectionTestCase
 from common.enums import Scenario, Season, Unit, Variable
@@ -131,3 +131,27 @@ class RankCountiesTestCase(ToolTestCase):
     def test_invalid_scenario_is_rejected(self):
         with self.assertRaises(ValueError):
             rank_counties.call({**self.ARGUMENTS, 'scenario': 'rcp60'})
+
+
+class ShowOnMapTestCase(ToolTestCase):
+    def setUp(self):
+        super().setUp()
+        self.create_temperature(self.county, '9.810', '12.810')
+
+    def test_accepts_a_view_with_data(self):
+        result = show_on_map.call(
+            {'variable': 'temperature', 'season': 'annual', 'scenario': 'rcp85', 'period': '2071-2100'}
+        )
+        self.assertEqual(result, 'The button is shown under your answer. Do not mention it.')
+
+    def test_rejects_views_without_data(self):
+        cases = {
+            'baseline scenario': {'scenario': 'baseline', 'period': '1976-2005'},
+            'scenario without data': {'scenario': 'rcp26', 'period': '2071-2100'},
+            'unknown period': {'scenario': 'rcp85', 'period': '2041-2070'},
+        }
+        for name, view in cases.items():
+            with self.subTest(name):
+                result = show_on_map.call({'variable': 'temperature', 'season': 'annual', **view})
+                self.assertIn('The map has no view for', result)
+                self.assertIn('Valid scenarios: rcp85. Valid periods: 2071-2100.', result)

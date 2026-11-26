@@ -2,8 +2,9 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from climate.models import ClimateProjection
+from climate.models import ClimateProjection, County
 from climate.serializers import CountySerializer
+from common.enums import Variable
 from common.utils import change_from_baseline
 
 
@@ -45,8 +46,14 @@ class ChatMessageSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=500, trim_whitespace=True)
 
 
+class PageContextSerializer(serializers.Serializer):
+    county = serializers.SlugRelatedField(slug_field='slug', queryset=County.objects.all(), required=False)
+    variable = serializers.ChoiceField(choices=Variable.choices, required=False)
+
+
 class ChatSerializer(serializers.Serializer):
     messages = ChatMessageSerializer(many=True, allow_empty=False, max_length=20)
+    context = PageContextSerializer(required=False)
 
     def validate_messages(self, messages):
         if messages[-1]['role'] != 'user':

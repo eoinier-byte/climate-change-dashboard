@@ -26,6 +26,7 @@ env = environ.Env(
     DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
     ANTHROPIC_API_KEY=(str, ''),
+    ASSISTANT_MODEL=(str, 'claude-haiku-5-5'),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
     EMAIL_HOST=(str),
@@ -192,6 +193,14 @@ REST_FRAMEWORK = {
 }
 
 
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'ai_agent': {'handlers': ['console'], 'level': 'WARNING' if TESTING else 'INFO'}},
+}
+
 # County summary (present-day climate)
 SUMMARY_SCENARIO = 'baseline'
 SUMMARY_PERIOD = '1976-2005'
@@ -199,7 +208,7 @@ SUMMARY_SEASON = 'annual'
 
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
-MODEL = 'claude-haiku-5-5'
+ASSISTANT_MODEL = env('ASSISTANT_MODEL')
 
 # Redis
 REDIS_HOST = env('REDIS_HOST')

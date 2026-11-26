@@ -1,14 +1,27 @@
+import json
+import logging
+import time
+from collections import Counter
 from functools import cache
 from typing import Iterator
 
 import anthropic
 from django.conf import settings
 
-from ai_agent.tools import get_projections, get_sea_level, rank_counties
+from ai_agent.tools import get_projections, get_sea_level, map_view_error, rank_counties, show_on_map
+from climate.models import DataSource
+
+logger = logging.getLogger(__name__)
 
 Messages = list[dict[str, str]]
+USAGE_FIELDS = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')
 TOKENS = 4000
 ITERATIONS = 6
+TOOL_SOURCES = {
+    'get_projections': 'translate',
+    'rank_counties': 'translate',
+    'get_sea_level': 'ukcp18',
+}
 SYSTEM = (
     '<role>\n'
     'You are Boreas, the climate assistant on the Climate Futures Dashboard, a website showing how the '
@@ -45,9 +58,7 @@ SYSTEM = (
     'feel sure: it may rest on different scenarios, periods or baselines. Do not estimate, extrapolate or '
     'calculate new numbers such as differences or averages; rounding for readability is fine.\n\n'
     'With each number, give the unit, the emissions future and when it applies, in everyday words. '
-    'Always end an answer that uses data with a last line naming the source in plain words: TRANSLATE '
-    'is "Source: Met Éireann climate projections (TRANSLATE)", and UKCP18 or ukcp18 is "Source: UK Met '
-    'Office sea level projections (UKCP18)".\n\n'
+    'Do not add a source line; the website shows the sources under your answer.\n\n'
     'These are projections, not forecasts: long-term averages under different emissions futures, not '
     'predictions for a particular day or year. Say "projected", never "will be" as a certainty. If the '
     'data does not cover a question, say so plainly. "Our data does not cover that" is a good answer; a '
@@ -60,8 +71,13 @@ SYSTEM = (
     'for the end of the century. Say in a few words that this is one of several futures, and give the '
     'numbers for the others only when the person asks for them. Request lookups that do not depend on '
     'each other, such as temperature and rainfall for one county, in the same turn.\n\n'
+    'When your answer is about temperature or rainfall projections, also call show_on_map with the '
+    'variable, season, emissions future and period you describe, in the same turn as the data lookup, '
+    'so the website can offer a "Show on map" button. Do not mention the button.\n\n'
     'Pass counties by their English name: "Co. Cork" or "Corcaigh" is cork, and an obvious misspelling '
     'such as "Kilkeny" is kilkenny. If the county is unclear, ask rather than guess.\n\n'
+    'A system note may say what the person is looking at on the dashboard. Use it for words like '
+    '"here" or "this county", but follow the person when they name another place.\n\n'
     'If a tool result says what was wrong, for example by listing the valid counties or periods, correct '
     'the call once. If it still fails, say you could not get the data just now, and do not guess.\n'
     '</tools>\n\n'
@@ -85,7 +101,6 @@ SYSTEM = (
     'From up where the north wind flies, Cork looks a little warmer. Under a medium emissions '
     'future, Cork is projected to be about [X] °C warmer on average around mid-century than in the '
     'late 20th century. That is one of several possible futures; shall I unfold the others?\n'
-    'Source: Met Éireann climate projections (TRANSLATE)\n'
     '</your_reply>\n'
     '</example>\n\n'
     '<example>\n'
@@ -102,7 +117,6 @@ SYSTEM = (
     'sea level on the Wexford coast is projected to rise by about [X] cm by [year], compared with the '
     'late 20th century. How much it rises depends partly on future emissions, which are not set in stone. '
     'Would you like to compare it with the low emissions future?\n'
-    'Source: UK Met Office sea level projections (UKCP18)\n'
     '</your_reply>\n'
     '</example>\n'
     '</examples>'
@@ -115,28 +129,88 @@ def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=30.0)
 
 
-def stream_ask(messages: Messages) -> Iterator[str]:
+def chunk(kind: str, **fields) -> str:
+    return json.dumps({'type': kind, **fields}, ensure_ascii=False, default=str) + '\n'
+
+
+def describe_page(context: dict | None) -> str | None:
+    if not context or 'county' not in context:
+        return None
+    variable = context.get('variable')
+    looking_at = f'{context["county"].name}, {variable}' if variable else context['county'].name
+    return f'The person is looking at {looking_at} on the dashboard.'
+
+
+def log_chat(level: int, outcome: str, started: float, tools: list[str], usage: Counter) -> None:
+    logger.log(
+        level,
+        'Chat %s in %.1fs: tools=%s input=%d output=%d cache_read=%d cache_write=%d',
+        outcome,
+        time.monotonic() - started,
+        tools,
+        usage['input_tokens'],
+        usage['output_tokens'],
+        usage['cache_read_input_tokens'],
+        usage['cache_creation_input_tokens'],
+    )
+
+
+def stream_ask(messages: Messages, context: dict | None = None) -> Iterator[str]:
+    note = describe_page(context)
+    if note:
+        messages = [*messages, {'role': 'system', 'content': note}]
+
     runner = get_client().beta.messages.tool_runner(
-        model=settings.MODEL,
+        model=settings.ASSISTANT_MODEL,
         max_tokens=TOKENS,
         system=SYSTEM,
         messages=messages,
-        tools=[get_projections, get_sea_level, rank_counties],
+        tools=[get_projections, get_sea_level, rank_counties, show_on_map],
         cache_control={'type': 'ephemeral'},
         output_config={'effort': 'low'},
         max_iterations=ITERATIONS,
         timeout=30,
         stream=True,
     )
+
+    started = time.monotonic()
+    usage = Counter()
+    tools = []
     final = None
+    used = set()
+    map_action = None
+
     try:
         for stream in runner:
             for event in stream:
                 if event.type == 'content_block_delta' and event.delta.type == 'text_delta':
-                    yield event.delta.text
+                    yield chunk('text', text=event.delta.text)
+
             final = stream.get_final_message()
-    except anthropic.APIError:
-        yield FALLBACK
+            usage.update({field: getattr(final.usage, field, None) or 0 for field in USAGE_FIELDS})
+
+            for block in final.content:
+                if block.type != 'tool_use':
+                    continue
+                tools.append(block.name)
+                if block.name == 'show_on_map':
+                    if not map_view_error(block.input):
+                        map_action = block.input
+                    continue
+                used.add(TOOL_SOURCES[block.name])
+                yield chunk('tool', name=block.name, input=block.input)
+
+    except anthropic.APIError as error:
+        log_chat(logging.WARNING, f'failed with {type(error).__name__}', started, tools, usage)
+        yield chunk('error', text=FALLBACK)
         return
+
     if final is None or final.stop_reason != 'end_turn':
-        yield FALLBACK
+        stop_reason = final.stop_reason if final else 'no reply'
+        log_chat(logging.WARNING, f'stopped with {stop_reason}', started, tools, usage)
+        yield chunk('error', text=FALLBACK)
+        return
+
+    log_chat(logging.INFO, 'answered', started, tools, usage)
+    sources = DataSource.objects.filter(code__in=used).values('name', 'url')
+    yield chunk('done', sources=list(sources), map_action=map_action)

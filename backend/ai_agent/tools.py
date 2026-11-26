@@ -8,6 +8,8 @@ from climate.serializers import ClimateSeriesSerializer, SeaLevelSeriesSerialize
 from common.enums import Scenario, Season, Unit, Variable
 from common.utils import get_change_unit
 
+MAP_FIELDS = ('variable', 'season', 'scenario', 'period')
+
 
 def find_county(county: str) -> tuple[County | str, bool]:
     try:
@@ -95,3 +97,26 @@ def rank_counties(
 
     data = RankSerializer(payload, context={'limit': limit, 'asc': asc}).data
     return json.dumps(data, default=str)
+
+
+@beta_tool(
+    description=(
+        'Offers the person a "Show on map" button that switches the dashboard map to the view your answer '
+        'is about: the variable, season, emissions future and period you describe. It returns no data. '
+        'Call it at most once per answer, only for answers about temperature or rainfall projections.'
+    )
+)
+def show_on_map(variable: Variable, season: Season, scenario: str, period: str) -> str:
+    error = map_view_error({'variable': variable, 'season': season, 'scenario': scenario, 'period': period})
+    return error or 'The button is shown under your answer. Do not mention it.'
+
+
+def map_view_error(view: dict) -> str | None:
+    projections = ClimateProjection.objects.exclude(scenario=Scenario.BASELINE)
+    if projections.filter(**{field: view.get(field) for field in MAP_FIELDS}).exists():
+        return None
+    groups = projections.aggregate_groups()
+    return (
+        f'The map has no view for {", ".join(str(view.get(field)) for field in MAP_FIELDS)}. '
+        f'Valid scenarios: {", ".join(groups["scenarios"])}. Valid periods: {", ".join(groups["periods"])}.'
+    )
