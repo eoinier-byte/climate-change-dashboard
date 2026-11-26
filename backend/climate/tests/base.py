@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.core.cache import cache
 from django.test import TestCase
 
-from climate.models import ClimateProjection, County, DataSource, SeaLevelProjection
+from climate.models import CityClimate, ClimateProjection, County, CountyAnalogue, DataSource, SeaLevelProjection
 from common.enums import Scenario, Season, Unit, Variable
 
 
@@ -54,6 +54,53 @@ class ProjectionTestCase(TestCase):
                 'value': Decimal('21.500'),
                 'unit': Unit.CM,
                 'provenance': 'UKCP18',
+                **fields,
+            }
+        )
+
+
+class AnalogueTestCase(ProjectionTestCase):
+    """ProjectionTestCase plus a WorldClim source and a city, for the climate analogues (CCD-354)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.worldclim = DataSource.objects.create(
+            code='worldclim',
+            name='WorldClim 2.1',
+            baseline_period='1970-2000',
+            organisation='Test',
+            url='https://example.com',
+            accessed_on=date(2026, 11, 21),
+        )
+        cls.city = cls.create_city(name='Brest', country='France')
+
+    @classmethod
+    def create_city(cls, **fields):
+        return CityClimate.objects.create(
+            **{
+                'latitude': Decimal('48.390'),
+                'longitude': Decimal('-4.495'),
+                'summer_temp': Decimal('16.200'),
+                'winter_temp': Decimal('7.300'),
+                'annual_precip': Decimal('1210.000'),
+                'data_source': cls.worldclim,
+                **fields,
+            }
+        )
+
+    def create_analogue(self, **fields):
+        return CountyAnalogue.objects.create(
+            **{
+                'county': self.county,
+                'city': self.city,
+                'scenario': Scenario.RCP45,
+                'period': '2071-2100',
+                'rank': 1,
+                'similarity': Decimal('0.812'),
+                'county_summer_temp': Decimal('16.020'),
+                'county_winter_temp': Decimal('7.110'),
+                'county_annual_precip': Decimal('1352.400'),
                 **fields,
             }
         )

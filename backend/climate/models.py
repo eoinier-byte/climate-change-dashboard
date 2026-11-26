@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import QuerySet, Value
 from django.utils.text import slugify
 
-from common.enums import Indicator, Variable
+from common.enums import Indicator, Scenario, Variable
 from common.models import BaseProjection
 from common.validators import validate_period
 
@@ -90,6 +90,56 @@ class SeaLevelProjection(BaseProjection):
                 name='uniq_sea_level_projection',
             ),
         ]
+
+
+class CityClimate(models.Model):
+    """A European city's present-day climate (WorldClim 2.1, 1970-2000), for the climate analogues."""
+
+    name = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    latitude = models.DecimalField(max_digits=6, decimal_places=3)
+    longitude = models.DecimalField(max_digits=6, decimal_places=3)
+    summer_temp = models.DecimalField(max_digits=6, decimal_places=3)  # mean of June-August, degC
+    winter_temp = models.DecimalField(max_digits=6, decimal_places=3)  # mean of December-February, degC
+    annual_precip = models.DecimalField(max_digits=8, decimal_places=3)  # total of 12 months, mm
+    data_source = models.ForeignKey('DataSource', on_delete=models.PROTECT, related_name='cities')
+
+    class Meta:
+        verbose_name_plural = 'city climates'
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'country'], name='uniq_city_climate'),
+        ]
+
+    def __str__(self):
+        return f'{self.name}, {self.country}'
+
+
+class CountyAnalogue(models.Model):
+    """One of the closest cities to a county's projected climate for a scenario and period (rank 1 = closest)."""
+
+    county = models.ForeignKey('County', on_delete=models.PROTECT, related_name='analogues')
+    city = models.ForeignKey(CityClimate, on_delete=models.PROTECT, related_name='analogues')
+    scenario = models.CharField(max_length=10, choices=Scenario)
+    period = models.CharField(max_length=9, validators=[validate_period])
+    rank = models.PositiveSmallIntegerField()
+    similarity = models.DecimalField(max_digits=4, decimal_places=3)  # 1 / (1 + distance), 0 to 1
+    # The county's projected climate the cities were compared with (WorldClim + modelled change)
+    county_summer_temp = models.DecimalField(max_digits=6, decimal_places=3)
+    county_winter_temp = models.DecimalField(max_digits=6, decimal_places=3)
+    county_annual_precip = models.DecimalField(max_digits=8, decimal_places=3)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['county', 'scenario', 'period', 'rank'], name='uniq_county_analogue'),
+            # A city can appear only once in a county's list for one scenario and period
+            models.UniqueConstraint(fields=['county', 'scenario', 'period', 'city'], name='uniq_county_analogue_city'),
+            # The baseline is the present, not a projection, so it has no analogue
+            models.CheckConstraint(condition=~models.Q(scenario=Scenario.BASELINE), name='analogue_not_baseline'),
+            models.CheckConstraint(condition=models.Q(rank__gte=1), name='analogue_rank_from_1'),
+        ]
+
+    def __str__(self):
+        return f'{self.county}-{self.scenario}-{self.period}-{self.rank}: {self.city}'
 
 
 class ImpactIndicator(BaseProjection):

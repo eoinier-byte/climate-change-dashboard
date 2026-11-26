@@ -189,6 +189,38 @@ EmailVerification → User is the one `CASCADE`: deleting an account also delete
 
 **EmailVerification** (CCD-441) is one row per link sent by email: a one-time UUID `code`, the `type` (`registration`, `verification` for an email change, `reset` for a password reset), an `expiration` one hour after it is sent, and a `used` flag. The link flow is described in [api.md](api.md#links-sent-by-email).
 
+## CityClimate and CountyAnalogue (Sprint 3, CCD-356)
+
+For the climate analogues (CCD-354): the European cities whose present climate is closest to a county's projected climate. Filled by `manage.py compute_analogues` (CCD-357) from `pipeline/data/processed/worldclim_cities.csv` and `worldclim_counties.csv`; served by `GET /counties/{slug}/analogues/` ([api-examples.md](api-examples.md)).
+
+**CityClimate**: one row per city, present-day climate from WorldClim 2.1 (1970–2000).
+
+| Field | Type | Null | Notes |
+|---|---|---|---|
+| id | bigint PK | no | |
+| name | varchar(100) | no | e.g. `Brest` |
+| country | varchar(100) | no | e.g. `France`. Unique with `name` |
+| latitude, longitude | numeric(6,3) | no | From Natural Earth |
+| summer_temp | numeric(6,3) | no | Mean of June–August, °C |
+| winter_temp | numeric(6,3) | no | Mean of December–February, °C |
+| annual_precip | numeric(8,3) | no | Total of the 12 months, mm |
+| data_source_id | FK → DataSource | no | PROTECT. Always `worldclim` (its `baseline_period` is `1970-2000`) |
+
+**CountyAnalogue**: the closest cities for one county, scenario and period, rank 1 = closest.
+
+| Field | Type | Null | Notes |
+|---|---|---|---|
+| id | bigint PK | no | |
+| county_id | FK → County | no | PROTECT |
+| city_id | FK → CityClimate | no | PROTECT |
+| scenario | varchar(10) | no | `rcp26`, `rcp45`, `rcp85` (not `baseline`) |
+| period | varchar(9) | no | `2021-2050`, `2071-2100` |
+| rank | smallint | no | 1, 2, 3 |
+| similarity | numeric(4,3) | no | 1 / (1 + distance), 0 to 1, higher is closer |
+| county_summer_temp, county_winter_temp, county_annual_precip | numeric | no | The county's projected climate the cities were compared with: WorldClim value + TRANSLATE change from 1976–2005 |
+
+Constraints: unique (`county_id`, `scenario`, `period`, `rank`) and (`county_id`, `scenario`, `period`, `city_id`), so a city is listed once per county, scenario and period; check `scenario` ≠ `baseline`; check `rank` ≥ 1. Re-running the command replaces a county's rows, so nothing is deleted by hand.
+
 ## Changes from the draft
 - Sea level is **per county** instead of national (SeaLevelProjection now has `county_id`).
 - `rise_m` (metres) → `rise_cm` from the CSV, stored as `value` with `unit` = `cm`.
