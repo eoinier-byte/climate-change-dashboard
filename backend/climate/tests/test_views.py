@@ -1,11 +1,15 @@
+import json
+import re
 from decimal import Decimal
 from http import HTTPStatus
 
+from django.conf import settings
 from django.shortcuts import reverse
+from drf_spectacular.generators import SchemaGenerator
 from rest_framework.test import APITestCase
 
 from climate.models import ClimateProjection, County, ImpactIndicator, SeaLevelProjection
-from climate.tests.base import ProjectionTestCase
+from climate.tests.base import AnalogueTestCase, ProjectionTestCase
 from common.enums import Indicator, Scenario, Season, Unit, Variable
 
 
@@ -669,3 +673,110 @@ class ImpactIndicatorListViewTestCase(ProjectionTestCase, APITestCase):
         response = self.get('atlantis')
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertIn('detail', response.json())
+
+
+class CountyAnalogueListViewTestCase(AnalogueTestCase, APITestCase):
+    """CCD-358 / CCD-359: GET /api/counties/{slug}/analogues/?scenario=&period= returns 200, 400 and 404."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.plymouth = cls.create_city(name='Plymouth', country='United Kingdom', latitude=Decimal('50.385'))
+        cls.porto = cls.create_city(name='Porto', country='Portugal', latitude=Decimal('41.152'))
+        cls.kerry = County.objects.create(name='Kerry', has_coastline=True)
+
+    def setUp(self):
+        super().setUp()
+        # Saved out of rank order, so the test shows the endpoint sorts them
+        self.create_analogue(rank=3, city=self.porto, similarity=Decimal('0.701'))
+        self.create_analogue(rank=1, city=self.city, similarity=Decimal('0.812'))
+        self.create_analogue(rank=2, city=self.plymouth, similarity=Decimal('0.745'))
+        self.create_analogue(scenario=Scenario.RCP85, rank=1, city=self.porto)
+        self.create_analogue(county=self.kerry, rank=1)
+
+    def get(self, slug='cork', **params):
+        params = {'scenario': 'rcp45', 'period': '2071-2100', **params}
+        params = {key: value for key, value in params.items() if value is not None}
+        return self.client.get(reverse('climate:analogues', args=[slug]), params)
+
+    def test_200_three_rows_ordered_by_rank(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        rows = [(r['rank'], r['city'], r['similarity']) for r in response.json()]
+        self.assertEqual(rows, [(1, 'Brest', '0.812'), (2, 'Plymouth', '0.745'), (3, 'Porto', '0.701')])
+
+    def test_200_only_the_county_scenario_and_period_asked_for(self):
+        rows = self.get(scenario='rcp85').json()
+        self.assertEqual(
+            [(r['county'], r['scenario'], r['period'], r['city']) for r in rows],
+            [
+                ('cork', 'rcp85', '2071-2100', 'Porto'),
+            ],
+        )
+
+    def test_200_row_matches_the_contract(self):
+        row = self.get().json()[0]
+        self.assertEqual(
+            row,
+            {
+                'county': 'cork',
+                'scenario': 'rcp45',
+                'period': '2071-2100',
+                'rank': 1,
+                'city': 'Brest',
+                'country': 'France',
+                'latitude': '48.390',
+                'longitude': '-4.495',
+                'similarity': '0.812',
+                'city_summer_temp': '16.200',
+                'city_winter_temp': '7.300',
+                'city_annual_precip': '1210.000',
+                'county_summer_temp': '16.020',
+                'county_winter_temp': '7.110',
+                'county_annual_precip': '1352.400',
+                'temperature_unit': 'degC',
+                'precipitation_unit': 'mm',
+                'city_baseline_period': '1970-2000',
+                'change_baseline_period': '1976-2005',
+                'source': 'worldclim',
+            },
+        )
+
+    def test_200_has_the_same_fields_as_the_example_in_api_examples_md(self):
+        doc = (settings.BASE_DIR.parent / 'docs' / 'api-examples.md').read_text(encoding='utf-8')
+        example = re.search(r'<!-- example: analogues -->\s*```json\n(.*?)```', doc, re.DOTALL).group(1)
+        self.assertEqual(list(self.get().json()[0]), list(json.loads(example)[0]))
+
+    def test_200_county_without_analogues_returns_empty_list(self):
+        County.objects.create(name='Offaly')
+        response = self.get('offaly')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json(), [])
+
+    def test_400_missing_or_invalid_choice(self):
+        cases = (
+            ('scenario', {'scenario': None}),
+            ('period', {'period': None}),
+            ('scenario', {'scenario': 'baseline', 'period': '1976-2005'}),
+            ('scenario', {'scenario': 'rcp60'}),
+            ('period', {'period': '1976-2005'}),
+        )
+        for field, params in cases:
+            with self.subTest(params=params):
+                response = self.get(**params)
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn(field, response.json())
+
+    def test_404_unknown_county(self):
+        response = self.get('atlantis')
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertIn('detail', response.json())
+
+    def test_in_the_swagger_schema(self):
+        # /api/schema/ is only routed when DEBUG is on, so build the same schema directly
+        schema = SchemaGenerator().get_schema(request=None, public=True)
+        operation = schema['paths']['/api/counties/{slug}/analogues/']['get']
+        parameters = {p['name']: p for p in operation['parameters']}
+        self.assertTrue(parameters['scenario']['required'])
+        self.assertTrue(parameters['period']['required'])
+        self.assertEqual(set(operation['responses']), {'200', '400', '404'})

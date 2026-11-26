@@ -3,15 +3,17 @@ from http import HTTPStatus
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.cache import cache
 from django.db.models import OuterRef, Subquery, Value
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import viewsets
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from climate.filters import ClimateProjectionFilterSet, ImpactIndicatorFilterSet
-from climate.models import ClimateProjection, County, DataSource, ImpactIndicator, SeaLevelProjection
+from climate.filters import ClimateProjectionFilterSet, CountyAnalogueFilterSet, ImpactIndicatorFilterSet
+from climate.models import ClimateProjection, County, CountyAnalogue, DataSource, ImpactIndicator, SeaLevelProjection
 from climate.serializers import (
     ClimateProjectionSerializer,
+    CountyAnalogueSerializer,
     CountyDetailSerializer,
     ImpactIndicatorSerializer,
     MapSerializer,
@@ -172,3 +174,35 @@ class ImpactIndicatorListView(ListAPIView):
             .annotate(baseline_value=Subquery(baseline))
             .order_by('indicator', 'scenario', 'period')
         )
+
+
+@extend_schema(
+    summary='Climate analogues of a county',
+    description=(
+        "The 3 European cities whose present climate (WorldClim 2.1, 1970-2000) is closest to the county's "
+        'projected climate for one scenario and period, ordered by rank (1 = closest). CCD-358.'
+    ),
+    responses={
+        200: CountyAnalogueSerializer(many=True),
+        400: OpenApiResponse(description='scenario or period missing or invalid (baseline is not valid)'),
+        404: OpenApiResponse(description='Unknown county'),
+    },
+)
+class CountyAnalogueListView(ListAPIView):
+    serializer_class = CountyAnalogueSerializer
+    filterset_class = CountyAnalogueFilterSet
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return CountyAnalogue.objects.none()
+
+        county = get_object_or_404(County, slug=self.kwargs['slug'])
+        return (
+            CountyAnalogue.objects.filter(county=county).select_related('county', 'city__data_source').order_by('rank')
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        translate = DataSource.objects.filter(code='translate').first()
+        context['change_baseline_period'] = translate.baseline_period if translate else None
+        return context

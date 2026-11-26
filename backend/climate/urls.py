@@ -3,6 +3,7 @@ from rest_framework.routers import SimpleRouter
 
 from climate.views import (
     ClimateProjectionListView,
+    CountyAnalogueListView,
     CountyViewSet,
     HealthView,
     ImpactIndicatorListView,
@@ -23,5 +24,6 @@ urlpatterns = [
     path('projections/', ClimateProjectionListView.as_view(), name='projections'),
     path('map/', MapView.as_view(), name='map'),
     path('counties/<slug:slug>/impacts/', ImpactIndicatorListView.as_view(), name='impacts'),
+    path('counties/<slug:slug>/analogues/', CountyAnalogueListView.as_view(), name='analogues'),
     *router.urls,
 ]

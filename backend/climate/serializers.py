@@ -4,7 +4,7 @@ from typing import Any
 from django.conf import settings
 from rest_framework import serializers
 
-from climate.models import ClimateProjection, County, ImpactIndicator, SeaLevelProjection
+from climate.models import ClimateProjection, County, CountyAnalogue, ImpactIndicator, SeaLevelProjection
 from common.enums import Scenario, Season, Unit, Variable
 from common.serializers import CountySerializer, ProjectionChangeSerializer, ProjectionSerializer
 from common.utils import change_from_baseline
@@ -213,3 +213,63 @@ class MapSerializer(serializers.Serializer):
     min = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
     max = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
     results = MapItemSerializer(many=True)
+
+
+class CountyAnalogueSerializer(serializers.ModelSerializer):
+    """One row of GET /counties/{slug}/analogues/ (CCD-358), shape agreed in docs/api-examples.md."""
+
+    county = serializers.SlugRelatedField(slug_field='slug', read_only=True)
+    city = serializers.CharField(source='city.name', read_only=True)
+    country = serializers.CharField(source='city.country', read_only=True)
+    latitude = serializers.DecimalField(source='city.latitude', max_digits=6, decimal_places=3, read_only=True)
+    longitude = serializers.DecimalField(source='city.longitude', max_digits=6, decimal_places=3, read_only=True)
+    city_summer_temp = serializers.DecimalField(
+        source='city.summer_temp', max_digits=6, decimal_places=3, read_only=True
+    )
+    city_winter_temp = serializers.DecimalField(
+        source='city.winter_temp', max_digits=6, decimal_places=3, read_only=True
+    )
+    city_annual_precip = serializers.DecimalField(
+        source='city.annual_precip', max_digits=8, decimal_places=3, read_only=True
+    )
+    temperature_unit = serializers.SerializerMethodField()
+    precipitation_unit = serializers.SerializerMethodField()
+    # WorldClim's period, from the city's data source
+    city_baseline_period = serializers.CharField(source='city.data_source.baseline_period', read_only=True)
+    # TRANSLATE's baseline, the change was measured from it (passed in by the view)
+    change_baseline_period = serializers.SerializerMethodField()
+    source = serializers.CharField(source='city.data_source.code', read_only=True)
+
+    class Meta:
+        model = CountyAnalogue
+        fields = (
+            'county',
+            'scenario',
+            'period',
+            'rank',
+            'city',
+            'country',
+            'latitude',
+            'longitude',
+            'similarity',
+            'city_summer_temp',
+            'city_winter_temp',
+            'city_annual_precip',
+            'county_summer_temp',
+            'county_winter_temp',
+            'county_annual_precip',
+            'temperature_unit',
+            'precipitation_unit',
+            'city_baseline_period',
+            'change_baseline_period',
+            'source',
+        )
+
+    def get_temperature_unit(self, obj) -> str:
+        return Unit.DEG_C.value
+
+    def get_precipitation_unit(self, obj) -> str:
+        return Unit.MM.value
+
+    def get_change_baseline_period(self, obj) -> str | None:
+        return self.context.get('change_baseline_period')
