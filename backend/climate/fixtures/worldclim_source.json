@@ -1,0 +1,15 @@
+[
+  {
+    "model": "climate.datasource",
+    "fields": {
+      "code": "worldclim",
+      "name": "WorldClim 2.1 — present-day climate for the climate analogues",
+      "organisation": "WorldClim (worldclim.org); data by S.E. Fick and R.J. Hijmans",
+      "baseline_period": "1970-2000",
+      "licence": "No named licence.",
+      "attribution": "Present-day climate (climate analogues): WorldClim 2.1 (Fick & Hijmans, 2017), worldclim.org.",
+      "url": "https://www.worldclim.org/data/worldclim21.html",
+      "accessed_on": "2026-11-21"
+    }
+  }
+]
