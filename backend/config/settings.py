@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'celery',
     'users',
     'climate',
+    'ai_agent',
 ]
 
 MIDDLEWARE = [
@@ -172,13 +173,24 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 AUTH_USER_MODEL = 'users.User'
 
 # REST
+THROTTLE_RATES = {
+    'burst': '120/minute',
+    'chat_user': '20/hour',
+    'chat_anon': '3/hour',
+    'login': '5/min',
+    'register': '5/hour',
+    'email': '3/hour',
+    'password': '5/hour',
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
+    'DEFAULT_THROTTLE_CLASSES': ['config.throttles.BurstRateThrottle'],
+    'DEFAULT_THROTTLE_RATES': {scope: None for scope in THROTTLE_RATES} if TESTING else THROTTLE_RATES,
 }
+
 
 # County summary (present-day climate)
 SUMMARY_SCENARIO = 'baseline'

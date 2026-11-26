@@ -38,3 +38,17 @@ class RankSerializer(serializers.Serializer):
         items = RankItemSerializer(obj['results'], many=True).data
         items = sorted(items, key=lambda item: item['change'], reverse=not self.context['asc'])
         return items[: self.context['limit']] if self.context['limit'] > 0 else items
+
+
+class ChatMessageSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=['user', 'assistant'])
+    content = serializers.CharField(max_length=500, trim_whitespace=True)
+
+
+class ChatSerializer(serializers.Serializer):
+    messages = ChatMessageSerializer(many=True, allow_empty=False, max_length=20)
+
+    def validate_messages(self, messages):
+        if messages[-1]['role'] != 'user':
+            raise serializers.ValidationError('The last message must be from the user.')
+        return messages

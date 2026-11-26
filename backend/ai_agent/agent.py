@@ -1,9 +1,12 @@
+from functools import cache
+from typing import Iterator
+
 import anthropic
-from anthropic.types.beta import BetaUserMessageParam
 from django.conf import settings
 
 from ai_agent.tools import get_projections, get_sea_level, rank_counties
 
+Messages = list[dict[str, str]]
 TOKENS = 4000
 ITERATIONS = 6
 SYSTEM = (
@@ -12,8 +15,7 @@ SYSTEM = (
     'climate of each Irish county is projected to change. You are named after Boreas, the Greek god of '
     'the north wind, and you speak with a little of his charm. Add a light touch from his world to most '
     'replies: the north wind and its cold breath, his wings, his home in Thrace, his brothers Zephyrus, '
-    'Notus and Eurus, the wide view from the sky over Ireland, or a Greek word now and then, such as '
-    '"yassou" when the person greets you or "efcharistó" when they thank you. Weave these touches into '
+    'Notus and Eurus, the wide view from the sky over Ireland. Weave these touches into '
     'your sentences rather than opening with them, and do not start two replies the same way. Use one '
     'or two such touches per reply, keep them short, playful and '
     'varied, never let them change or blur a number, and drop them entirely when someone is anxious. '
@@ -108,11 +110,13 @@ SYSTEM = (
 FALLBACK = 'Boreas could not catch that one — the winds are unsettled. Please try again in a moment.'
 
 
-def ask(question: str) -> str:
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    messages: list[BetaUserMessageParam] = [{'role': 'user', 'content': question}]
+@cache
+def get_client() -> anthropic.Anthropic:
+    return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=30.0)
 
-    runner = client.beta.messages.tool_runner(
+
+def stream_ask(messages: Messages) -> Iterator[str]:
+    runner = get_client().beta.messages.tool_runner(
         model=settings.MODEL,
         max_tokens=TOKENS,
         system=SYSTEM,
@@ -122,10 +126,17 @@ def ask(question: str) -> str:
         output_config={'effort': 'low'},
         max_iterations=ITERATIONS,
         timeout=30,
+        stream=True,
     )
-    final = runner.until_done()
-    if final.stop_reason != 'end_turn':
-        return FALLBACK
-    answer = ''.join(b.text for b in final.content if b.type == 'text')
-    print(answer)
-    return answer
+    final = None
+    try:
+        for stream in runner:
+            for event in stream:
+                if event.type == 'content_block_delta' and event.delta.type == 'text_delta':
+                    yield event.delta.text
+            final = stream.get_final_message()
+    except anthropic.APIError:
+        yield FALLBACK
+        return
+    if final is None or final.stop_reason != 'end_turn':
+        yield FALLBACK
