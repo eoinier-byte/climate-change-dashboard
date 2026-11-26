@@ -79,15 +79,7 @@ class ClimateProjectionListView(ListAPIView):
     filterset_class = ClimateProjectionFilterSet
 
     def get_queryset(self):
-        baseline = ClimateProjection.objects.filter(
-            county=OuterRef('county'),
-            variable=OuterRef('variable'),
-            season=OuterRef('season'),
-            scenario=Scenario.BASELINE,
-        ).values('value')[:1]
-        return ClimateProjection.objects.select_related('county', 'data_source').annotate(
-            baseline_value=Subquery(baseline)
-        )
+        return ClimateProjection.objects.with_baseline_value().select_related('county', 'data_source')
 
 
 class MapView(ListAPIView):

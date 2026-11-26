@@ -1,9 +1,9 @@
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import models
-from django.db.models import QuerySet, Value
+from django.db.models import OuterRef, QuerySet, Subquery, Value
 from django.utils.text import slugify
 
-from common.enums import Indicator, Variable
+from common.enums import Indicator, Scenario, Variable
 from common.models import BaseProjection
 from common.validators import validate_period
 
@@ -32,6 +32,15 @@ class ClimateProjectionQuerySet(models.query.QuerySet):
             params['variables'] = ArrayAgg('variable', distinct=True, order_by='variable', default=Value([]))
 
         return self.aggregate(**params)
+
+    def with_baseline_value(self):
+        baseline = ClimateProjection.objects.filter(
+            county=OuterRef('county'),
+            variable=OuterRef('variable'),
+            season=OuterRef('season'),
+            scenario=Scenario.BASELINE,
+        ).values('value')[:1]
+        return self.annotate(baseline_value=Subquery(baseline))
 
 
 class County(models.Model):

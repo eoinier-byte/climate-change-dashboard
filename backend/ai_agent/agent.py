@@ -2,7 +2,7 @@ import anthropic
 from anthropic.types import ToolParam
 from anthropic.types.beta import BetaUserMessageParam
 
-from ai_agent.utils import get_projections
+from ai_agent.tools import get_projections
 from common.enums import Season, Variable
 from config import settings
 
@@ -34,6 +34,7 @@ TOOLS: list[ToolParam] = [
         'strict': True,
     }
 ]
+MODEL = 'claude-haiku-5-5'
 
 
 def ask(question: str) -> str:
@@ -41,7 +42,7 @@ def ask(question: str) -> str:
     messages: list[BetaUserMessageParam] = [{'role': 'user', 'content': question}]
 
     runner = client.beta.messages.tool_runner(
-        model='claude-haiku-5-5',
+        model=MODEL,
         max_tokens=TOKENS,
         system=SYSTEM,
         tools=[get_projections],
