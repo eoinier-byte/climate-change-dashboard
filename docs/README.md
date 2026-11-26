@@ -7,6 +7,7 @@
 | `data-model.md` | Database tables / ER diagram (CCD-33) |
 | `api.md` | API endpoints (summary; full response shape in `data-flow.md`), including accounts, profile and email links |
 | `api-examples.md` | One JSON example per endpoint, kept in step with the frontend mocks |
+| `climate-analogues.md` | Climate analogues: data, method (delta method, standardised distance), how to run, results and limitations (CCD-354) |
 | `entities.md` | Every attribute of every table, with units, allowed values and reasons (CCD-38) |
 | [`../DATA_SOURCES.md`](../DATA_SOURCES.md) | Datasets, download dates, licences, attribution (CCD-22) |
 | `data-review.md` | Climate Ireland and sea level dataset review (CCD-17, CCD-19) |
