@@ -187,6 +187,7 @@ SUMMARY_SEASON = 'annual'
 
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+MODEL = 'claude-haiku-5-5'
 
 # Redis
 REDIS_HOST = env('REDIS_HOST')
