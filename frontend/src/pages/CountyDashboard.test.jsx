@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
-import { getCounties, getCounty, getImpacts, getProjections, getSeaLevel } from '../services/api';
+import { getAnalogues, getCounties, getCounty, getImpacts, getProjections, getSeaLevel } from '../services/api';
+import { analogueRows } from '../test/analogueRows';
 import { mockImpactsCork } from '../mocks/impacts';
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
 import { mockSeaLevelCork } from '../mocks/seaLevel';
@@ -17,6 +18,7 @@ vi.mock('../services/api', () => ({
   getProjections: vi.fn(),
   getSeaLevel: vi.fn(),
   getImpacts: vi.fn(),
+  getAnalogues: vi.fn(),
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real charts
@@ -73,6 +75,15 @@ describe('CountyDashboard', () => {
     getProjections.mockResolvedValue(mockCorkRows);
     getSeaLevel.mockResolvedValue(mockSeaLevelCork);
     getImpacts.mockResolvedValue(mockImpactsCork);
+    getAnalogues.mockResolvedValue(analogueRows);
+  });
+
+
+  it('shows the climate analogue block for the county (CCD-373)', async () => {
+    renderCounty('cork');
+    expect(await screen.findByText(/most like/, {}, { timeout: 5000 })).toBeTruthy();
+    // Every scenario is ticked by default, so it asks for the highest one, and the default period
+    expect(getAnalogues).toHaveBeenCalledWith('cork', { scenario: 'rcp85', period: '2071-2100' }, expect.anything());
   });
 
   it('shows the "What this means for you" impacts block for the county (CCD-375)', async () => {
