@@ -13,7 +13,7 @@ One JSON example for every endpoint the frontend uses or will use, so frontend w
 | `GET /sea-level/{slug}/` | Built | CCD-91 | Taras |
 | `GET /map/?variable=&scenario=&period=&season=` | Built | CCD-338 | Taras |
 | `GET /counties/{slug}/impacts/?scenario=&period=` | Built | CCD-364 / CCD-367 / CCD-368 | Taras |
-| `GET /counties/{slug}/analogues/?scenario=&period=` | **Proposed** (not built yet) | CCD-354 / CCD-358 | Artur |
+| `GET /counties/{slug}/analogues/?scenario=&period=` | Built | CCD-354 / CCD-358 | Artur |
 | `POST /reports/` | **Proposed** (not built yet) | CCD-295 / CCD-307 | Taras |
 | `/auth/...` (accounts, profile, email links) | Built | CCD-294 / CCD-427 / CCD-441 | Taras |
 
@@ -354,8 +354,6 @@ Both `scenario` and `period` are optional filters. An unknown choice is a 400 th
 ]
 ```
 
-## Proposed endpoints (to be confirmed by their owners)
-
 ### `GET /counties/{slug}/analogues/?scenario=&period=` (CCD-358, Artur)
 
 The three European cities whose present-day climate is closest to the county's projected climate for one scenario and period, as a flat list ordered by `rank` (1 = closest). Both parameters are required.
@@ -437,6 +435,8 @@ How the numbers are made (CCD-357): `city_*` are WorldClim 2.1 averages for 1970
   }
 ]
 ```
+
+## Proposed endpoints (to be confirmed by their owners)
 
 ### `POST /reports/` (CCD-307, Taras)
 
