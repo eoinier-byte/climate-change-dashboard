@@ -1,0 +1,85 @@
+/* About page (CCD-372). Uses the theme variables from theme.css only. */
+
+/* Keep lines of text a comfortable length to read */
+.about-page {
+  max-width: 48rem;
+}
+
+.about-page__intro {
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+}
+
+/* Space between the sections */
+.about-page section {
+  margin-top: var(--space-8);
+}
+
+/* "On this page" contents box */
+.about-page__contents {
+  margin-top: var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.about-page__contents ul {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.about-page__contents li {
+  padding: var(--space-1) 0;
+}
+
+/* The three scenarios: name in bold, explanation underneath */
+.about-page__scenarios {
+  margin: 0;
+}
+
+.about-page__scenario {
+  margin-bottom: var(--space-4);
+}
+
+.about-page__scenario dt {
+  font-weight: 600;
+}
+
+.about-page__scenario dd {
+  margin: var(--space-1) 0 0;
+}
+
+/* The RCP code next to the plain name, quieter than the name */
+.about-page__code {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* Data sources: one bordered card per source */
+.about-page__sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.about-page__source {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.about-page__source h3 {
+  margin-top: 0;
+}
+
+.about-page__source p {
+  margin: var(--space-1) 0;
+}
+
+/* The citation is long, so make it smaller and quieter */
+.about-page__credit {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
