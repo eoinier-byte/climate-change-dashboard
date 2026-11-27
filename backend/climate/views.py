@@ -1,12 +1,14 @@
 from http import HTTPStatus
+from io import BytesIO
 
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.cache import cache
 from django.db.models import OuterRef, Subquery, Value
+from django.http import FileResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, inline_serializer
-from rest_framework import serializers, viewsets
-from rest_framework.exceptions import NotFound
+from rest_framework import permissions, serializers, viewsets
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +17,7 @@ from rest_framework.viewsets import GenericViewSet
 from climate.filters import ClimateProjectionFilterSet, CountyAnalogueFilterSet, ImpactIndicatorFilterSet
 from climate.flood import flood_region, flood_regions
 from climate.models import ClimateProjection, County, CountyAnalogue, DataSource, ImpactIndicator, SeaLevelProjection
+from climate.report import build_report_pdf
 from climate.serializers import (
     ClimateProjectionSerializer,
     CountyAnalogueSerializer,
@@ -251,3 +254,41 @@ class FloodViewSet(GenericViewSet):
         if data is None:
             raise NotFound('There is no flood map for this county.')
         return Response(self.get_serializer(data).data)
+
+
+class CountyReportView(RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = County.objects.all()
+    lookup_field = 'slug'
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                'scenario',
+                enum=[s.value for s in Scenario if s != Scenario.BASELINE],
+                default=Scenario.RCP45,
+                description='Emissions scenario of the report.',
+            ),
+        ],
+        responses={
+            (HTTPStatus.OK, 'application/pdf'): OpenApiResponse(
+                OpenApiTypes.BINARY, description='The county report as a PDF file, downloaded as an attachment.'
+            ),
+            HTTPStatus.BAD_REQUEST: OpenApiResponse(description='Unknown scenario, or the baseline.'),
+            HTTPStatus.FORBIDDEN: OpenApiResponse(description='Not signed in.'),
+            HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county.'),
+        },
+        description=(
+            'One-page PDF report of a county: temperature and precipitation for the chosen scenario, '
+            'sea-level rise for coastal counties, and the data sources.'
+        ),
+    )
+    def get(self, request, *args, **kwargs):
+        county = self.get_object()
+        scenario = request.query_params.get('scenario', Scenario.RCP45)
+        if scenario not in Scenario.values:
+            raise ValidationError({'scenario': [f'Unknown scenario: {scenario}.']})
+        if scenario == Scenario.BASELINE:
+            raise ValidationError({'scenario': ['Baseline is not available for reports.']})
+        pdf = build_report_pdf(county, scenario)
+        return FileResponse(BytesIO(pdf), as_attachment=True, filename=f'{county.slug}-climate-report.pdf')

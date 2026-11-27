@@ -1,12 +1,16 @@
 from decimal import Decimal
+from http import HTTPStatus
 from unittest.mock import patch
 
+from django.shortcuts import reverse
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Table
+from rest_framework.test import APIClient
 
 from climate.models import County
+from climate.report import build_report_pdf
 from climate.tests.base import ProjectionTestCase
 from common.enums import Scenario, Season, Unit, Variable
-from users.report import build_report_pdf
+from users.models import User
 
 BASELINE = '1976-2005'
 
@@ -96,3 +100,54 @@ class ReportPdfTests(ProjectionTestCase):
         text = self.report_text(self.county, Scenario.RCP26)
         self.assertIn('No data', text)
         self.assertIn('There are no sea-level projections for this county yet.', text)
+
+
+class CountyReportViewTests(ProjectionTestCase):
+    client_class = APIClient
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = User.objects.create_user(username='alice', email='alice@example.com', password='Str0ng-pass-123')
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(self.user)
+
+    def get(self, slug='cork', **params):
+        return self.client.get(reverse('climate:report', args=[slug]), params)
+
+    def test_downloads_the_pdf(self):
+        response = self.get()
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertEqual(response['Content-Disposition'], 'attachment; filename="cork-climate-report.pdf"')
+        self.assertTrue(b''.join(response.streaming_content).startswith(b'%PDF'))
+
+    @patch('climate.views.build_report_pdf', return_value=b'%PDF-test')
+    def test_uses_rcp45_by_default(self, build_pdf):
+        self.get()
+        build_pdf.assert_called_once_with(self.county, Scenario.RCP45)
+
+    @patch('climate.views.build_report_pdf', return_value=b'%PDF-test')
+    def test_uses_the_chosen_scenario(self, build_pdf):
+        self.get(scenario='rcp85')
+        build_pdf.assert_called_once_with(self.county, Scenario.RCP85)
+
+    def test_unknown_county_is_404(self):
+        self.assertEqual(self.get('atlantis').status_code, HTTPStatus.NOT_FOUND)
+
+    def test_unknown_or_baseline_scenario_is_400(self):
+        for scenario in ('rcp60', 'baseline'):
+            with self.subTest(scenario):
+                response = self.get(scenario=scenario)
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn('scenario', response.json())
+
+    def test_signed_out_is_403(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self.get().status_code, HTTPStatus.FORBIDDEN)
+
+    def test_post_not_allowed(self):
+        response = self.client.post(reverse('climate:report', args=['cork']))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
