@@ -26,6 +26,7 @@ env = environ.Env(
     DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
     ANTHROPIC_API_KEY=(str, ''),
+    ASSISTANT_MODEL=(str, 'claude-haiku-5-5'),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
     EMAIL_HOST=(str),
@@ -77,6 +78,7 @@ INSTALLED_APPS = [
     'celery',
     'users',
     'climate',
+    'ai_agent',
 ]
 
 MIDDLEWARE = [
@@ -172,12 +174,31 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 AUTH_USER_MODEL = 'users.User'
 
 # REST
+THROTTLE_RATES = {
+    'burst': '120/minute',
+    'chat_user': '20/hour',
+    'chat_anon': '3/hour',
+    'login': '5/min',
+    'register': '5/hour',
+    'email': '3/hour',
+    'password': '5/hour',
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
+    'DEFAULT_THROTTLE_CLASSES': ['config.throttles.BurstRateThrottle'],
+    'DEFAULT_THROTTLE_RATES': {scope: None for scope in THROTTLE_RATES} if TESTING else THROTTLE_RATES,
+}
+
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'ai_agent': {'handlers': ['console'], 'level': 'WARNING' if TESTING else 'INFO'}},
 }
 
 # County summary (present-day climate)
@@ -187,6 +208,7 @@ SUMMARY_SEASON = 'annual'
 
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+ASSISTANT_MODEL = env('ASSISTANT_MODEL')
 
 # Redis
 REDIS_HOST = env('REDIS_HOST')

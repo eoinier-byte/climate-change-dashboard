@@ -20,6 +20,7 @@ The response shapes, change-from-baseline rules and frontend usage are in **[dat
 | GET | `/map/?variable=&scenario=&period=&season=` | Choropleth data: one value per county for the given combination, sorted by county name, plus `unit`, `min` and `max` for the legend. All four parameters are required | 400 missing or invalid parameter (lists the allowed values) | CCD-338 | 2 |
 | GET, POST | `/auth/...` | Accounts, profile, email links: see [Accounts](#accounts-ccd-294-ccd-427-ccd-441) below | 400 / 403 / 404 / 409 / 410 | CCD-294, CCD-427, CCD-441 | 3 |
 | POST | `/reports/` | Email a county report | 400 / 403 / 429 | | 3 |
+| POST | `/agent/chat/` | AI assistant (Boreas): answers a question about the data, streamed as NDJSON events; see [AI assistant](#ai-assistant-ccd-347) | 400 invalid history or context; 429 over the limit | CCD-347, CCD-349, CCD-351 | 3 |
 
 ## `/map/` (CCD-338)
 
@@ -122,6 +123,88 @@ Django's password validators run on registration, reset and change: at least 8 c
 - Larger images are cropped to 200×200 from the centre; smaller ones are kept as they are. HEIC/HEIF is saved as JPEG, because only Safari can show HEIC.
 - Uploading a new avatar or deleting the account removes the old file.
 - Files are stored in `backend/media/users/` and served at `/media/` while `DEBUG` is on. Storage in production is still open (CCD-428, see [hosting.md](hosting.md)).
+
+## AI assistant (CCD-347)
+
+`POST /api/agent/chat/` answers questions about the projections in plain words. Claude (model in `ASSISTANT_MODEL` in `.env`, default `claude-haiku-5-5`) answers only from our data: it calls three read-only tools over the database and never quotes numbers from its own knowledge.
+
+### Request
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "How much warmer will Cork get?" },
+    { "role": "assistant", "content": "About 0.8 °C around mid-century..." },
+    { "role": "user", "content": "And under high emissions?" }
+  ],
+  "context": { "county": "galway", "variable": "precipitation" }
+}
+```
+
+- **`messages`**: the whole conversation. The server keeps no history, so the frontend sends every earlier message each time. Roles are `user` and `assistant` only; at most 20 messages, each at most 500 characters; the last one must be from the user.
+- **`context`** (optional): what the person is looking at on the dashboard. `county` is a slug from `/counties/`, `variable` is `temperature` or `precipitation`. It is passed to Claude as a short note, so "here" or "this county" refer to that county.
+- Anonymous users need no CSRF header. A signed-in user sends `X-CSRFToken`, like every other POST.
+
+### Response
+
+`200`, `Content-Type: application/x-ndjson`: one JSON event per line, sent while Claude writes. Read it with `fetch` and `response.body.getReader()` (`EventSource` cannot POST).
+
+```
+{"type": "tool", "name": "get_projections", "input": {"county": "cork", "variable": "temperature"}}
+{"type": "text", "text": "From up where the north wind flies, "}
+{"type": "text", "text": "Cork looks a little warmer..."}
+{"type": "done", "sources": [{"name": "TRANSLATE climate projections", "url": "https://www.climateireland.ie/data-explorer/"}], "map_action": {"variable": "temperature", "season": "annual", "scenario": "rcp45", "period": "2021-2050"}}
+```
+
+| Event | Fields | Meaning |
+|---|---|---|
+| `tool` | `name`, `input` | Claude is looking up data; can be shown as a status line ("Checking Cork…") |
+| `text` | `text` | The next piece of the answer; append it to the message |
+| `done` | `sources`, `map_action` | The answer is complete. `sources` lists the data sources of the tools used (`[]` when no data was needed). `map_action` is the map view the answer is about (`variable`, `season`, `scenario`, `period`, the same parameters as `/map/`) for a "Show on map" button, or `null` |
+| `error` | `text` | The answer could not be finished (API error, timeout, refusal, cut off). `text` is a friendly message to show; no `done` follows |
+
+The answer itself has no source line: the frontend shows `sources` under it.
+
+### Tools
+
+| Tool | Arguments | Data |
+|---|---|---|
+| `get_projections` | `county`, `variable`, `season` (default `annual`) | Every scenario and period for one county, with change from baseline, units and source |
+| `get_sea_level` | `county` | Sea level rise for every scenario, 2020–2100, in cm |
+| `rank_counties` | `variable`, `season`, `scenario`, `period`, `limit`, `asc` | Counties ordered by change from baseline |
+| `show_on_map` | `variable`, `season`, `scenario`, `period` | No data: Claude calls it for temperature and rainfall answers, and its arguments become `map_action` in `done`. It is not sent as a `tool` event |
+
+County names are matched without regard to case. An unknown county, period or other invalid argument comes back to Claude as a readable error (for example with the list of valid counties), so it can correct the call.
+
+### For the chat panel (CCD-371)
+
+The backend does not know which page the person is on and keeps no conversation. The chat panel has to send both with every question:
+
+1. **History.** Keep every user and assistant message in the panel's state (or `localStorage`, to survive a reload) and send the whole list each time, with the new question last. Store the assistant message as the joined `text` events.
+2. **Page context.** On a county page (`/county/:slug`), send `context: {"county": slug, "variable": <the variable on screen>}`; leave `context` out on other pages. The panel lives in `Layout`, not in the page, so the county page should put its current slug and variable in a shared React context (or store) that the panel reads when it sends a question. Without it, "here" or "this county" mean nothing to the assistant and it asks which county.
+3. **Reading the stream.** `fetch` with `credentials: 'include'`, then read `response.body.getReader()` line by line and parse each line as JSON. Show `tool` as a status line, append `text` to the answer, and on `done` show `sources` as links under it. On `error`, show its `text`.
+4. **Show on map.** If `done.map_action` is not `null`, show a "Show on map" button that opens the map with those four values (`variable`, `season`, `scenario`, `period`, the same as `/map/`). The home map keeps its filters in component state today, so it needs a way to receive them, for example query parameters on `/` or the same shared context.
+5. **Limits.** A signed-out person gets 429 after 3 questions an hour, with `detail` starting "Sign in to keep chatting with Boreas."; show a sign-in link there. Signed-in users send `X-CSRFToken`, like every POST.
+
+### Behaviour and cost
+
+- The system prompt (`ai_agent/agent.py`) gives the assistant the Boreas persona, keeps it to Irish climate projections, declines off-topic questions and weather forecasts, and answers for one default case (medium emissions, mid-century, whole year) unless the person asks for another.
+- At most 6 model turns per question, 4,000 output tokens per turn, low effort, 30 s timeout. The system prompt and tools are cached between calls (`cache_control`).
+- Every question writes one log line to the `ai_agent.agent` logger: outcome, time, tools used and token counts, including cached tokens. The text of the conversation is not logged.
+
+## Rate limits (CCD-351)
+
+Over a limit the API returns **429** with the wait time in `detail`. The limits are in `THROTTLE_RATES` in Django settings and are stored in the Redis cache (if Redis is down, they are not enforced). Tests run with every limit off.
+
+| Scope | Endpoints | Limit | Counted by |
+|---|---|---|---|
+| `burst` | every endpoint without its own limit | 120 / minute | user, or IP when signed out |
+| `chat_anon` | `/agent/chat/`, signed out | 3 / hour | IP; the 429 says `Sign in to keep chatting with Boreas.` |
+| `chat_user` | `/agent/chat/`, signed in | 20 / hour | user |
+| `login` | `/auth/login/` | 5 / minute | IP |
+| `register` | `/auth/register/` | 5 / hour | IP |
+| `email` | `/auth/recovery/`, `/auth/profile/me/change-email/` | 3 / hour | IP or user |
+| `password` | `/auth/profile/me/change-password/` | 5 / hour | user |
 
 ## Caching (CCD-341, CCD-425)
 
