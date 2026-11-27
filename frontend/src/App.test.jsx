@@ -12,6 +12,7 @@ vi.mock('./services/api', () => ({
   getProjections: vi.fn(() => new Promise(() => {})),
   getSeaLevel: vi.fn(() => new Promise(() => {})),
   getMap: vi.fn(() => new Promise(() => {})), // the home page map (CCD-380)
+  getFlood: vi.fn(() => new Promise(() => {})), // the flood map (CCD-377)
 }));
 
 // [path to open, heading the page should show]

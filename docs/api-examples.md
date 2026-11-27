@@ -14,6 +14,7 @@ One JSON example for every endpoint the frontend uses or will use, so frontend w
 | `GET /map/?variable=&scenario=&period=&season=` | Built | CCD-338 | Taras |
 | `GET /counties/{slug}/impacts/?scenario=&period=` | Built | CCD-364 / CCD-367 / CCD-368 | Taras |
 | `GET /counties/{slug}/analogues/?scenario=&period=` | Built | CCD-354 / CCD-358 | Artur |
+| `GET /flood/{slug}/` | Built | CCD-360 / CCD-362 | Taras |
 | `POST /reports/` | **Proposed** (not built yet) | CCD-295 / CCD-307 | Taras |
 | `/auth/...` (accounts, profile, email links) | Built | CCD-294 / CCD-427 / CCD-441 | Taras |
 
@@ -434,6 +435,40 @@ How the numbers are made (CCD-357): `city_*` are WorldClim 2.1 averages for 1970
     "source": "worldclim"
   }
 ]
+
+
+```
+
+### `GET /flood/{slug}/` (CCD-360, Taras)
+
+The flood map of one coastal county: the corners of the map (`bounds`, `[[south, west], [north, east]]`) and one transparent PNG layer per sea level from 0 to 2 m in 0.1 m steps (shortened here to two). `level_m` is the rise above today's sea level. 404 for an inland or unknown county. More notes for the frontend are in [api.md](api.md#flood-maps-ccd-360).
+
+<!-- example: flood -->
+```json
+{
+  "slug": "cork",
+  "bounds": [
+    [51.40966213268661, -10.276807058529297],
+    [52.39075056918082, -7.839974421834784]
+  ],
+  "cell_size_m": 90.0,
+  "levels": [
+    {
+      "level_m": 0.0,
+      "url": "http://localhost:8000/static/flood/cork/level_000.png",
+      "flooded_cells": 3145,
+      "flooded_area_km2": 25.4745
+    },
+    {
+      "level_m": 0.1,
+      "url": "http://localhost:8000/static/flood/cork/level_010.png",
+      "flooded_cells": 3332,
+      "flooded_area_km2": 26.9892
+    }
+  ],
+  "attribution": "produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+  "model_limits": "Indicative only: still-water 'bathtub' model with a connectivity check. No tides, storm surges or flood defences. See docs/flood-engine.md §7."
+}
 ```
 
 ## Proposed endpoints (to be confirmed by their owners)

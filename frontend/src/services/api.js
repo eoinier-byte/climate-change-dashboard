@@ -157,12 +157,10 @@ export const getMap = (choices = {}, opts) => {
   return apiGet(`/map/?${query}`, opts);
 };
 
-
 // Everyday impact indicators for one county (CCD-364, CCD-375): hot days, frost days,
 // heating degree days and growing season length. A flat list like /projections/: one row per
 // indicator, scenario and period, each with baseline_value, projected_value and change.
 export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, opts);
-
 
 // Climate analogues for one county (CCD-358, CCD-373): the three European cities whose climate today
 // is closest to the county's projected climate, for one scenario and one period, closest first.
@@ -171,8 +169,10 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
 
-
-
+// Flood map of one coastal county (CCD-360, CCD-377): the corners of the map ("bounds") and one
+// see-through PNG layer per sea level, from 0 to 2 m in 0.1 m steps, each with the flooded area in km².
+// An inland county has no flood map, so the server answers 404.
+export const getFlood = (slug, opts) => apiGet(`/flood/${slug}/`, opts);
 
 // AI assistant chat (CCD-347, CCD-386). Unlike the GET calls above, this one POSTs the
 // conversation, and the answer comes back a piece at a time ("streamed"), so the panel can

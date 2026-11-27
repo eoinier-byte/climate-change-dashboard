@@ -1,17 +1,19 @@
-// Tests for the flood page at /sea-level (CCD-152, CCD-174, CCD-175).
+// Tests for the flood page at /sea-level (CCD-152, CCD-174, CCD-175, CCD-377).
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SeaLevel from './SeaLevel';
-import { getSeaLevel } from '../services/api';
+import { getFlood, getSeaLevel } from '../services/api';
+import { mockFlood } from '../mocks/flood';
 import { mockSeaLevelCork } from '../mocks/seaLevel';
 import { ROUTES } from '../routes';
 import { SCENARIO_LABELS } from '../styles/scenarioColors';
 import { currentLocation, renderWithRouter } from '../test/renderWithRouter';
 
-// Replace the real API call with a fake, so the tests never need the backend
+// Replace the real API calls with fakes, so the tests never need the backend
 vi.mock('../services/api', () => ({
   getSeaLevel: vi.fn(),
+  getFlood: vi.fn(),
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the chart for a placeholder
@@ -35,6 +37,8 @@ describe('SeaLevel page', () => {
   beforeEach(() => {
     vi.mocked(getSeaLevel).mockReset();
     vi.mocked(getSeaLevel).mockResolvedValue(mockSeaLevelCork);
+    vi.mocked(getFlood).mockReset();
+    vi.mocked(getFlood).mockImplementation((slug) => Promise.resolve(mockFlood(slug)));
   });
 
   it('shows the loading message, then the 2050 and 2100 cards and the chart', async () => {
@@ -60,7 +64,7 @@ describe('SeaLevel page', () => {
     expect(getSeaLevel).toHaveBeenCalledWith('clare');
   });
 
-    it('only offers the 15 coastal counties', async () => {
+  it('only offers the 15 coastal counties', async () => {
     openPage();
     // Wait for the data, so the page has finished updating before the test ends
     await screen.findByRole('article', { name: 'Cork, by 2050' });
@@ -115,12 +119,44 @@ describe('SeaLevel page', () => {
     expect(getSeaLevel).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps a space for the flood map and links to the county page', async () => {
+  it('shows the flood map with its slider, and links to the county page', async () => {
     openPage('/sea-level?county=cork');
     await screen.findByRole('article', { name: 'Cork, by 2050' });
+
     expect(screen.getByRole('heading', { level: 2, name: 'Flood map' })).toBeTruthy();
+    // The slider starts at 0.5 m, and the layer for 0.5 m is on the map
+    expect((await screen.findByRole('slider', { name: /Sea level rise/ })).getAttribute('aria-valuetext')).toBe(
+      '0.5 m',
+    );
+    expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_050.png');
+    expect(getFlood).toHaveBeenCalledWith('cork');
+
     expect(screen.getByRole('link', { name: 'See all climate projections for County Cork' }).getAttribute('href')).toBe(
       '/county/cork',
     );
+  });
+
+  it('loads the flood map for the county that is picked', async () => {
+    const user = userEvent.setup();
+    openPage('/sea-level?county=cork');
+    await screen.findByRole('slider', { name: /Sea level rise/ });
+
+    await user.selectOptions(screen.getByLabelText('Coastal county'), 'kerry');
+
+    expect(getFlood).toHaveBeenLastCalledWith('kerry');
+    expect(await screen.findByText(/more land under water in County Kerry/)).toBeTruthy();
+  });
+
+
+  it('lets the flood map use the projections for "scenario and year"', async () => {
+    const user = userEvent.setup();
+    openPage('/sea-level?county=cork');
+    await screen.findByRole('article', { name: 'Cork, by 2050' });
+    await screen.findByRole('slider', { name: /Sea level rise/ });
+
+    const option = screen.getByRole('radio', { name: /Use a scenario and year/ });
+    expect(option.disabled).toBe(false);
+    await user.click(option);
+    expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_040.png');
   });
 });

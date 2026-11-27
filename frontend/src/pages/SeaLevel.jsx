@@ -9,10 +9,11 @@
 //   1. Controls      - the coastal county dropdown and the "Show scenarios" tick boxes (CCD-174)
 //   2. Numbers       - the 2050 and 2100 cards (CCD-171, CCD-172)
 //   3. Chart         - the sea-level rise chart from 2020 to 2100 (SeaLevelChart, CCD-407)
-//   4. Flood map     - space kept for the flood layer and slider (CCD-377), which waits on CCD-360
+//   4. Flood map     - the flood layer with a sea-level slider and km² counter (FloodMap, CCD-377)
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import ErrorMessage from '../components/ErrorMessage';
+import FloodMap from '../components/FloodMap';
 import Loading from '../components/Loading';
 import ScenarioFilter from '../components/ScenarioFilter';
 import SeaLevelCard from '../components/SeaLevelCard';
@@ -93,7 +94,7 @@ export default function SeaLevel() {
 
   return (
     <main className="sea-level-page">
-            <h1>Flooding</h1>
+      <h1>Flooding</h1>
       <p className="sea-level-page__intro">
         How much the sea around County {countyName} is projected to rise this century, under three emissions
         scenarios. These are projections from climate models, not forecasts.
@@ -139,12 +140,16 @@ export default function SeaLevel() {
         </>
       )}
 
-      {/* 4. Flood map: kept here so the page layout is final. Filled in by CCD-377. */}
+      {/* 4. Flood map: which land could flood at each sea level, 0 to 2 m.
+          It loads its own data, so it shows even if the sea-level numbers above fail. */}
       <section className="sea-level-page__section" aria-labelledby="flood-map-heading">
         <h2 id="flood-map-heading">Flood map</h2>
-        <p className="sea-level-page__placeholder">
-          A map showing which land in County {countyName} could flood at different sea levels is on the way.
+        <p className="sea-level-page__intro">
+          Move the slider to see which land in County {countyName} could be under water if the sea rose by that
+          much.
         </p>
+                {/* The projections let the map turn "RCP4.5 in 2100" into a flood level (null until they load) */}
+        <FloodMap slug={slug} countyName={countyName} seaLevel={!loading && result.data ? result.data : null} />
       </section>
 
       <p className="sea-level-page__back">
