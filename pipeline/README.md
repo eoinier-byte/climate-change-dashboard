@@ -113,12 +113,12 @@ cmake --build flood_engine/build -j
 FLOOD_ENGINE_PY_DIR=flood_engine/build/python python pipeline/flood_precompute.py \
     --dem data/dem/glo90/ireland_glo90.vrt --land <land.gpkg> \
     --counties pipeline/data/boundaries/counties_tailte_eireann_2019.geojson \
-    --out pipeline/data/processed/flood --county cork
+    --out backend/static/flood --county cork
 ```
 
 Leave out `--county` to build all 15 coastal counties. `--cell-size` (default 90 m) sets the ITM grid.
 
-**Output:** `pipeline/data/processed/flood/<slug>/` with `level_000.png` … `level_200.png` (RGBA, EPSG:3857,
+**Output:** `backend/static/flood/<slug>/` with `level_000.png` … `level_200.png` (RGBA, EPSG:3857,
 flooded = semi-transparent blue) and `index.json` (slug, bounds `[[south, west], [north, east]]`, `cell_size_m`,
 per-level `flooded_cells` / `flooded_area_km2`, attribution, model limits). The script also prints the per-level table.
 

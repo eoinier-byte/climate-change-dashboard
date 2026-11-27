@@ -11,6 +11,7 @@ From CCD-247 Select hosting platform:
 | Public HTTPS URL | Lecturer, testers and the public open it in a browser |
 | React frontend | Static files built by `npm run build` |
 | Django API | Runs with gunicorn, `DEBUG=False` |
+| Static files of the API (admin, Swagger, flood maps) | Served by Django with WhiteNoise; `collectstatic` runs when the container starts, so nothing extra is needed on the host |
 | PostgreSQL | Holds the county projections and sea level data (well under 1 GB) |
 | Budget: **€0** | The team has no budget. No card on file, so there is no risk of surprise charges |
 | Deploys from GitHub | CCD-278 Add auto-deploy on merge to main: deploy only after CI passes |
