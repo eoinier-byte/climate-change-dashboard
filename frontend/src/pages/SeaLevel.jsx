@@ -148,7 +148,8 @@ export default function SeaLevel() {
           Move the slider to see which land in County {countyName} could be under water if the sea rose by that
           much.
         </p>
-        <FloodMap slug={slug} countyName={countyName} />
+                {/* The projections let the map turn "RCP4.5 in 2100" into a flood level (null until they load) */}
+        <FloodMap slug={slug} countyName={countyName} seaLevel={!loading && result.data ? result.data : null} />
       </section>
 
       <p className="sea-level-page__back">

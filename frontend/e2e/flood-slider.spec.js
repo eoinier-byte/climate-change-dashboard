@@ -51,4 +51,19 @@ test.describe('flood map slider', () => {
     // 35.0649 - 25.4745 = 9.6 km²
     await expect(page.getByText('9.6 km²')).toBeVisible();
   });
+
+
+  test('picking a scenario and year sets the flood level', async ({ page }) => {
+    const layer = page.locator('img.leaflet-image-layer');
+
+    await page.getByRole('radio', { name: /Use a scenario and year/ }).check();
+    // RCP4.5 in 2100: 43 cm above today, so 0.4 m
+    await expect(page.getByText(/RCP4\.5 in 2100: the sea around County Cork/)).toBeVisible();
+    await expect(layer).toHaveAttribute('src', /level_040\.png$/);
+
+    // RCP8.5 in 2100: 65 cm above today, so 0.7 m; 37.7703 - 25.4745 = 12.3 km²
+    await page.locator('#flood-scenario').selectOption('rcp85');
+    await expect(layer).toHaveAttribute('src', /level_070\.png$/);
+    await expect(page.getByText('12.3 km²')).toBeVisible();
+  });
 });

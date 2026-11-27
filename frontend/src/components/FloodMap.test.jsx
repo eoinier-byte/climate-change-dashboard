@@ -1,12 +1,14 @@
 // Tests for the flood map (CCD-377): the starting level, the slider changing the layer and the km²
 // counter, the notes under the map, zooming to the county, and the error with Retry.
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import FloodMap from './FloodMap';
 import { mockFlood } from '../mocks/flood';
 import { getFlood } from '../services/api';
 import { fakeMap } from '../test/fakeLeafletMap';
+import { mockSeaLevelCork } from '../mocks/seaLevel';
+
 
 // Replace the real API call with a fake, so the tests never need the backend
 vi.mock('../services/api', () => ({
@@ -98,5 +100,78 @@ describe('FloodMap', () => {
 
     expect(await screen.findByRole('slider', { name: /Sea level rise/ })).toBeTruthy();
     expect(getFlood).toHaveBeenCalledTimes(2);
+  });
+
+
+  // The scenario option (CCD-377). Cork's real projections: RCP4.5 rises 43 cm by 2100 (0.4 m),
+  // RCP8.5 rises 65 cm by 2100 (0.7 m) and 18 cm by 2050 (0.2 m).
+  describe('scenario and year', () => {
+    function renderWithProjections() {
+      return render(<FloodMap slug="cork" countyName="Cork" seaLevel={mockSeaLevelCork} />);
+    }
+
+    it('cannot be picked until the projections have loaded', async () => {
+      renderMap(); // no seaLevel
+      await screen.findByRole('slider', { name: /Sea level rise/ });
+      expect(screen.getByRole('radio', { name: /Use a scenario and year/ }).disabled).toBe(true);
+    });
+
+    it('starts at RCP4.5 in 2100: 43 cm above today, so the map shows 0.4 m', async () => {
+      const user = userEvent.setup();
+      renderWithProjections();
+      await screen.findByRole('slider', { name: /Sea level rise/ });
+
+      await user.click(screen.getByRole('radio', { name: /Use a scenario and year/ }));
+
+      const sentence = screen.getByText(/RCP4\.5 in 2100: the sea around County Cork/);
+      expect(within(sentence).getByText('43 cm')).toBeTruthy();
+      expect(within(sentence).getByText('0.4 m')).toBeTruthy();
+      expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_040.png');
+      // 31.3794 - 25.4745 = 5.9049, shown as 5.9
+      expect(screen.getByText('5.9 km²')).toBeTruthy();
+      // The slider is hidden while the scenario decides the level
+      expect(screen.queryByRole('slider')).toBeNull();
+    });
+
+    it('changes the level when the scenario or the year changes', async () => {
+      const user = userEvent.setup();
+      renderWithProjections();
+      await screen.findByRole('slider', { name: /Sea level rise/ });
+      await user.click(screen.getByRole('radio', { name: /Use a scenario and year/ }));
+
+      await user.selectOptions(screen.getByLabelText('Scenario'), 'rcp85');
+      expect(within(screen.getByText(/RCP8\.5 in 2100/)).getByText('65 cm')).toBeTruthy();
+      expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_070.png');
+      expect(screen.getByText('12.3 km²')).toBeTruthy(); // 37.7703 - 25.4745
+
+      await user.selectOptions(screen.getByLabelText('Year'), '2050');
+      expect(within(screen.getByText(/RCP8\.5 in 2050/)).getByText('18 cm')).toBeTruthy();
+      expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_020.png');
+    });
+
+    it('offers the years after 2020, which counts as today', async () => {
+      const user = userEvent.setup();
+      renderWithProjections();
+      await screen.findByRole('slider', { name: /Sea level rise/ });
+      await user.click(screen.getByRole('radio', { name: /Use a scenario and year/ }));
+
+      const years = within(screen.getByLabelText('Year'))
+        .getAllByRole('option')
+        .map((option) => option.value);
+      expect(years).toEqual(['2030', '2040', '2050', '2060', '2070', '2080', '2090', '2100']);
+    });
+
+    it('going back to the slider keeps the level the scenario chose', async () => {
+      const user = userEvent.setup();
+      renderWithProjections();
+      await screen.findByRole('slider', { name: /Sea level rise/ });
+      await user.click(screen.getByRole('radio', { name: /Use a scenario and year/ }));
+      await user.selectOptions(screen.getByLabelText('Scenario'), 'rcp85'); // 0.7 m
+
+      await user.click(screen.getByRole('radio', { name: /Pick a sea level/ }));
+
+      expect(slider().getAttribute('aria-valuetext')).toBe('0.7 m');
+      expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_070.png');
+    });
   });
 });

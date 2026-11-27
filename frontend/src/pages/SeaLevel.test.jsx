@@ -146,4 +146,17 @@ describe('SeaLevel page', () => {
     expect(getFlood).toHaveBeenLastCalledWith('kerry');
     expect(await screen.findByText(/more land under water in County Kerry/)).toBeTruthy();
   });
+
+
+  it('lets the flood map use the projections for "scenario and year"', async () => {
+    const user = userEvent.setup();
+    openPage('/sea-level?county=cork');
+    await screen.findByRole('article', { name: 'Cork, by 2050' });
+    await screen.findByRole('slider', { name: /Sea level rise/ });
+
+    const option = screen.getByRole('radio', { name: /Use a scenario and year/ });
+    expect(option.disabled).toBe(false);
+    await user.click(option);
+    expect(screen.getByTestId('flood-layer').getAttribute('src')).toBe('/mock-flood/cork/level_040.png');
+  });
 });
