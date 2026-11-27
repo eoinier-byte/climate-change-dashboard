@@ -5,7 +5,7 @@ Contract: docs/flood-engine.md (§2 grid layout, §3 input, §7 limits, §9 D3/D
     python pipeline/flood_precompute.py --dem data/dem/glo90/ireland_glo90.vrt \
         --land <land polygon .gpkg/.geojson/.shp> \
         --counties pipeline/data/boundaries/counties_tailte_eireann_2019.geojson \
-        --out pipeline/data/processed/flood --county cork
+        --out backend/static/flood --county cork
 
 Steps (each is a function below so the tests can run it on tiny synthetic inputs):
   1. DEM -> one national ITM (EPSG:2157) grid with square cells, bilinear; NaN / no data -> -9999.0

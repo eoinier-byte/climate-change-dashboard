@@ -18,6 +18,8 @@ The response shapes, change-from-baseline rules and frontend usage are in **[dat
 | GET | `/projections/?county={slug}&variable=&season=&scenario=` | Full chart data for one county: values and change from baseline for every scenario and period, seasonal table, commentary. Only `county` is required | 400 missing `county` or invalid filter; 404 unknown county | CCD-84 | 2 |
 | GET | `/sea-level/{slug}/` | Sea level rise, every 10 years 2020–2100, one series per scenario, from Met Office UKCP18. Inland county: `has_coastline: false` and an empty `series` | 404 unknown county | CCD-91 | 2 |
 | GET | `/map/?variable=&scenario=&period=&season=` | Choropleth data: one value per county for the given combination, sorted by county name, plus `unit`, `min` and `max` for the legend. All four parameters are required | 400 missing or invalid parameter (lists the allowed values) | CCD-338 | 2 |
+| GET | `/flood/` | Coastal counties that have a flood map, sorted by name (same shape as `/counties/`) | 405 for POST | CCD-360, CCD-362 | 3 |
+| GET | `/flood/{slug}/` | Flood map of one county: bounds and one PNG layer per sea level, 0–2 m; see [Flood maps](#flood-maps-ccd-360) | 404 no flood map for this county | CCD-360, CCD-362 | 3 |
 | GET, POST | `/auth/...` | Accounts, profile, email links: see [Accounts](#accounts-ccd-294-ccd-427-ccd-441) below | 400 / 403 / 404 / 409 / 410 | CCD-294, CCD-427, CCD-441 | 3 |
 | POST | `/reports/` | Email a county report | 400 / 403 / 429 | | 3 |
 | POST | `/agent/chat/` | AI assistant (Boreas): answers a question about the data, streamed as NDJSON events; see [AI assistant](#ai-assistant-ccd-347) | 400 invalid history or context; 429 over the limit | CCD-347, CCD-349, CCD-351 | 3 |
@@ -54,6 +56,34 @@ Error example (`?variable=wind&scenario=rcp45&period=2021-2050`; every bad or mi
   "season": "Invalid season: None. Valid seasons are: annual, autumn, spring, summer, winter"
 }
 ```
+
+## Flood maps (CCD-360)
+
+The flood layers come from the C++ flood engine ([flood-engine.md](flood-engine.md)): 15 coastal counties, each with 21 transparent PNG layers for sea levels 0–2 m in 0.1 m steps. They live in `backend/static/flood/<slug>/` (`level_000.png` … `level_200.png` and `index.json`) and are served as static files; Python reads only `index.json`.
+
+`GET /api/flood/cork/`
+
+```json
+{
+  "slug": "cork",
+  "bounds": [[51.4097, -10.2768], [52.3908, -7.8400]],
+  "cell_size_m": 90.0,
+  "levels": [
+    { "level_m": 0.0, "url": "http://localhost:8000/static/flood/cork/level_000.png", "flooded_cells": 3145, "flooded_area_km2": 25.4745 },
+    { "level_m": 0.1, "url": "http://localhost:8000/static/flood/cork/level_010.png", "flooded_cells": 3332, "flooded_area_km2": 26.9892 }
+  ],
+  "attribution": "produced using Copernicus WorldDEM-90 …",
+  "model_limits": "Indicative only: still-water 'bathtub' model …"
+}
+```
+
+- `bounds` are `[[south, west], [north, east]]` in WGS84, the corners of each PNG: pass them to Leaflet's `ImageOverlay` as they are. The PNGs are in Web Mercator.
+- `level_m` is the rise above **today's** sea level. The sea level projections (`/sea-level/`) are in cm above the 1981–2000 average, so the frontend has to pick the layer that matches a projection.
+- `flooded_area_km2` counts only land inside the county.
+- `attribution` and `model_limits` should be shown with the map.
+- The `0 m` layer already shows some flooded land (about 380 km² over the 15 counties), most likely low ground below 0 m in the elevation data and its error. Show the change from it, or label it, rather than presenting it as flooding today.
+- The slug is not case-sensitive. A county with no flood map (inland, or unknown) is a 404.
+- To rebuild the layers, see [flood-engine.md](flood-engine.md) §11 (`--out backend/static/flood`). On the live site, `/static/` must be served by WhiteNoise or the host, because Django does not serve static files when `DEBUG` is off.
 
 ## Accounts (CCD-294, CCD-427, CCD-441)
 
