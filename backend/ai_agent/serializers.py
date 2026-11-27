@@ -42,8 +42,16 @@ class RankSerializer(serializers.Serializer):
 
 
 class ChatMessageSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(choices=['user', 'assistant'])
-    content = serializers.CharField(max_length=500, trim_whitespace=True)
+    MAX_LENGTH = {'user': 500, 'assistant': 4000}
+
+    role = serializers.ChoiceField(choices=list(MAX_LENGTH))
+    content = serializers.CharField(max_length=max(MAX_LENGTH.values()), trim_whitespace=True)
+
+    def validate(self, attrs):
+        limit = self.MAX_LENGTH[attrs['role']]
+        if len(attrs['content']) > limit:
+            raise serializers.ValidationError({'content': f'Ensure this field has no more than {limit} characters.'})
+        return attrs
 
 
 class PageContextSerializer(serializers.Serializer):

@@ -5,16 +5,20 @@ from django.contrib.auth import logout, update_session_auth_hash
 from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from rest_framework import permissions, viewsets
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import NotFound
-from rest_framework.generics import GenericAPIView
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.generics import GenericAPIView, get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from climate.models import County
+from climate.serializers import CountySerializer
 from common.exceptions import Gone
+from common.serializers import DetailSerializer
 from common.views import AuthView
 from users.models import EmailVerification, User
 from users.serializers import (
@@ -32,6 +36,7 @@ from users.tasks import async_send_email
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class CsrfView(APIView):
+    @extend_schema(responses={HTTPStatus.OK: DetailSerializer})
     def get(self, request):
         return Response({'detail': 'CSRF cookie set.'})
 
@@ -65,6 +70,15 @@ class RecoveryView(GenericAPIView):
 
 
 class EmailVerificationView(APIView):
+    @extend_schema(
+        request=None,
+        responses={
+            HTTPStatus.ACCEPTED: DetailSerializer,
+            HTTPStatus.NOT_FOUND: DetailSerializer,
+            HTTPStatus.CONFLICT: DetailSerializer,
+            HTTPStatus.GONE: DetailSerializer,
+        },
+    )
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         record = EmailVerification.objects.select_for_update().find_record(
@@ -164,6 +178,7 @@ class ProfileViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action)
 
+    @extend_schema(request=None, responses={HTTPStatus.NO_CONTENT: None})
     @action(detail=False, methods=['delete'], url_path='me/delete')
     def delete_me(self, request):
         user = request.user
@@ -171,6 +186,7 @@ class ProfileViewSet(viewsets.GenericViewSet):
         user.delete()
         return Response(status=HTTPStatus.NO_CONTENT)
 
+    @extend_schema(request=None, responses={HTTPStatus.NO_CONTENT: None})
     @action(detail=False, methods=['delete'], url_path='me/delete-avatar')
     def delete_avatar(self, request):
         if self.request.user.avatar:
@@ -226,6 +242,49 @@ class ProfileViewSet(viewsets.GenericViewSet):
         )
 
 
+class FavouriteCountiesViewSet(viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CountySerializer
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return County.objects.none()
+        return self.request.user.counties.order_by('name')
+
+    def list(self, request):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data, status=HTTPStatus.OK)
+
+    @extend_schema(
+        request=inline_serializer('FavouriteCountyRequest', {'county': serializers.SlugField()}),
+        responses={
+            HTTPStatus.CREATED: CountySerializer,
+            HTTPStatus.BAD_REQUEST: OpenApiResponse(description='No county given.'),
+            HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county.'),
+        },
+    )
+    def create(self, request):
+        slug = request.data.get('county')
+        if not slug:
+            raise ValidationError({'county': ['This field is required.']})
+        county = get_object_or_404(County, slug=str(slug).lower())
+        request.user.counties.add(county)
+        return Response(self.get_serializer(county).data, status=HTTPStatus.CREATED)
+
+    @extend_schema(
+        responses={
+            HTTPStatus.NO_CONTENT: None,
+            HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county.'),
+        },
+    )
+    def destroy(self, request, slug=None):
+        county = get_object_or_404(County, slug=slug.lower())
+        request.user.counties.remove(county)
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@extend_schema(request=None, responses={HTTPStatus.OK: DetailSerializer})
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
