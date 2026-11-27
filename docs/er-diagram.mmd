@@ -1,12 +1,18 @@
 erDiagram
     County ||--|{ ClimateProjection : "has 70"
     County ||--o{ SeaLevelProjection : "has 0 or 27"
+    County ||--o{ ImpactIndicator : "has"
+    County ||--o{ CountyAnalogue : "has"
     DataSource ||--|{ ClimateProjection : "provides"
     DataSource ||--|{ SeaLevelProjection : "provides"
+    DataSource ||--|{ ImpactIndicator : "provides"
+    DataSource ||--|{ CityClimate : "provides"
+    CityClimate ||--o{ CountyAnalogue : "is analogue in"
     User ||--o{ EmailVerification : "gets links"
+    User }o--o{ County : "favourites (users_user_counties)"
 
     County {
-        integer id PK
+        bigint id PK
         varchar(50) name UK
         varchar(50) slug UK
         boolean has_coastline
@@ -14,8 +20,8 @@ erDiagram
 
     ClimateProjection {
         bigint id PK
-        integer county_id FK
-        integer data_source_id FK
+        bigint county_id FK
+        bigint data_source_id FK
         varchar(20) variable "temperature, precipitation"
         varchar(10) scenario "baseline, rcp26, rcp45, rcp85"
         varchar(9) period "1976-2005, 2021-2050, 2071-2100"
@@ -26,8 +32,8 @@ erDiagram
 
     SeaLevelProjection {
         bigint id PK
-        integer county_id FK
-        integer data_source_id FK
+        bigint county_id FK
+        bigint data_source_id FK
         varchar(10) scenario "rcp26, rcp45, rcp85"
         smallint year "2020 to 2100, every 10"
         varchar(10) season "annual"
@@ -36,16 +42,53 @@ erDiagram
         varchar(50) provenance
     }
 
+    ImpactIndicator {
+        bigint id PK
+        bigint county_id FK
+        bigint data_source_id FK
+        varchar(30) indicator "frost_days, summer_days, heating_degree_days, growing_season_length"
+        varchar(10) scenario "baseline, rcp26, rcp45, rcp85"
+        varchar(9) period "1976-2005, 2021-2050, 2071-2100"
+        varchar(10) season "annual"
+        numeric value "numeric(8,3)"
+        varchar(10) unit "days, degC_days"
+    }
+
     DataSource {
-        integer id PK
-        varchar(20) code UK "translate, ukcp18"
+        bigint id PK
+        varchar(20) code UK "translate, ukcp18, worldclim"
         varchar(200) name
         varchar(200) organisation
-        varchar(9) baseline_period "1976-2005, 1981-2000"
+        varchar(9) baseline_period "1976-2005, 1981-2000, 1970-2000"
         varchar(200) licence
         text attribution
         varchar(500) url
         date accessed_on
+    }
+
+    CityClimate {
+        bigint id PK
+        varchar(100) name "UK with country"
+        varchar(100) country
+        numeric latitude "numeric(6,3)"
+        numeric longitude "numeric(6,3)"
+        numeric summer_temp "numeric(6,3), degC"
+        numeric winter_temp "numeric(6,3), degC"
+        numeric annual_precip "numeric(8,3), mm"
+        bigint data_source_id FK "worldclim"
+    }
+
+    CountyAnalogue {
+        bigint id PK
+        bigint county_id FK
+        bigint city_id FK
+        varchar(10) scenario "rcp26, rcp45, rcp85"
+        varchar(9) period "2021-2050, 2071-2100"
+        smallint rank "1 = closest"
+        numeric similarity "numeric(4,3)"
+        numeric county_summer_temp "numeric(6,3)"
+        numeric county_winter_temp "numeric(6,3)"
+        numeric county_annual_precip "numeric(8,3)"
     }
 
     User {
