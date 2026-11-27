@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import Loading from '../components/Loading';
+import ProfileDelete from '../components/ProfileDelete';
 import ProfileDetails from '../components/ProfileDetails';
 import ProfileEmail from '../components/ProfileEmail';
 import ProfilePassword from '../components/ProfilePassword';
@@ -7,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes';
 import '../styles/auth.css';
 
-// The account page (CCD-327, CCD-432, CCD-433): details and photo, email, password.
+// The account page (CCD-327, CCD-432, CCD-433, CCD-448): details and photo, email, password, delete account.
 // Only for a signed-in user; anyone else is sent to the login page. After a change, refresh() loads the
 // profile again, so the page always shows what the server has.
 export default function Profile() {
@@ -27,6 +28,7 @@ export default function Profile() {
       <ProfileDetails user={user} onSaved={refresh} />
       <ProfileEmail user={user} onSaved={refresh} />
       <ProfilePassword />
+      <ProfileDelete />
     </main>
   );
 }

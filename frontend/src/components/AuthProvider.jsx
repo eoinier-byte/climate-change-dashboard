@@ -14,6 +14,8 @@ import { getProfile, loginUser, logoutUser, registerUser } from '../services/api
 //                                when the page calls refresh(), so the page can show its own message first.
 //   refresh()                    loads the profile again
 //   signOut()                    signs out. A 403 means the session had already ended, which is the same result.
+//   forget()                     drops the user without calling the server, after the server ended the session
+//                                itself (deleting the account)
 export default function AuthProvider({ children }) {
   const [state, setState] = useState({ user: null, status: 'loading' });
 
@@ -50,5 +52,7 @@ export default function AuthProvider({ children }) {
     setState({ user: null, status: 'signedOut' });
   };
 
-  return <AuthContext.Provider value={{ ...state, signIn, register, refresh, signOut }}>{children}</AuthContext.Provider>;
+  const forget = () => setState({ user: null, status: 'signedOut' });
+
+  return <AuthContext.Provider value={{ ...state, signIn, register, refresh, signOut, forget }}>{children}</AuthContext.Provider>;
 }

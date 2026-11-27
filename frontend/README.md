@@ -70,7 +70,7 @@ The `csrftoken` cookie is set by the API, and the page has to read it. A page ca
 - The three email addresses must match `DOMAIN_NAME` in the backend `.env` (docs/api.md, "Links sent by email"). With `DJANGO_DEBUG=True` the emails are printed in the `runserver` console, so you can copy the link from there.
 - A link works once. React runs effects twice in development, so `EmailLink.jsx` shares one request per link; without that the first call would use the link up and the page would say it had expired.
 - There is no "send the confirmation email again" endpoint yet, so an expired link tells the user to log in and ask for a new one from the Account page.
-- There is no "delete account" button: the story for it (CCD-445) belongs to the backend work.
+- "Delete my account…" (CCD-448) only opens a question. "Yes, delete my account" calls `DELETE /auth/profile/me/delete/`; the server deletes the account and the photo and ends the session in the same request, so the page just forgets the user (`forget()` in `AuthProvider`) and goes to the home page.
 - Form checks are in `auth/validation.js`, server messages in `auth/formErrors.js`. The photo rules (JPEG, PNG or HEIC, up to 50 MB) are in `auth/profileHelpers.js`; the server checks the size in pixels.
 
 ## County page URL settings (CCD-406)

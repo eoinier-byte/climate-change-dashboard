@@ -204,6 +204,9 @@ export function changeAvatar(file) {
 }
 export const deleteAvatar = () => apiDelete('/auth/profile/me/delete-avatar/');
 
+// Deletes the signed-in user's account and photo for good (204). The server also ends the session.
+export const deleteAccount = () => apiDelete('/auth/profile/me/delete/');
+
 // data: { old_password, new_password, new_password2 }. The user stays signed in; other sessions are signed out.
 export const changePassword = (data) => apiPatch('/auth/profile/me/change-password/', data);
 

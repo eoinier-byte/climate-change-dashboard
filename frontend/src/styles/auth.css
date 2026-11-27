@@ -185,3 +185,41 @@
 .account-section .btn--secondary {
   justify-self: start;
 }
+
+/* Delete account (CCD-448). The red border and the words say it is dangerous, not the colour alone. */
+.account-section--danger {
+  border: 2px solid var(--color-error);
+}
+
+.account-section--danger h2 {
+  color: var(--color-error);
+}
+
+.btn--danger-outline {
+  background: transparent;
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--danger-outline:hover {
+  background: var(--color-surface);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--danger {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-on-primary);
+}
+
+.btn--danger:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-on-primary);
+  filter: brightness(0.9);
+}
+
+.account-notice--danger {
+  border-color: var(--color-error);
+}

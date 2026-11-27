@@ -12,6 +12,7 @@ import {
   changeEmail,
   changePassword,
   checkResetLink,
+  deleteAccount,
   deleteAvatar,
   getCounties,
   getCounty,
@@ -432,6 +433,7 @@ describe('profile and email-link functions (CCD-299)', () => {
     ],
     ['changeEmail', () => changeEmail('new@example.com'), 'PATCH', '/auth/profile/me/change-email/', { email: 'new@example.com' }],
     ['deleteAvatar', () => deleteAvatar(), 'DELETE', '/auth/profile/me/delete-avatar/', undefined],
+    ['deleteAccount', () => deleteAccount(), 'DELETE', '/auth/profile/me/delete/', undefined],
     ['requestPasswordReset', () => requestPasswordReset('a@example.com'), 'POST', '/auth/recovery/', { email: 'a@example.com' }],
     [
       'resetPassword',

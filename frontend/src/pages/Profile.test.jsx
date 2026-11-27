@@ -13,14 +13,14 @@ vi.mock('../services/api');
 const apiError = (status, body = null) => Object.assign(new Error(`API error ${status}`), { name: 'ApiError', status, body });
 const baseUser = { username: 'ronel', name: 'Ronel Mombo', email: 'ronel@example.com', avatar: null, is_verified: true, pending_email: null };
 
-function renderProfile({ user = baseUser, status = 'signedIn', refresh = vi.fn().mockResolvedValue(user) } = {}) {
+function renderProfile({ user = baseUser, status = 'signedIn', refresh = vi.fn().mockResolvedValue(user), forget = vi.fn() } = {}) {
   renderWithRouter(
-    <AuthContext.Provider value={{ user: status === 'signedIn' ? user : null, status, refresh }}>
+    <AuthContext.Provider value={{ user: status === 'signedIn' ? user : null, status, refresh, forget }}>
       <Profile />
     </AuthContext.Provider>,
     { url: ROUTES.profile },
   );
-  return { refresh };
+  return { refresh, forget };
 }
 
 beforeEach(() => {
@@ -38,13 +38,13 @@ describe('Profile page: who may see it', () => {
     expect(screen.getByRole('status').textContent).toBe('Loading your account…');
   });
 
-  it('shows the three sections and no delete-account section', () => {
+  it('shows the four sections', () => {
     renderProfile();
     expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Your details' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Email' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Password' })).toBeTruthy();
-    expect(screen.queryByText(/delete/i)).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Delete account' })).toBeTruthy();
   });
 });
 
@@ -208,5 +208,57 @@ describe('Profile page: password', () => {
     expect(await screen.findByText('Your old password was entered incorrectly.')).toBeTruthy();
     expect(screen.getByLabelText('Current password').value).toBe('');
     expect(screen.queryByText('Your password is changed.')).toBeNull();
+  });
+});
+
+describe('Profile page: delete account (CCD-448)', () => {
+  it('only opens a question when the button is pressed, and deletes nothing yet', async () => {
+    const user = userEvent.setup();
+    renderProfile();
+
+    await user.click(screen.getByRole('button', { name: 'Delete my account…' }));
+
+    expect(screen.getByText('Are you sure? This cannot be undone.')).toBeTruthy();
+    expect(api.deleteAccount).not.toHaveBeenCalled();
+    // Focus starts on the safe choice
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
+  });
+
+  it('goes back to the single button when Cancel is pressed', async () => {
+    const user = userEvent.setup();
+    renderProfile();
+    await user.click(screen.getByRole('button', { name: 'Delete my account…' }));
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('button', { name: 'Delete my account…' })).toBeTruthy();
+    expect(screen.queryByText('Are you sure? This cannot be undone.')).toBeNull();
+    expect(api.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('deletes the account, forgets the user and goes to the home page', async () => {
+    const user = userEvent.setup();
+    api.deleteAccount.mockResolvedValue(null);
+    const { forget } = renderProfile();
+    await user.click(screen.getByRole('button', { name: 'Delete my account…' }));
+
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    await waitFor(() => expect(forget).toHaveBeenCalled());
+    expect(api.deleteAccount).toHaveBeenCalledTimes(1);
+    expect(currentLocation()).toBe(ROUTES.home);
+  });
+
+  it('keeps the user signed in, and says why, when the server cannot delete the account', async () => {
+    const user = userEvent.setup();
+    api.deleteAccount.mockRejectedValue(apiError(500));
+    const { forget } = renderProfile();
+    await user.click(screen.getByRole('button', { name: 'Delete my account…' }));
+
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/server had a problem/i);
+    expect(forget).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Yes, delete my account' }).disabled).toBe(false);
   });
 });

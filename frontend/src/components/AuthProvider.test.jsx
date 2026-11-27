@@ -14,7 +14,7 @@ const profile = { username: 'ronel', name: 'Ronel', email: 'ronel@example.com', 
 
 // A small page that shows what the provider says, with a button for each thing it can do
 function Probe() {
-  const { user, status, signIn, register, refresh, signOut } = useAuth();
+  const { user, status, signIn, register, refresh, signOut, forget } = useAuth();
   const [problem, setProblem] = useState('none');
   const tell = (error) => setProblem(error.body?.detail?.[0] ?? error.message);
   return (
@@ -26,6 +26,7 @@ function Probe() {
       <button onClick={() => register({ username: 'new' }).catch(tell)}>register</button>
       <button onClick={() => refresh().catch(tell)}>refresh</button>
       <button onClick={() => signOut().catch(tell)}>sign out</button>
+      <button onClick={() => forget()}>forget</button>
     </div>
   );
 }
@@ -127,6 +128,20 @@ describe('AuthProvider (CCD-326)', () => {
 
       await user.click(screen.getByRole('button', { name: 'refresh' }));
       await waitFor(() => expect(status()).toBe('signedIn'));
+    });
+  });
+
+  describe('forget', () => {
+    it('drops the user without calling the server', async () => {
+      const user = userEvent.setup();
+      renderProbe();
+      await waitFor(() => expect(status()).toBe('signedIn'));
+
+      await user.click(screen.getByRole('button', { name: 'forget' }));
+
+      expect(status()).toBe('signedOut');
+      expect(who()).toBe('nobody');
+      expect(api.logoutUser).not.toHaveBeenCalled();
     });
   });
 
