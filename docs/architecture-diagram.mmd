@@ -1,0 +1,66 @@
+flowchart LR
+    subgraph SRC["Raw datasets (not committed)"]
+        TR["TRANSLATE NetCDF<br/>temperature, rainfall,<br/>impact indicators"]
+        UK["UKCP18 sea level<br/>(ArcGIS JSON)"]
+        WC["WorldClim 2.1 +<br/>Natural Earth cities"]
+        DEM["Copernicus GLO-90 DEM"]
+        BND["Tailte Éireann<br/>county boundaries"]
+    end
+
+    subgraph PIPE["Python pipeline (pipeline/)"]
+        PC["process_climate_data.py<br/>process_indicators.py<br/>clean → aggregate"]
+        WB["worldclim_baseline.py"]
+        FP["flood_precompute.py"]
+        FE["C++20 flood engine<br/>(flood_engine/, pybind11)"]
+    end
+
+    CSV[("processed CSVs<br/>pipeline/data/processed/")]
+    PNG[("flood layer PNGs<br/>backend/static/flood/")]
+
+    subgraph BE["Backend (Django + DRF)"]
+        CMD["manage.py load_data<br/>manage.py compute_analogues"]
+        API["REST API /api/<br/>climate · users · agent"]
+        WN["WhiteNoise<br/>static files"]
+    end
+
+    DB[("PostgreSQL")]
+    RD[("Redis<br/>cache + Celery broker")]
+    CW["Celery worker<br/>account emails"]
+    SMTP["SMTP server"]
+    LLM["Anthropic API<br/>(Claude)"]
+
+    subgraph FEUI["Frontend (React + Vite)"]
+        UI["Dashboard pages<br/>Chart.js charts<br/>Leaflet maps"]
+    end
+
+    USER(("User's browser"))
+
+    subgraph CI["GitHub Actions CI (.github/workflows/ci.yml)"]
+        JOBS["lint · pipeline · backend<br/>frontend · e2e · cpp"]
+        NT["notify: Discord on failure"]
+    end
+
+    TR --> PC
+    UK --> PC
+    BND --> PC
+    BND --> WB
+    WC --> WB
+    DEM --> FP
+    BND --> FP
+    FP --> FE
+    PC --> CSV
+    WB --> CSV
+    FP --> PNG
+    CSV --> CMD
+    CMD --> DB
+    API <--> DB
+    API <--> RD
+    API -- "queue email" --> RD
+    RD --> CW
+    CW --> SMTP
+    API -- "AI assistant, read-only tools" --> LLM
+    PNG --> WN
+    USER --> UI
+    UI -- "JSON, session cookie + CSRF" --> API
+    UI -- "flood PNGs" --> WN
+    JOBS --> NT
