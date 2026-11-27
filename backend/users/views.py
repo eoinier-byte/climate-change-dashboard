@@ -8,12 +8,14 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from climate.models import County
+from climate.serializers import CountySerializer
 from common.exceptions import Gone
 from common.views import AuthView
 from users.models import EmailVerification, User
@@ -224,6 +226,29 @@ class ProfileViewSet(viewsets.GenericViewSet):
             },
             status=HTTPStatus.ACCEPTED,
         )
+
+
+class FavouriteCountiesViewSet(viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CountySerializer
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        return self.request.user.counties.all()
+
+    def list(self, request):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data, status=HTTPStatus.OK)
+
+    def create(self, request):
+        county = get_object_or_404(County, slug=request.data.get('county'))
+        request.user.counties.add(county)
+        return Response(self.get_serializer(county).data, status=HTTPStatus.CREATED)
+
+    def destroy(self, request, slug=None):
+        county = get_object_or_404(County, slug=slug.lower())
+        request.user.counties.remove(county)
+        return Response(status=HTTPStatus.NO_CONTENT)
 
 
 @api_view(['POST'])

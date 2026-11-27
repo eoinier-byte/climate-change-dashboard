@@ -26,6 +26,7 @@ class User(AbstractUser):
     name = models.CharField(max_length=50, blank=True, null=True)
     avatar = models.ImageField(upload_to='users', blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    counties = models.ManyToManyField('climate.County', blank=True, related_name='favourited_by')
 
     first_name = None
     last_name = None
