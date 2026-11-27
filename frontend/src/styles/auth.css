@@ -223,3 +223,27 @@
 .account-notice--danger {
   border-color: var(--color-error);
 }
+
+/* Favourite counties (CCD-413, CCD-414) */
+.favourite {
+  margin: 0 0 var(--space-4);
+}
+
+.favourite p[role='alert'] {
+  margin: var(--space-2) 0 0;
+}
+
+.favourite-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.favourite-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}

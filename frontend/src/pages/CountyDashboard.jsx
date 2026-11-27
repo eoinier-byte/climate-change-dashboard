@@ -21,6 +21,7 @@ import { Link, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
+import FavouriteButton from '../components/FavouriteButton';
 import ClimateAnalogue from '../components/ClimateAnalogue';
 import ImpactsBlock from '../components/ImpactsBlock';
 import Loading from '../components/Loading';
@@ -134,6 +135,7 @@ export default function CountyDashboard() {
         How the climate in County {county.name} is projected to change under three emissions scenarios, compared
         with the {summary.period} average.
       </p>
+      <FavouriteButton slug={slug} />
 
       {/* 1. Headline numbers: today's climate, the baseline (1976-2005) annual values */}
       <section aria-labelledby="today-heading">
