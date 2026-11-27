@@ -9,8 +9,9 @@ from users.models import User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'email', 'name', 'is_verified', 'is_staff')
+    filter_horizontal = (*BaseUserAdmin.filter_horizontal, 'counties')
     fieldsets = (
         BaseUserAdmin.fieldsets[0],
-        ('Profile', {'fields': ('email', 'name', 'avatar', 'is_verified')}),
+        ('Profile', {'fields': ('email', 'name', 'avatar', 'is_verified', 'counties')}),
         *BaseUserAdmin.fieldsets[2:],
     )

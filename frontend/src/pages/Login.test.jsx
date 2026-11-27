@@ -11,12 +11,12 @@ import Login from './Login';
 
 const apiError = (status, body = null) => Object.assign(new Error(`API error ${status}`), { name: 'ApiError', status, body });
 
-function renderLogin({ status = 'signedOut', signIn = vi.fn().mockResolvedValue({}) } = {}) {
+function renderLogin({ status = 'signedOut', signIn = vi.fn().mockResolvedValue({}), url = ROUTES.login } = {}) {
   renderWithRouter(
     <AuthContext.Provider value={{ user: null, status, signIn }}>
       <Login />
     </AuthContext.Provider>,
-    { url: ROUTES.login },
+    { url, path: ROUTES.login }, // a route table, so a redirect leaves this page
   );
   return { signIn };
 }
@@ -130,6 +130,17 @@ describe('Login page', () => {
 
   it('sends a visitor who is already signed in to the home page', () => {
     renderLogin({ status: 'signedIn' });
+    expect(currentLocation()).toBe(ROUTES.home);
+  });
+
+  it('sends a signed-in visitor back to the page they came from (CCD-325)', () => {
+    const from = { pathname: ROUTES.profile, search: '?tab=email', hash: '#top' };
+    renderLogin({ status: 'signedIn', url: { pathname: ROUTES.login, state: { from } } });
+    expect(currentLocation()).toBe('/profile?tab=email');
+  });
+
+  it('sends a signed-in visitor home when there is no page to go back to', () => {
+    renderLogin({ status: 'signedIn', url: { pathname: ROUTES.login, state: {} } });
     expect(currentLocation()).toBe(ROUTES.home);
   });
 });

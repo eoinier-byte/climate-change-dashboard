@@ -1,5 +1,6 @@
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../auth/AuthContext';
 import { ROUTES } from '../routes';
@@ -18,7 +19,7 @@ function renderProfile({ user = baseUser, status = 'signedIn', refresh = vi.fn()
     <AuthContext.Provider value={{ user: status === 'signedIn' ? user : null, status, refresh, forget }}>
       <Profile />
     </AuthContext.Provider>,
-    { url: ROUTES.profile },
+    { url: ROUTES.profile, path: ROUTES.profile }, // a route table, so a redirect leaves this page
   );
   return { refresh, forget };
 }
@@ -31,6 +32,25 @@ describe('Profile page: who may see it', () => {
   it('sends a visitor who is not signed in to the login page', () => {
     renderProfile({ status: 'signedOut' });
     expect(currentLocation()).toBe(ROUTES.login);
+  });
+
+  it('remembers the page, so the login page can bring the visitor back (CCD-325)', () => {
+    // A stand-in for the login page that shows what it was told in "from"
+    function LoginStandIn() {
+      const from = useLocation().state?.from;
+      return <p data-testid="from">{from ? from.pathname + from.search : 'nothing'}</p>;
+    }
+    render(
+      <AuthContext.Provider value={{ user: null, status: 'signedOut', refresh: vi.fn(), forget: vi.fn() }}>
+        <MemoryRouter initialEntries={[`${ROUTES.profile}?tab=email`]}>
+          <Routes>
+            <Route path={ROUTES.profile} element={<Profile />} />
+            <Route path={ROUTES.login} element={<LoginStandIn />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+    expect(screen.getByTestId('from').textContent).toBe('/profile?tab=email');
   });
 
   it('shows a loading message while the site checks who is signed in', () => {

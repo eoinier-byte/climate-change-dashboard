@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { formErrorsFrom } from '../auth/formErrors';
 import { validateLogin } from '../auth/validation';
 import FormField from '../components/FormField';
@@ -10,15 +10,18 @@ import '../styles/auth.css';
 const FIELDS = ['login', 'password'];
 
 // The login page (CCD-325). The server accepts a username or an email in "login".
-// A visitor who is already signed in is sent to the home page.
+// After logging in (or when already signed in), a visitor goes back to the page they came from, or to the home page.
 export default function Login() {
   const { status, signIn } = useAuth();
+  const location = useLocation();
+  const from = location.state?.from; // set by pages that need a login, e.g. the account page
+  const backTo = from ? `${from.pathname}${from.search ?? ''}${from.hash ?? ''}` : ROUTES.home;
   const [values, setValues] = useState({ login: '', password: '' });
   const [errors, setErrors] = useState({}); // one message per field
   const [formMessages, setFormMessages] = useState([]); // messages about the whole form
   const [busy, setBusy] = useState(false);
 
-  if (status === 'signedIn') return <Navigate to={ROUTES.home} replace />;
+  if (status === 'signedIn') return <Navigate to={backTo} replace />;
 
   const change = (event) => setValues({ ...values, [event.target.name]: event.target.value });
 

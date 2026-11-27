@@ -3,8 +3,9 @@ from http import HTTPStatus
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.cache import cache
 from django.db.models import OuterRef, Subquery, Value
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
-from rest_framework import viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import serializers, viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.response import Response
@@ -40,11 +41,19 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class HealthView(APIView):
+    @extend_schema(responses={HTTPStatus.OK: inline_serializer('Health', {'status': serializers.CharField()})})
     def get(self, request):
         return Response({'status': 'ok'})
 
 
 class MetaView(APIView):
+    @extend_schema(
+        responses={HTTPStatus.OK: OpenApiTypes.OBJECT},
+        description=(
+            'Filter options read from the database: variables, scenarios, periods, seasons, '
+            'sea level years and data sources.'
+        ),
+    )
     def get(self, request):
         ck = ClimateCacheKey()
         meta_ck = ck.meta()

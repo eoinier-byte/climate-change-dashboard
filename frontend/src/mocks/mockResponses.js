@@ -16,6 +16,8 @@ import { mockCork, mockCorkRows } from './countyRows';
 import { mockImpactsCork } from './impacts';
 import { mockSeaLevelCork, mockSeaLevelInland } from './seaLevel';
 
+import { mockFlood } from './flood';
+
 // The 15 coastal counties (same list as pipeline/flood_precompute.py)
 const COASTAL = new Set([
   'clare', 'cork', 'donegal', 'dublin', 'galway', 'kerry', 'leitrim', 'limerick',
@@ -29,6 +31,10 @@ export const mockCounties = COUNTIES.map((county, index) => ({
   slug: county.slug,
   has_coastline: COASTAL.has(county.slug),
 }));
+
+export const mockFavourites = mockCounties
+  .filter((county) => ['cork', 'galway'].includes(county.slug))
+  .map(({ name, slug, has_coastline }) => ({ name, slug, has_coastline }));
 
 // GET /meta/ : the choices the other endpoints accept
 export const mockMeta = {
@@ -254,6 +260,7 @@ export function mockGet(path) {
   if (url.pathname === '/counties/') return { status: 200, body: mockCounties };
   if (url.pathname === '/meta/') return { status: 200, body: mockMeta };
   if (url.pathname === '/map/') return mapResponse(params);
+  if (url.pathname === '/auth/favourites/') return { status: 200, body: mockFavourites };
 
   const detail = url.pathname.match(/^\/counties\/([^/]+)\/$/);
   if (detail) {
@@ -277,6 +284,14 @@ export function mockGet(path) {
   if (sea) {
     const county = bySlug(sea[1]);
     return county ? { status: 200, body: seaLevel(county) } : notFound();
+  }
+
+
+  // Flood map (CCD-360): only coastal counties have one, so an inland county is a 404
+  const flood = url.pathname.match(/^\/flood\/([^/]+)\/$/);
+  if (flood) {
+    const county = bySlug(flood[1]);
+    return county?.has_coastline ? { status: 200, body: mockFlood(county.slug) } : notFound();
   }
 
   // These need ?county=slug: 400 if it is missing, 404 if there is no such county

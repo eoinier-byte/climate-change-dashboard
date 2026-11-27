@@ -1,0 +1,130 @@
+/* Flood map on the Flooding page (CCD-377) */
+.flood-map {
+  margin: 0;
+}
+
+/* The map box. Loading and errors sit on top of it, so the page does not jump. */
+.flood-map__stage {
+  position: relative;
+}
+
+.flood-map__map {
+  height: 26rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  /* The sea: anything that is not a county */
+  background: #dbe9f4;
+}
+
+.flood-map__status {
+  position: absolute;
+  inset: 0;
+  z-index: 500; /* above the map layers */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(255 255 255 / 0.85);
+}
+
+.flood-map__controls {
+  margin-top: var(--space-4);
+}
+
+.flood-map__label {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.flood-map__controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+
+.flood-map__controls input[type='range']:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* "0.0 m" under the left end of the slider, "2.0 m" under the right end */
+.flood-map__scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__counter {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.flood-map__total {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__note,
+.flood-map__credit {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__credit {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .flood-map__map {
+    height: 20rem;
+  }
+}
+
+/* "Pick a sea level" or "Use a scenario and year" */
+.flood-map__mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: none;
+}
+
+.flood-map__mode legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: 600;
+}
+
+.flood-map__mode label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+/* The scenario and year dropdowns, side by side */
+.flood-map__scenario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.flood-map__pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.flood-map__pick select {
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font: inherit;
+}
+
+.flood-map__projection {
+  flex-basis: 100%;
+  margin: 0;
+}

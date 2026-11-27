@@ -1,10 +1,10 @@
-/* Right-hand slot for the chat panel (CCD-403). Empty and hidden until the chat story fills it. */
+/* Right-hand slot for the chat panel (CCD-403). Filled by ChatPanel (CCD-386); hidden while the chat is closed. */
 .chat-slot {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 30;
+  z-index: 1101; /* above the Leaflet maps (up to 1000) and the Ask Boreas button */
   width: min(24rem, 100vw);
   overflow-y: auto;
   background: var(--color-bg);

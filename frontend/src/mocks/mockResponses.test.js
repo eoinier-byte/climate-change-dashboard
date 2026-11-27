@@ -39,6 +39,7 @@ describe('docs/api-examples.md and the mocks agree', () => {
     ['map', MAP],
     ['impacts', '/counties/cork/impacts/'],
     ['analogues', ANALOGUES],
+    ['flood', '/flood/cork/'],
   ];
 
   it.each(pairs)('the "%s" example has the same shape as the mock answer', (name, path) => {
@@ -70,6 +71,13 @@ describe('counties', () => {
     expect(coastal).toHaveLength(15);
     expect(coastal).toContain('cork');
     expect(coastal).not.toContain('kildare');
+  });
+
+  it('lists two favourite counties by name, without ids', () => {
+    expect(body('/auth/favourites/')).toEqual([
+      { name: 'Cork', slug: 'cork', has_coastline: true },
+      { name: 'Galway', slug: 'galway', has_coastline: true },
+    ]);
   });
 
   it('gives Cork exactly the county the dashboard tests use', () => {
