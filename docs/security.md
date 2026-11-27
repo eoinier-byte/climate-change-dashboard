@@ -1,6 +1,6 @@
 # User database security (CCD-296)
 
-Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-313 (deployment checks and tests). Findings are from `main` on 27 Nov 2026. The fixes in [Changes needed in shared files](#changes-needed-in-shared-files) are for their owners to agree and apply. They are **not applied yet**.
+Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-313 (deployment checks and tests). Findings are from `main` on 27 Nov 2026, updated the same evening after #90 (favourite counties, Swagger fixes). The fixes in [Changes needed in shared files](#changes-needed-in-shared-files) are for their owners to agree and apply. They are **not applied yet**.
 
 ## 1. Database access rules (CCD-311)
 
@@ -36,6 +36,7 @@ Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-31
 | Account status | `is_verified`, `is_active`, `is_staff`, `is_superuser`, `last_login`, `date_joined` | Built into Django, needed for sign-in and the admin |
 | Email links | `users_emailverification` (user, random UUID code, type, expiry, used) | One-time links that expire after an hour |
 | Login session | `django_session` | Keeps the user signed in (session cookie) |
+| Favourite counties | `users_user_counties` (`user_id`, `county_id`), the `User.counties` many-to-many field | The user's saved counties on the dashboard (CCD-442). Only county ids, no free text |
 | Background email tasks | `django_celery_results_taskresult` | Celery records each email task. Its arguments are the user's **id** and the email type, not the address. |
 
 We do **not** store first or last names (removed from Django's default user), phone numbers, postal addresses or location. The app asks for nothing beyond the fields above.
@@ -43,27 +44,27 @@ We do **not** store first or last names (removed from Django's default user), ph
 **What the API returns**
 
 - Register and login return only a message, for example `{"detail": "You have signed in."}`.
-- The profile (`GET /api/auth/profile/me/`) returns only the signed-in user's own `username`, `name`, `email`, `avatar`, `is_verified` and `pending_email`. No endpoint lists users or returns another user's data.
+- The profile (`GET /api/auth/profile/me/`) returns only the signed-in user's own `username`, `name`, `email`, `avatar`, `is_verified` and `pending_email`. Favourites (`/api/auth/favourites/`) need a login and only read or change the signed-in user's own list (`request.user.counties`). No endpoint lists users or returns another user's data.
 - Every password field in the serializers is `write_only`, so no response contains a password or its hash. `backend/users/tests/test_no_password_in_responses.py` proves this (section 3).
 
 **How a user deletes their account**
 
-Signed in, the user sends `DELETE /api/auth/profile/me/delete/`. The app signs them out and deletes the user row. Their email links are deleted with it (`CASCADE`), and the profile picture file is deleted from disk (`users/signals.py`). Two things stay: Celery task records (user id and email type only) and Django admin log entries, if staff edited the account. Section 4 has the change that expires the task records.
+Signed in, the user sends `DELETE /api/auth/profile/me/delete/`. The app signs them out and deletes the user row. Their email links and favourite counties are deleted with it (`CASCADE`), and the profile picture file is deleted from disk (`users/signals.py`). Two things stay: Celery task records (user id and email type only) and Django admin log entries, if staff edited the account. Section 4 has the change that expires the task records.
 
 ## 3. Deployment check and tests (CCD-313)
 
-**`python manage.py check --deploy`**, run with production-like environment variables (`DJANGO_DEBUG=False`, a random 50-character `DJANGO_SECRET_KEY`, SMTP settings set), 27 Nov 2026: **10 issues**.
+**`python manage.py check --deploy`**, run with production-like environment variables (`DJANGO_DEBUG=False`, a random 50-character `DJANGO_SECRET_KEY`, SMTP settings set). First run, 27 Nov 2026: **10 issues**. Re-run after #90, same evening: **2 issues** (`security.W004`, `security.W008`). The 8 `drf_spectacular` warnings were fixed by Taras in `0ab9a12`.
 
 | Warning | Meaning |
 |---|---|
 | `security.W004` | `SECURE_HSTS_SECONDS` is not set: browsers are not told to use HTTPS only |
 | `security.W008` | `SECURE_SSL_REDIRECT` is not `True`: plain-HTTP requests are not redirected |
-| `drf_spectacular.W001` ×2 | `CountyDetailSerializer.get_summary` has no type hint; two serializers are both named `County` |
-| `drf_spectacular.W002` ×6 | No serializer is found for `HealthView`, `MetaView`, `CsrfView`, `EmailVerificationView`, `ProfileViewSet`, `logout_view`, so they are missing from the API schema |
+| ~~`drf_spectacular.W001` ×2~~ | Fixed in `0ab9a12`. Was: `CountyDetailSerializer.get_summary` had no type hint; two serializers were both named `County` |
+| ~~`drf_spectacular.W002` ×6~~ | Fixed in `0ab9a12`. Was: no serializer found for `HealthView`, `MetaView`, `CsrfView`, `EmailVerificationView`, `ProfileViewSet`, `logout_view` |
 
 Already fine: `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` are `not DEBUG`. `DEBUG` and `SECRET_KEY` come from the environment.
 
-The check does not flag these, but they matter in production: `ALLOWED_HOSTS = ['*']`, and `debug_toolbar` is installed and its URLs are mounted even when `DEBUG` is off.
+The check does not flag these, but they matter in production: `ALLOWED_HOSTS = ['*']`, and `debug_toolbar` is in `INSTALLED_APPS` and `MIDDLEWARE` even when `DEBUG` is off. Its URLs are only mounted when `DEBUG` is on (`config/urls.py`), so the toolbar cannot be opened in production, but the app and middleware still load. (Corrected 27 Nov: the first version said the URLs were mounted too.)
 
 **Tests.** `backend/users/tests/test_no_password_in_responses.py` (9 tests) calls register, login, profile, change-email and change-password, on success and with a bad input. It checks that no response contains:
 - a submitted password,
@@ -81,9 +82,9 @@ None of these are applied here. Each is a change to a file its owner is working 
 |---|---|---|---|---|
 | 1 | `security.W004` | `SECURE_HSTS_SECONDS = 0 if DEBUG else 3600` (raise to 31536000 once HTTPS is confirmed stable), `SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG` | `backend/config/settings.py` | Taras |
 | 2 | `security.W008` | `SECURE_SSL_REDIRECT = not DEBUG` and, behind the host's HTTPS proxy, `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')` | `backend/config/settings.py` | Taras |
-| 3 | `drf_spectacular.W001` / `W002` | Return type hint or `@extend_schema_field` on `get_summary`; rename one `CountySerializer` (or set `ref_name`); `serializer_class` or `@extend_schema` on the six views | `climate/serializers.py`, `climate/views.py`, `users/views.py` | Taras |
+| 3 | ~~`drf_spectacular.W001` / `W002`~~ **Done** (`0ab9a12`, Taras) | Return type hint or `@extend_schema_field` on `get_summary`; rename one `CountySerializer` (or set `ref_name`); `serializer_class` or `@extend_schema` on the six views | `climate/serializers.py`, `climate/views.py`, `users/views.py` | Taras |
 | 4 | `ALLOWED_HOSTS = ['*']` | `ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])`, plus `ALLOWED_HOSTS` in `.env.example` | `backend/config/settings.py`, `.env.example` | Taras |
-| 5 | Debug toolbar in production | Add `debug_toolbar` to `INSTALLED_APPS`/`MIDDLEWARE` and mount `debug_toolbar_urls()` only when `DEBUG` is on | `backend/config/settings.py`, `backend/config/urls.py` | Taras |
+| 5 | Debug toolbar app and middleware load in production | Add `debug_toolbar` to `INSTALLED_APPS`/`MIDDLEWARE` only when `DEBUG` is on (the URLs already are) | `backend/config/settings.py` | Taras |
 | 6 | Celery task records kept after account deletion | `CELERY_RESULT_EXPIRES = timedelta(days=1)` (with celery beat running the cleanup), or `CELERY_RESULT_EXTENDED = False` so arguments are not stored | `backend/config/settings.py` | Taras |
 | 7 | `check --deploy` not in CI | Backend job step: `python manage.py check --deploy --fail-level WARNING`, after #1–#5 are merged so it passes | `.github/workflows/ci.yml` | Eoin |
 | 8 | App connects as superuser (local) | Create a limited app role in an init script (`docker-entrypoint-initdb.d`); Django uses it, migrations use the owner | `docker-compose.yml`, `.env.example` | Eoin |
@@ -91,4 +92,4 @@ None of these are applied here. Each is a change to a file its owner is working 
 | 10 | Postgres and Redis on every interface (local) | Publish as `"127.0.0.1:${DB_PORT:-5432}:5432"` and `"127.0.0.1:${REDIS_PORT:-6379}:6379"` | `docker-compose.yml` | Eoin |
 | 11 | Production database reachable only by the backend | Turn on the host's IP allow-list or private networking, and `sslmode=require` | Host settings | Eoin |
 
-When #1–#5 are merged, run `check --deploy` again with the same variables. The expected result is `System check identified no issues`.
+When #1, #2, #4 and #5 are merged, run `check --deploy` again with the same variables. The expected result is `System check identified no issues`.
