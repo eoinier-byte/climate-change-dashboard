@@ -12,8 +12,12 @@ import {
   getCounty,
   getCsrfToken,
   getMap,
+  getProfile,
   getProjections,
   getSeaLevel,
+  loginUser,
+  logoutUser,
+  registerUser,
 } from './api';
 
 // Tests for the API layer (CCD-141). fetch is replaced with a fake, so no real requests are made.
@@ -231,6 +235,7 @@ describe('session calls (CCD-409)', () => {
   });
 
   it('sends no body and no Content-Type for a DELETE', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
     fetchMock.mockResolvedValue(fakeResponse());
     await apiDelete('/favourites/cork/');
 
@@ -249,21 +254,60 @@ describe('session calls (CCD-409)', () => {
     document.cookie = 'sessionid_copy=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   });
 
-  it('sends the request without the header when there is no CSRF cookie yet (the server will refuse it)', async () => {
-    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 403, body: { detail: 'CSRF Failed' } }));
+  it('asks the server for the CSRF cookie first when there is none, then sends the write with it', async () => {
+    // the fake server sets the cookie when it is asked, as Django does for GET /auth/csrf/
+    fetchMock.mockImplementation(async (url) => {
+      if (url.endsWith('/auth/csrf/')) document.cookie = 'csrftoken=fresh-token; path=/';
+      return fakeResponse();
+    });
+
+    await apiPost('/auth/login/', { login: 'ronel', password: 'secret' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [csrfUrl, csrfOptions] = fetchMock.mock.calls[0];
+    expect(csrfUrl).toBe(`${BASE}/auth/csrf/`);
+    expect(csrfOptions.credentials).toBe('include');
+    const [url, options] = fetchMock.mock.calls[1];
+    expect(url).toBe(`${BASE}/auth/login/`);
+    expect(options.headers['X-CSRFToken']).toBe('fresh-token');
+  });
+
+  it('does not ask for the CSRF cookie again when it already has one', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
+    fetchMock.mockResolvedValue(fakeResponse());
+
+    await apiPost('/auth/logout/');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('still sends the write, without the header, if the cookie cannot be read; the server then refuses it', async () => {
+    fetchMock.mockImplementation(async (url) =>
+      url.endsWith('/auth/csrf/') ? fakeResponse() : fakeResponse({ ok: false, status: 403, body: { detail: 'CSRF Failed' } }),
+    );
 
     const error = await apiPost('/auth/login/', {}).catch((e) => e);
-    expect(fetchMock.mock.calls[0][1].headers['X-CSRFToken']).toBeUndefined();
+    expect(fetchMock.mock.calls[1][1].headers['X-CSRFToken']).toBeUndefined();
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(403);
   });
 
+  it('rejects with an ApiError, and sends nothing, when the CSRF cookie request fails', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 500 }));
+
+    const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('answers null when the server sends no body (204, e.g. after logout)', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
     fetchMock.mockResolvedValue({ ok: true, status: 204, json: () => Promise.reject(new SyntaxError('no body')) });
     await expect(apiPost('/auth/logout/')).resolves.toBeNull();
   });
 
   it('keeps what the server said on an error, so a form can show it', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
     const body = { email: ['Enter a valid email address.'] };
     fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 400, body }));
 
@@ -275,6 +319,7 @@ describe('session calls (CCD-409)', () => {
   });
 
   it('still makes an ApiError when the error answer is not JSON', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
     fetchMock.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject(new SyntaxError('html')) });
 
     const error = await apiPost('/auth/login/', {}).catch((e) => e);
@@ -284,6 +329,7 @@ describe('session calls (CCD-409)', () => {
   });
 
   it('turns a network failure into a readable ApiError', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
     const error = await apiPost('/auth/login/', {}).catch((e) => e);
@@ -310,5 +356,48 @@ describe('session calls (CCD-409)', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.message).toMatch(/VITE_USE_MOCKS/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// The account functions (CCD-299). Paths are from docs/api.md, "Accounts".
+describe('account functions (CCD-299)', () => {
+  beforeEach(() => {
+    document.cookie = 'csrftoken=abc123; path=/';
+    fetchMock.mockResolvedValue(fakeResponse({ body: { detail: 'ok' } }));
+  });
+  afterEach(() => {
+    document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  });
+
+  it.each([
+    ['registerUser', () => registerUser({ username: 'a' }), 'POST', '/auth/register/', { username: 'a' }],
+    ['loginUser', () => loginUser({ login: 'a', password: 'b' }), 'POST', '/auth/login/', { login: 'a', password: 'b' }],
+    ['logoutUser', () => logoutUser(), 'POST', '/auth/logout/', undefined],
+  ])('%s sends a %s to %s with the session cookie and CSRF token', async (_name, call, method, path, body) => {
+    await call();
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}${path}`);
+    expect(options.method).toBe(method);
+    expect(options.credentials).toBe('include');
+    expect(options.headers['X-CSRFToken']).toBe('abc123');
+    if (body === undefined) expect(options.body).toBeUndefined();
+    else expect(JSON.parse(options.body)).toEqual(body);
+  });
+
+  it('getProfile reads the signed-in user with the session cookie', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ body: { username: 'ronel' } }));
+
+    await expect(getProfile()).resolves.toEqual({ username: 'ronel' });
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/auth/profile/me/`);
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
+  it('getProfile rejects with status 403 when nobody is signed in', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 403, body: { detail: 'Not authenticated.' } }));
+
+    const error = await getProfile().catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
   });
 });

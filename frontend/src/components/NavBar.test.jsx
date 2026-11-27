@@ -1,7 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { AuthContext } from '../auth/AuthContext';
+import NavBar from './NavBar';
+import { currentLocation, renderWithRouter } from '../test/renderWithRouter';
 import App from '../App.jsx';
 import { ROUTES, countyPath } from '../routes';
 
@@ -70,5 +73,55 @@ describe('navigation bar', () => {
     await user.click(menuButton());
     await user.click(within(mainNav()).getByRole('link', { name: 'About' }));
     expect(menuButton().getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+// Signed in (CCD-326): the nav shows Account and a Log out button instead of Login
+describe('navigation bar when signed in', () => {
+  const user = { username: 'ronel' };
+
+  function renderSignedIn(signOut = vi.fn().mockResolvedValue(undefined), url = countyPath('cork')) {
+    renderWithRouter(
+      <AuthContext.Provider value={{ user, status: 'signedIn', signOut }}>
+        <NavBar />
+      </AuthContext.Provider>,
+      { url },
+    );
+    return { signOut };
+  }
+
+  it('shows an Account link to the profile page and no Login link', () => {
+    renderSignedIn();
+    expect(within(mainNav()).getByRole('link', { name: 'Account' }).getAttribute('href')).toBe(ROUTES.profile);
+    expect(within(mainNav()).queryByRole('link', { name: 'Login' })).toBeNull();
+  });
+
+  it('signs out and goes to the home page when Log out is pressed', async () => {
+    const actor = userEvent.setup();
+    const { signOut } = renderSignedIn();
+
+    await actor.click(within(mainNav()).getByRole('button', { name: 'Log out' }));
+
+    expect(signOut).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(currentLocation()).toBe(ROUTES.home));
+  });
+
+  it('stays on the page when signing out fails', async () => {
+    const actor = userEvent.setup();
+    const { signOut } = renderSignedIn(vi.fn().mockRejectedValue(new Error('offline')));
+
+    await actor.click(within(mainNav()).getByRole('button', { name: 'Log out' }));
+
+    await vi.waitFor(() => expect(signOut).toHaveBeenCalled());
+    expect(currentLocation()).toBe(countyPath('cork'));
+  });
+});
+
+describe('navigation bar when signed out', () => {
+  it('shows Login and no Log out button', () => {
+    renderAt(countyPath('cork'));
+    expect(within(mainNav()).getByRole('link', { name: 'Login' })).toBeTruthy();
+    expect(within(mainNav()).queryByRole('button', { name: 'Log out' })).toBeNull();
+    expect(within(mainNav()).queryByRole('link', { name: 'Account' })).toBeNull();
   });
 });

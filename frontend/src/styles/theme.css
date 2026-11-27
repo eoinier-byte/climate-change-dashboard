@@ -12,6 +12,7 @@
   --color-primary-dark: #09493b;
   --color-on-primary: #ffffff;
   --color-focus: #1d4ed8;
+  --color-error: #b42318;
 
   /* Scenario colours: the same on every chart and on the map (see styles/README.md) */
   --color-rcp26: #2e7d32;

@@ -1,0 +1,67 @@
+/* Login, registration and the other account forms (CCD-324, CCD-325, CCD-328). Colours and spacing come from theme.css. */
+.auth-page {
+  max-width: 28rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.auth-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.auth-field label {
+  font-weight: 600;
+}
+
+.auth-field input {
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.auth-field input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.auth-field__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.auth-field__error {
+  margin: 0;
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+/* A message about the whole form, e.g. "Invalid login or password." The border and text do not rely on colour alone */
+.auth-form__error {
+  padding: var(--space-3);
+  border: 2px solid var(--color-error);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.auth-form__error p {
+  margin: 0;
+}
+
+.auth-form .btn {
+  justify-self: start;
+}
+
+.auth-form .btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}

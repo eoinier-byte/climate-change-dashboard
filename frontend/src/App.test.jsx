@@ -18,8 +18,6 @@ vi.mock('./services/api', () => ({
 // Pages that are not built yet and still show the Coming soon placeholder
 const pages = [
   [ROUTES.about, 'About'],
-  [ROUTES.login, 'Log in'],
-  [ROUTES.register, 'Register'],
   [ROUTES.profile, 'Profile'],
 ];
 
@@ -27,6 +25,8 @@ const pages = [
 const builtPages = [
   [countyPath('cork'), 'County dashboard'],
   [ROUTES.seaLevel, 'Flooding'], // the flood page (CCD-152), tested in pages/SeaLevel.test.jsx
+  [ROUTES.login, 'Log in'], // CCD-325, tested in pages/Login.test.jsx
+  [ROUTES.register, 'Register'], // CCD-324, tested in pages/Register.test.jsx
 ];
 
 function renderAt(path) {
