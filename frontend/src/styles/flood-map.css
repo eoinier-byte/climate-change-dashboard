@@ -1,0 +1,81 @@
+/* Flood map on the Flooding page (CCD-377) */
+.flood-map {
+  margin: 0;
+}
+
+/* The map box. Loading and errors sit on top of it, so the page does not jump. */
+.flood-map__stage {
+  position: relative;
+}
+
+.flood-map__map {
+  height: 26rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  /* The sea: anything that is not a county */
+  background: #dbe9f4;
+}
+
+.flood-map__status {
+  position: absolute;
+  inset: 0;
+  z-index: 500; /* above the map layers */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(255 255 255 / 0.85);
+}
+
+.flood-map__controls {
+  margin-top: var(--space-4);
+}
+
+.flood-map__label {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.flood-map__controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+
+.flood-map__controls input[type='range']:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* "0.0 m" under the left end of the slider, "2.0 m" under the right end */
+.flood-map__scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__counter {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.flood-map__total {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__note,
+.flood-map__credit {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.flood-map__credit {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .flood-map__map {
+    height: 20rem;
+  }
+}

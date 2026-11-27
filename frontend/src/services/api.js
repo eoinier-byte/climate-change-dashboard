@@ -170,3 +170,10 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 // The answer is a list of cities; an empty list means there is no close match.
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
+
+
+
+// Flood map of one coastal county (CCD-360, CCD-377): the corners of the map ("bounds") and one
+// see-through PNG layer per sea level, from 0 to 2 m in 0.1 m steps, each with the flooded area in km².
+// An inland county has no flood map, so the server answers 404.
+export const getFlood = (slug, opts) => apiGet(`/flood/${slug}/`, opts);

@@ -39,6 +39,7 @@ describe('docs/api-examples.md and the mocks agree', () => {
     ['map', MAP],
     ['impacts', '/counties/cork/impacts/'],
     ['analogues', ANALOGUES],
+    ['flood', '/flood/cork/'],
   ];
 
   it.each(pairs)('the "%s" example has the same shape as the mock answer', (name, path) => {
