@@ -14,6 +14,10 @@ vi.mock('react-leaflet', async () => {
   const { useEffect, useRef } = await import('react');
   return {
     MapContainer: ({ children }) => <div data-testid="map">{children}</div>,
+    // The flood layer (CCD-377): an <img> with the PNG's address, so tests can check which level is shown
+    ImageOverlay: ({ url, bounds }) => <img data-testid="flood-layer" src={url} data-bounds={JSON.stringify(bounds)} alt="" />,
+    // A Leaflet pane (CCD-377 puts the flood layer in its own pane, above the counties): just shows what is inside it
+    Pane: ({ children }) => <>{children}</>,
     // When the style is a function (as in MapView), also show each county's fill colour, so tests can check it
     // It also gives each county a fake layer (onEachFeature, as Leaflet does) and puts its element on the
     // page, so tests can use the tooltips, clicks and keyboard (CCD-382)
