@@ -10,7 +10,7 @@ Source: [er-diagram.mmd](er-diagram.mmd) · image: [er-diagram.png](er-diagram.p
 
 Only the project's own tables are drawn. Framework tables (not drawn): Django's `auth_group`, `auth_permission`, `users_user_groups`, `users_user_user_permissions`, `django_admin_log`, `django_content_type`, `django_session`, `django_migrations`, and `django_celery_results_*` from Celery.
 
-FavouriteCounty (CCD-443): to be added when that PR is merged.
+Favourite counties (CCD-442) are not a separate model: they are the many-to-many field `User.counties`, stored in Django's join table `users_user_counties` (see [Relationships](#relationships)).
 
 ```mermaid
 erDiagram
@@ -24,6 +24,7 @@ erDiagram
     DataSource ||--|{ CityClimate : "provides"
     CityClimate ||--o{ CountyAnalogue : "is analogue in"
     User ||--o{ EmailVerification : "gets links"
+    User }o--o{ County : "favourites (users_user_counties)"
 
     County {
         bigint id PK
@@ -211,13 +212,14 @@ Added by Taras (CCD-364, CCD-367, CCD-368). Loaded by `load_data` from `impact_i
 | County | CountyAnalogue | 1–N, where N can be 0 (before `compute_analogues` is run) |
 | CityClimate | CountyAnalogue | 1–N, where N can be 0 (a city that is never among the closest) |
 | User | EmailVerification | 1–N, where N can be 0 (one row per email link sent) |
+| User | County | N–N, both sides can be 0: a user's favourite counties (`User.counties`, reverse name `favourited_by`). Join table `users_user_counties` (`id` bigint, `user_id`, `county_id`), one row per user and county |
 
 Sea level is stored per county because UKCP18 (adopted in CCD-19, 27 Oct 2026) gives values for coastal locations. Inland counties show "No coastline", never 0.
 
 ## Constraints
 
 Unique:
-- County (`name`), County (`slug`), DataSource (`code`), User (`username`), User (`email`), EmailVerification (`code`)
+- County (`name`), County (`slug`), DataSource (`code`), User (`username`), User (`email`), EmailVerification (`code`), users_user_counties (`user_id`, `county_id`)
 - ClimateProjection (`county_id`, `variable`, `scenario`, `period`, `season`)
 - SeaLevelProjection (`county_id`, `scenario`, `year`)
 - ImpactIndicator (`county_id`, `indicator`, `scenario`, `period`)
@@ -240,7 +242,7 @@ Also enforced by the loader, not the database: sea level rows only for counties 
 
 Every foreign key of the climate tables is `on_delete=PROTECT` (RESTRICT). A County or DataSource can't be deleted while projections refer to it. Data changes come from re-running the loader (`update_or_create`), never from deleting parents, so a cascade could only cause silent data loss.
 
-EmailVerification → User is the one `CASCADE`: deleting an account also deletes its email links, which are useless without the user.
+The account tables use `CASCADE`. EmailVerification → User: deleting an account also deletes its email links, which are useless without the user. `users_user_counties` → User and → County (Django's default for a many-to-many join table): deleting an account removes its favourites. Deleting a County would also remove its favourite rows, but counties can't be deleted while projections refer to them (PROTECT above).
 
 ## Conventions
 
@@ -260,7 +262,7 @@ EmailVerification → User is the one `CASCADE`: deleting an account also delete
 - `is_verified`: set once the user opens the link from the registration email.
 - `pending_email`: a requested new email, moved into `email` only when the link sent to it is opened (CCD-431).
 
-`email_reports` and saved counties are not in the model yet (CCD-319, CCD-442).
+`email_reports` is not in the model yet (CCD-319). Saved counties are `counties`, a many-to-many field to County (CCD-442, see [Relationships](#relationships)).
 
 **EmailVerification** (CCD-441) is one row per link sent by email: a one-time UUID `code`, the `type` (`registration`, `verification` for an email change, `reset` for a password reset), an `expiration` one hour after it is sent, and a `used` flag. The link flow is described in [api.md](api.md#links-sent-by-email).
 
@@ -311,3 +313,4 @@ Schema audit, Sprint 3 (CCD-255): checked against every `models.py` and migratio
 - **The CHECK list is split** into what the database enforces (CountyAnalogue only) and what Django and the loader enforce. Reason: no migration creates CHECK constraints on ClimateProjection or SeaLevelProjection, so the earlier list overstated the database rules.
 - **DataSource** has 3 rows, adding `worldclim` (1970–2000). **Unit codes** add `days` and `degC_days` (migration `climate 0004`).
 - **Framework tables** are listed but not drawn, so the diagram stays about the project's data.
+- **Favourite counties** (CCD-442, migration `users 0005`) added as the User N–N County relationship. Reason: the planned FavouriteCounty model was built as a many-to-many field (`User.counties`) instead, so the table is Django's join table `users_user_counties`, not a model of its own.

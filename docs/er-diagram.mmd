@@ -9,6 +9,7 @@ erDiagram
     DataSource ||--|{ CityClimate : "provides"
     CityClimate ||--o{ CountyAnalogue : "is analogue in"
     User ||--o{ EmailVerification : "gets links"
+    User }o--o{ County : "favourites (users_user_counties)"
 
     County {
         bigint id PK
