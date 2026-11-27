@@ -17,7 +17,7 @@
 //   6. Actions           - copy link (share); Download PDF goes here (CCD-408)
 // Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
@@ -78,6 +78,17 @@ export default function CountyDashboard() {
       ignore = true;
     };
   }, [slug]);
+
+  // A link with a #section on the end (e.g. from the chat, CCD-387: /county/cork#rainfall-heading)
+  // should open the page at that section. The browser cannot do it by itself here, because the
+  // sections only appear once the data has loaded, so scroll there when it has.
+  const { hash } = useLocation();
+  const loaded = Boolean(result && result.slug === slug && !result.error);
+  useEffect(() => {
+    if (!loaded || !hash) return;
+    // "?." after scrollIntoView: the test browser does not have it
+    document.getElementById(hash.slice(1))?.scrollIntoView?.({ block: 'start' });
+  }, [loaded, hash]);
 
   // CountySelect is always the FIRST thing inside <main> in every state below (loading, error,
   // loaded). Because it stays in the same place, React keeps the same dropdown on screen while

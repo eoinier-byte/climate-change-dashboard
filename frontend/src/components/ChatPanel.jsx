@@ -1,26 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
-import { matchPath, useLocation } from 'react-router-dom';
+import Markdown from 'react-markdown';
+import { Link, matchPath, useLocation } from 'react-router-dom';
 import { COUNTIES } from '../data/counties';
 import { ROUTES } from '../routes';
 import { sendChat } from '../services/api';
+import { answerLabel, chatLinks } from './chatLinks';
 import '../styles/chat.css';
 
-// The server accepts at most 20 messages of 500 characters each (ChatSerializer in the backend)
-const MAX_LENGTH = 500;
+// What the server accepts (ChatSerializer in the backend): at most 20 messages; a question can be
+// 500 characters, and Boreas's own earlier answers up to 4,000 (Taras's change in CCD-442)
+const MAX_QUESTION = 500;
+const MAX_ANSWER = 4000;
 const MAX_MESSAGES = 20;
 
-// The AI assistant chat (CCD-386, story CCD-371).
+// The AI assistant chat (CCD-386, CCD-387, story CCD-371).
 // An "Ask Boreas" button sits in the bottom-right corner of every page. Clicking it opens a
 // panel on the right where people type a question and see the answer appear as it is written.
 // On a county page the panel tells the assistant which county the person is looking at.
+// Under each answer: what it shows (e.g. "Rainfall · RCP4.5 · 2021–2050"), its sources, and links
+// to the part of the site that shows it (see chatLinks.js).
+
+// Links inside an answer: other websites open in a new tab, so the dashboard stays open
+function AnswerLink({ href, children }) {
+  const external = /^https?:\/\//.test(href ?? '');
+  return (
+    <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
+      {children}
+    </a>
+  );
+}
+
 export default function ChatPanel() {
   const [open, setOpen] = useState(false);
-  // The conversation so far, e.g. [{ role: 'user', content: '...' }, { role: 'assistant', content: '...', sources: [...] }]
+  // The conversation so far. An answer also keeps what came with it:
+  // { role: 'assistant', content, sources, mapAction, tools, pageCounty }
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(''); // what is typed in the box
   const [busy, setBusy] = useState(false); // true while an answer is coming in
   const [lookingUp, setLookingUp] = useState(false); // true while the assistant looks up data
-  const [error, setError] = useState('');
+  // A problem to show: { message, status } (status is e.g. 429, or null), or null when all is well
+  const [error, setError] = useState(null);
 
   const inputRef = useRef(null);
   const endRef = useRef(null);
@@ -58,13 +77,22 @@ export default function ChatPanel() {
   function handleEvent(event) {
     if (event.type === 'tool') {
       setLookingUp(true);
+      // Keep what was looked up: it tells chatLinks which county the answer is about
+      updateLastMessage((message) => ({
+        ...message,
+        tools: [...message.tools, { name: event.name, input: event.input }],
+      }));
     } else if (event.type === 'text') {
       setLookingUp(false);
       updateLastMessage((message) => ({ ...message, content: message.content + event.text }));
     } else if (event.type === 'done') {
-      updateLastMessage((message) => ({ ...message, sources: event.sources ?? [] }));
+      updateLastMessage((message) => ({
+        ...message,
+        sources: event.sources ?? [],
+        mapAction: event.map_action ?? null,
+      }));
     } else if (event.type === 'error') {
-      setError(event.text);
+      setError({ message: event.text, status: null });
     }
   }
 
@@ -74,17 +102,21 @@ export default function ChatPanel() {
     if (!question || busy) return;
 
     const history = [...messages, { role: 'user', content: question }];
-    // Show the question, plus an empty answer that fills in as the text arrives
-    setMessages([...history, { role: 'assistant', content: '' }]);
+    // Show the question, plus an empty answer that fills in as the text arrives.
+    // pageCounty remembers where the question was asked, for the links under the answer.
+    setMessages([...history, { role: 'assistant', content: '', tools: [], pageCounty: county }]);
     setDraft('');
-    setError('');
+    setError(null);
     setBusy(true);
 
     // What the server gets: only role and content, no empty answers (from earlier errors),
-    // each cut to 500 characters (long answers would be refused), and only the last 20
+    // each cut to the server's limit for its role, and only the last 20
     const toSend = history
       .filter((message) => message.content)
-      .map(({ role, content }) => ({ role, content: content.slice(0, MAX_LENGTH) }))
+      .map(({ role, content }) => ({
+        role,
+        content: content.slice(0, role === 'user' ? MAX_QUESTION : MAX_ANSWER),
+      }))
       .slice(-MAX_MESSAGES);
 
     const controller = new AbortController();
@@ -97,7 +129,7 @@ export default function ChatPanel() {
       });
     } catch (err) {
       // A cancelled answer is not an error worth showing
-      if (err?.name !== 'AbortError') setError(err.message);
+      if (err?.name !== 'AbortError') setError({ message: err.message, status: err.status ?? null });
     } finally {
       setBusy(false);
       setLookingUp(false);
@@ -111,6 +143,9 @@ export default function ChatPanel() {
       event.currentTarget.form.requestSubmit();
     }
   }
+
+  // A signed-out person who used up their questions: offer to sign in (the server's 429 says "Sign in…")
+  const needsSignIn = error?.status === 429 && error.message.startsWith('Sign in');
 
   return (
     <>
@@ -150,8 +185,18 @@ export default function ChatPanel() {
             <ol className="chat-messages" aria-live="polite">
               {messages.map((message, index) => {
                 const isLast = index === messages.length - 1;
+
+                // A question: shown as typed
+                if (message.role === 'user') {
+                  return (
+                    <li key={index} className="chat-message chat-user">
+                      {message.content}
+                    </li>
+                  );
+                }
+
                 // An empty answer: show what is happening while we wait, or nothing if it failed
-                if (message.role === 'assistant' && !message.content) {
+                if (!message.content) {
                   if (!(isLast && busy)) return null;
                   return (
                     <li key={index} className="chat-message chat-assistant chat-status">
@@ -159,27 +204,32 @@ export default function ChatPanel() {
                     </li>
                   );
                 }
+
+                // An answer: Boreas writes Markdown (bold, lists), so draw it as formatted text.
+                // The label and links only appear once the answer is finished ("done" has arrived).
+                const finished = message.sources !== undefined;
+                const label = finished ? answerLabel(message.mapAction) : null;
+                const links = finished ? chatLinks(message) : [];
                 return (
-                  <li key={index} className={`chat-message chat-${message.role}`}>
-                    {message.content}
+                  <li key={index} className="chat-message chat-assistant">
+                    <Markdown components={{ a: AnswerLink }}>{message.content}</Markdown>
+                    {label && <p className="chat-meta">{label}</p>}
                     {message.sources?.length > 0 && (
                       <ul className="chat-sources" aria-label="Sources">
-                                                {message.sources.map((source) => {
-                          // Links to other websites (e.g. climateireland.ie) open in a new tab, so the
-                          // dashboard stays open. Our own pages, like /about, open in the same tab.
-                          const external = /^https?:\/\//.test(source.url);
-                          return (
-                            <li key={source.url}>
-                              <a
-                                href={source.url}
-                                target={external ? '_blank' : undefined}
-                                rel={external ? 'noopener noreferrer' : undefined}
-                              >
-                                {source.name}
-                              </a>
-                            </li>
-                          );
-                        })}
+                        {message.sources.map((source) => (
+                          <li key={source.url}>
+                            <AnswerLink href={source.url}>{source.name}</AnswerLink>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {links.length > 0 && (
+                      <ul className="chat-links" aria-label="See it on the site">
+                        {links.map((link) => (
+                          <li key={link.to}>
+                            <Link to={link.to}>{link.label}</Link>
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </li>
@@ -190,7 +240,13 @@ export default function ChatPanel() {
 
             {error && (
               <p className="chat-error" role="alert">
-                {error}
+                {error.message}
+              </p>
+            )}
+            {needsSignIn && (
+              <p className="chat-signin">
+                <Link to={ROUTES.login}>Sign in</Link> or <Link to={ROUTES.register}>create an account</Link> to
+                ask more questions.
               </p>
             )}
 
@@ -202,7 +258,7 @@ export default function ChatPanel() {
                 id="chat-question"
                 ref={inputRef}
                 rows={2}
-                maxLength={MAX_LENGTH}
+                maxLength={MAX_QUESTION}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}

@@ -298,4 +298,20 @@ describe('CountyDashboard', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Something went wrong' })).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('could not load the data');
   });
+
+
+  it('scrolls to the section named after # in the address, once the data has loaded (CCD-387)', async () => {
+    // jsdom cannot scroll, so a stand-in notes which element was asked to scroll into view
+    const scrolled = [];
+    Element.prototype.scrollIntoView = function scrollIntoView() {
+      scrolled.push(this.id);
+    };
+    try {
+      renderCounty('cork', '?rcp=45&period=2021-2050#rainfall-heading');
+      await screen.findByRole('heading', { name: 'Rainfall' });
+      expect(scrolled).toContain('rainfall-heading');
+    } finally {
+      delete Element.prototype.scrollIntoView; // jsdom has none, so this puts it back as it was
+    }
+  });
 });
