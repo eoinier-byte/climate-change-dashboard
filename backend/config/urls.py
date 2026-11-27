@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('climate.urls')),
     path('api/auth/', include('users.urls')),
+    path('api/agent/', include('ai_agent.urls')),
 ]
 
 if settings.DEBUG:

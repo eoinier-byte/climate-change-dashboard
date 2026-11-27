@@ -7,14 +7,21 @@
 //     because the pages check it for "404" (e.g. County not found).
 // Callers may pass fetch options as the last argument, e.g. { signal } to cancel a request.
 // With VITE_USE_MOCKS=true the answers come from src/mocks/ instead of the server (CCD-405).
+//
+// Signing in (CCD-409): the site uses Django session authentication. Public reads (counties,
+// projections, ...) send no cookies. Calls that need a session use apiGetWithSession, apiPost,
+// apiPut, apiPatch or apiDelete, which send the session cookie, and the write calls also send the
+// CSRF token (read from Django's csrftoken cookie). Nothing is stored in localStorage or
+// sessionStorage: the browser keeps the session cookie, and the page never sees the password again.
 
 // The error every API function throws, so pages can tell the cases apart with error.status
 export class ApiError extends Error {
-  constructor(message, { status = null, path = '' } = {}) {
+  constructor(message, { status = null, path = '', body = null } = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status; // HTTP status, or null for a network failure
     this.path = path;
+    this.body = body; // what the server said, e.g. { email: ['Enter a valid email address.'] }, or null
   }
 }
 
@@ -47,12 +54,24 @@ async function mockGetResponse(path) {
   return body;
 }
 
+// Django's CSRF cookie and the header it expects back on every write request
+const CSRF_COOKIE = 'csrftoken';
+const CSRF_HEADER = 'X-CSRFToken';
+
+// The CSRF token Django put in its cookie, or null if there is none yet.
+// Django sets it when a view asks for it (the backend owner provides that view).
+export function getCsrfToken() {
+  if (typeof document === 'undefined') return null;
+  const prefix = `${CSRF_COOKIE}=`;
+  const pair = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(prefix));
+  return pair ? decodeURIComponent(pair.slice(prefix.length)) : null;
+}
+
 // The one place that calls fetch.
 // fetch does not throw on 404/500, so we check res.ok ourselves,
 // and fetch throws a TypeError when the network is down, which we turn into an ApiError too.
-export async function apiGet(path, options = {}) {
-  if (import.meta.env.VITE_USE_MOCKS === 'true') return mockGetResponse(path);
-
+// An error answer keeps what the server said in error.body (the form pages need it).
+async function request(path, options) {
   let res;
   try {
     res = await fetch(`${baseUrl()}${path}`, options);
@@ -64,11 +83,51 @@ export async function apiGet(path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new ApiError(`API error ${res.status} for ${path}`, { status: res.status, path });
+    const body = await res.json().catch(() => null);
+    throw new ApiError(`API error ${res.status} for ${path}`, { status: res.status, path, body });
   }
 
+  return res;
+}
+
+export async function apiGet(path, options = {}) {
+  if (import.meta.env.VITE_USE_MOCKS === 'true') return mockGetResponse(path);
+
+  const res = await request(path, options);
   return res.json();
 }
+
+// A read that needs the signed-in user (for example "who am I?"): sends the session cookie.
+export const apiGetWithSession = (path, options = {}) => apiGet(path, { ...options, credentials: 'include' });
+
+// A write (POST, PUT, PATCH or DELETE) with an optional JSON body. It sends the session cookie and
+// the CSRF token, and answers with the parsed JSON, or null when the server sends no body (204).
+export async function apiSend(method, path, data, options = {}) {
+  if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    throw new ApiError('Signing in and saving are not available while VITE_USE_MOCKS=true.', { path });
+  }
+
+  const headers = { Accept: 'application/json', ...options.headers };
+  if (data !== undefined) headers['Content-Type'] = 'application/json';
+  const token = getCsrfToken();
+  if (token) headers[CSRF_HEADER] = token;
+
+  const res = await request(path, {
+    ...options,
+    method,
+    headers,
+    credentials: 'include',
+    body: data === undefined ? undefined : JSON.stringify(data),
+  });
+
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
+
+export const apiPost = (path, data, options) => apiSend('POST', path, data, options);
+export const apiPut = (path, data, options) => apiSend('PUT', path, data, options);
+export const apiPatch = (path, data, options) => apiSend('PATCH', path, data, options);
+export const apiDelete = (path, options) => apiSend('DELETE', path, undefined, options);
 
 export const getCounties = (opts) => apiGet('/counties/', opts);
 export const getCounty = (slug, opts) => apiGet(`/counties/${slug}/`, opts);

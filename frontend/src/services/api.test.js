@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  apiDelete,
   apiGet,
+  apiGetWithSession,
+  apiPatch,
+  apiPost,
+  apiPut,
+  apiSend,
   getCounties,
   getCounty,
+  getCsrfToken,
   getMap,
   getProjections,
   getSeaLevel,
@@ -161,5 +168,147 @@ describe('mock mode', () => {
     fetchMock.mockResolvedValue(fakeResponse({ body: [] }));
     await getCounties();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// Session cookie and CSRF token (CCD-409). Public reads send no cookies; session calls do,
+// and every write sends the CSRF token that Django keeps in its csrftoken cookie.
+describe('session calls (CCD-409)', () => {
+  const clearCsrfCookie = () => {
+    document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  };
+
+  beforeEach(clearCsrfCookie);
+  afterEach(() => {
+    clearCsrfCookie();
+    vi.restoreAllMocks();
+  });
+
+  it('does not send cookies on a public read, so the other pages work without CORS credentials', async () => {
+    fetchMock.mockResolvedValue(fakeResponse());
+    await getCounties();
+    expect(fetchMock.mock.calls[0][1]?.credentials).toBeUndefined();
+  });
+
+  it('sends the session cookie on a read that needs the signed-in user', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ body: { username: 'ronel' } }));
+
+    await expect(apiGetWithSession('/auth/me/')).resolves.toEqual({ username: 'ronel' });
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/auth/me/`);
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
+  it('adds the CSRF header to a write request, with the session cookie', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
+    fetchMock.mockResolvedValue(fakeResponse({ body: { ok: true } }));
+
+    await apiPost('/auth/login/', { username: 'ronel', password: 'secret' });
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}/auth/login/`);
+    expect(options.method).toBe('POST');
+    expect(options.credentials).toBe('include');
+    expect(options.headers['X-CSRFToken']).toBe('abc123');
+    expect(options.headers['Content-Type']).toBe('application/json');
+    expect(JSON.parse(options.body)).toEqual({ username: 'ronel', password: 'secret' });
+  });
+
+  it.each([
+    ['POST', (path, data) => apiPost(path, data)],
+    ['PUT', (path, data) => apiPut(path, data)],
+    ['PATCH', (path, data) => apiPatch(path, data)],
+    ['DELETE', (path) => apiDelete(path)],
+  ])('sends the CSRF header on a %s request', async (method, call) => {
+    document.cookie = 'csrftoken=token-for-' + method + '; path=/';
+    fetchMock.mockResolvedValue(fakeResponse());
+
+    await call('/thing/', { a: 1 });
+
+    const options = fetchMock.mock.calls[0][1];
+    expect(options.method).toBe(method);
+    expect(options.headers['X-CSRFToken']).toBe(`token-for-${method}`);
+  });
+
+  it('sends no body and no Content-Type for a DELETE', async () => {
+    fetchMock.mockResolvedValue(fakeResponse());
+    await apiDelete('/favourites/cork/');
+
+    const options = fetchMock.mock.calls[0][1];
+    expect(options.body).toBeUndefined();
+    expect(options.headers['Content-Type']).toBeUndefined();
+  });
+
+  it('finds the CSRF token among other cookies', () => {
+    document.cookie = 'theme=dark; path=/';
+    document.cookie = 'csrftoken=a%2Fb; path=/';
+    document.cookie = 'sessionid_copy=nope; path=/';
+
+    expect(getCsrfToken()).toBe('a/b');
+    document.cookie = 'theme=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    document.cookie = 'sessionid_copy=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  });
+
+  it('sends the request without the header when there is no CSRF cookie yet (the server will refuse it)', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 403, body: { detail: 'CSRF Failed' } }));
+
+    const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(fetchMock.mock.calls[0][1].headers['X-CSRFToken']).toBeUndefined();
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
+  });
+
+  it('answers null when the server sends no body (204, e.g. after logout)', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 204, json: () => Promise.reject(new SyntaxError('no body')) });
+    await expect(apiPost('/auth/logout/')).resolves.toBeNull();
+  });
+
+  it('keeps what the server said on an error, so a form can show it', async () => {
+    const body = { email: ['Enter a valid email address.'] };
+    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 400, body }));
+
+    const error = await apiPost('/auth/register/', { email: 'x' }).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(400);
+    expect(error.message).toBe('API error 400 for /auth/register/');
+    expect(error.body).toEqual(body);
+  });
+
+  it('still makes an ApiError when the error answer is not JSON', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject(new SyntaxError('html')) });
+
+    const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(500);
+    expect(error.body).toBeNull();
+  });
+
+  it('turns a network failure into a readable ApiError', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBeNull();
+    expect(error.message).toMatch(/Could not reach the server/);
+  });
+
+  it('never writes the password or the token to localStorage or sessionStorage', async () => {
+    document.cookie = 'csrftoken=abc123; path=/';
+    fetchMock.mockResolvedValue(fakeResponse());
+    const local = vi.spyOn(Storage.prototype, 'setItem');
+
+    await apiPost('/auth/login/', { username: 'ronel', password: 'secret' });
+    await apiSend('PUT', '/auth/profile/', { name: 'Ronel' });
+
+    expect(local).not.toHaveBeenCalled();
+  });
+
+  it('refuses to send while mock mode is on, instead of pretending it worked', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'true');
+
+    const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toMatch(/VITE_USE_MOCKS/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

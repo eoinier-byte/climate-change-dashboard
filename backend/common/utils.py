@@ -6,7 +6,7 @@ from typing import Any, Iterable
 from django.db.models import Model
 from django.utils.timezone import now
 
-from common.enums import Variable
+from common.enums import Unit, Variable
 from users.models import EmailVerification
 
 
@@ -18,6 +18,10 @@ def change_from_baseline(value: Decimal, base: Decimal, variable: str) -> Decima
     if variable == Variable.PRECIPITATION.value:
         return round((value - base) / base * 100, 1)
     return round(value - base, 2)
+
+
+def get_change_unit(variable: str, unit: str):
+    return '%' if variable == Variable.PRECIPITATION else Unit(unit).label
 
 
 def get_period_choices(model: type[Model]) -> list[tuple[str, str]]:

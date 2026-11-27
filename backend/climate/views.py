@@ -3,16 +3,22 @@ from http import HTTPStatus
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.cache import cache
 from django.db.models import OuterRef, Subquery, Value
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet
 
-from climate.filters import ClimateProjectionFilterSet, ImpactIndicatorFilterSet
-from climate.models import ClimateProjection, County, DataSource, ImpactIndicator, SeaLevelProjection
+from climate.filters import ClimateProjectionFilterSet, CountyAnalogueFilterSet, ImpactIndicatorFilterSet
+from climate.flood import flood_region, flood_regions
+from climate.models import ClimateProjection, County, CountyAnalogue, DataSource, ImpactIndicator, SeaLevelProjection
 from climate.serializers import (
     ClimateProjectionSerializer,
+    CountyAnalogueSerializer,
     CountyDetailSerializer,
+    FloodDetailSerializer,
     ImpactIndicatorSerializer,
     MapSerializer,
     SeaLevelSeriesSerializer,
@@ -79,15 +85,7 @@ class ClimateProjectionListView(ListAPIView):
     filterset_class = ClimateProjectionFilterSet
 
     def get_queryset(self):
-        baseline = ClimateProjection.objects.filter(
-            county=OuterRef('county'),
-            variable=OuterRef('variable'),
-            season=OuterRef('season'),
-            scenario=Scenario.BASELINE,
-        ).values('value')[:1]
-        return ClimateProjection.objects.select_related('county', 'data_source').annotate(
-            baseline_value=Subquery(baseline)
-        )
+        return ClimateProjection.objects.with_baseline_value().select_related('county', 'data_source')
 
 
 class MapView(ListAPIView):
@@ -172,3 +170,75 @@ class ImpactIndicatorListView(ListAPIView):
             .annotate(baseline_value=Subquery(baseline))
             .order_by('indicator', 'scenario', 'period')
         )
+
+
+@extend_schema(
+    summary='Climate analogues of a county',
+    description=(
+        "The 3 European cities whose present climate (WorldClim 2.1, 1970-2000) is closest to the county's "
+        'projected climate for one scenario and period, ordered by rank (1 = closest). CCD-358.'
+    ),
+    responses={
+        HTTPStatus.OK: CountyAnalogueSerializer(many=True),
+        HTTPStatus.BAD_REQUEST: OpenApiResponse(
+            description='scenario or period missing or invalid (baseline is not valid)'
+        ),
+        HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county'),
+    },
+)
+class CountyAnalogueListView(ListAPIView):
+    serializer_class = CountyAnalogueSerializer
+    filterset_class = CountyAnalogueFilterSet
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return CountyAnalogue.objects.none()
+
+        county = get_object_or_404(County, slug=self.kwargs['slug'])
+        return (
+            CountyAnalogue.objects.filter(county=county).select_related('county', 'city__data_source').order_by('rank')
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        translate = DataSource.objects.filter(code='translate').first()
+        context['change_baseline_period'] = translate.baseline_period if translate else None
+        return context
+
+
+class FloodViewSet(GenericViewSet):
+    queryset = County.objects.order_by('name')
+    lookup_field = 'slug'
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return FloodDetailSerializer
+        return CountySerializer
+
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), 'slug': self.kwargs.get('slug', '').lower()}
+
+    @extend_schema(
+        responses={HTTPStatus.OK: CountySerializer(many=True)},
+        description='Coastal counties that have a flood map, sorted by name.',
+    )
+    def list(self, request):
+        counties = self.get_queryset().filter(slug__in=flood_regions())
+        return Response(self.get_serializer(counties, many=True).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter('slug', str, OpenApiParameter.PATH, description='County slug, e.g. cork')],
+        responses={
+            HTTPStatus.OK: FloodDetailSerializer,
+            HTTPStatus.NOT_FOUND: OpenApiResponse(description='There is no flood map for this county.'),
+        },
+        description=(
+            'Flood map of one coastal county: the map bounds and one transparent PNG layer per sea level, '
+            'from 0 to 2 m in 0.1 m steps, with the flooded area.'
+        ),
+    )
+    def retrieve(self, request, slug=None):
+        data = flood_region(slug.lower())
+        if data is None:
+            raise NotFound('There is no flood map for this county.')
+        return Response(self.get_serializer(data).data)
