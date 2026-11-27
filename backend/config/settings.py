@@ -84,6 +84,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -92,6 +94,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
 ROOT_URLCONF = 'config.urls'
 
@@ -193,7 +200,6 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': ['config.throttles.BurstRateThrottle'],
     'DEFAULT_THROTTLE_RATES': {scope: None for scope in THROTTLE_RATES} if TESTING else THROTTLE_RATES,
 }
-
 
 # Logging
 LOGGING = {
