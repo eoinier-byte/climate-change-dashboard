@@ -8,7 +8,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import GenericAPIView, get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -260,11 +260,15 @@ class FavouriteCountiesViewSet(viewsets.GenericViewSet):
         request=inline_serializer('FavouriteCountyRequest', {'county': serializers.SlugField()}),
         responses={
             HTTPStatus.CREATED: CountySerializer,
+            HTTPStatus.BAD_REQUEST: OpenApiResponse(description='No county given.'),
             HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county.'),
         },
     )
     def create(self, request):
-        county = get_object_or_404(County, slug=request.data.get('county'))
+        slug = request.data.get('county')
+        if not slug:
+            raise ValidationError({'county': ['This field is required.']})
+        county = get_object_or_404(County, slug=str(slug).lower())
         request.user.counties.add(county)
         return Response(self.get_serializer(county).data, status=HTTPStatus.CREATED)
 

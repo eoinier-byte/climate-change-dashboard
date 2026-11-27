@@ -72,11 +72,22 @@ class FavouriteCountiesViewTests(APITestCase):
         self.assertEqual(response.status_code, HTTPStatus.CREATED)
         self.assertEqual(self.user.counties.count(), 1)
 
+    def test_add_is_not_case_sensitive(self):
+        response = self.client.post(self.list_url, {'county': 'Cork'}, format='json')
+        self.assertEqual(response.status_code, HTTPStatus.CREATED)
+        self.assertEqual(list(self.user.counties.values_list('slug', flat=True)), ['cork'])
+
     def test_add_unknown_county_is_404(self):
-        for body in ({'county': 'atlantis'}, {}):
+        response = self.client.post(self.list_url, {'county': 'atlantis'}, format='json')
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(self.user.counties.count(), 0)
+
+    def test_add_without_a_county_is_400(self):
+        for body in ({}, {'county': ''}):
             with self.subTest(body=body):
                 response = self.client.post(self.list_url, body, format='json')
-                self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+                self.assertEqual(response.status_code, HTTPStatus.BAD_REQUEST)
+                self.assertIn('county', response.json())
         self.assertEqual(self.user.counties.count(), 0)
 
     def test_remove(self):
