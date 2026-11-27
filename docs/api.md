@@ -83,7 +83,7 @@ The flood layers come from the C++ flood engine ([flood-engine.md](flood-engine.
 - `attribution` and `model_limits` should be shown with the map.
 - The `0 m` layer already shows some flooded land (about 380 km² over the 15 counties), most likely low ground below 0 m in the elevation data and its error. Show the change from it, or label it, rather than presenting it as flooding today.
 - The slug is not case-sensitive. A county with no flood map (inland, or unknown) is a 404.
-- To rebuild the layers, see [flood-engine.md](flood-engine.md) §11 (`--out backend/static/flood`). On the live site, `/static/` must be served by WhiteNoise or the host, because Django does not serve static files when `DEBUG` is off.
+- To rebuild the layers, see [flood-engine.md](flood-engine.md) §11 (`--out backend/static/flood`). On the live site the PNGs are served by WhiteNoise (see [architecture.md](architecture.md)), because Django itself does not serve static files when `DEBUG` is off.
 
 ## Accounts (CCD-294, CCD-427, CCD-441)
 
