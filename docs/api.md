@@ -111,6 +111,9 @@ The flood layers come from the C++ flood engine ([flood-engine.md](flood-engine.
 | PATCH, PUT | `/auth/profile/me/change-password/` | `old_password`, `new_password`, `new_password2` | 200, the user stays signed in; other sessions are signed out | 400, 403 | CCD-429 |
 | PATCH, PUT | `/auth/profile/me/change-email/` | `email` | 202, `{"email": "<new>", "detail": …}`; the link goes to the new address | 400, 403 | CCD-431 |
 | DELETE | `/auth/profile/me/delete/` | – | 204, signs out and deletes the account with its avatar | 403 | CCD-445 |
+| GET | `/auth/favourites/` | – | 200, the user's favourite counties sorted by name: `[{"name", "slug", "has_coastline"}]` | 403 | CCD-442 |
+| POST | `/auth/favourites/` | `county` (slug) | 201, the county; adding one that is already a favourite is not an error | 403, 404 unknown county | CCD-442 |
+| DELETE | `/auth/favourites/{slug}/` | – | 204, also when the county was not a favourite | 403, 404 unknown county | CCD-442 |
 
 The profile endpoints work on the signed-in user only. There is no user id in their URLs, and `/auth/profile/` and `/auth/profile/{id}/` do not exist (404).
 

@@ -3,6 +3,7 @@ from typing import Any
 
 from django.conf import settings
 from django.templatetags.static import static
+from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
 from climate.models import ClimateProjection, County, CountyAnalogue, ImpactIndicator, SeaLevelProjection
@@ -15,7 +16,7 @@ class CountyDetailSerializer(CountySerializer):
     summary = serializers.SerializerMethodField()
 
     @staticmethod
-    def get_summary(obj):
+    def get_summary(obj) -> dict:
         rows = obj.climateprojections.select_related('data_source').filter(
             scenario=settings.SUMMARY_SCENARIO, period=settings.SUMMARY_PERIOD, season=settings.SUMMARY_SEASON
         )
@@ -191,6 +192,7 @@ class SeaLevelSeriesSerializer(serializers.ModelSerializer):
         return series
 
 
+@extend_schema_serializer(component_name='CountyBrief')
 class CountySerializer(serializers.ModelSerializer):
     class Meta:
         model = County

@@ -72,6 +72,13 @@ describe('counties', () => {
     expect(coastal).not.toContain('kildare');
   });
 
+  it('lists two favourite counties by name, without ids', () => {
+    expect(body('/auth/favourites/')).toEqual([
+      { name: 'Cork', slug: 'cork', has_coastline: true },
+      { name: 'Galway', slug: 'galway', has_coastline: true },
+    ]);
+  });
+
   it('gives Cork exactly the county the dashboard tests use', () => {
     expect(body('/counties/cork/')).toEqual(mockCork);
   });

@@ -30,6 +30,10 @@ export const mockCounties = COUNTIES.map((county, index) => ({
   has_coastline: COASTAL.has(county.slug),
 }));
 
+export const mockFavourites = mockCounties
+  .filter((county) => ['cork', 'galway'].includes(county.slug))
+  .map(({ name, slug, has_coastline }) => ({ name, slug, has_coastline }));
+
 // GET /meta/ : the choices the other endpoints accept
 export const mockMeta = {
   scenarios: ['baseline', 'rcp26', 'rcp45', 'rcp85'],
@@ -254,6 +258,7 @@ export function mockGet(path) {
   if (url.pathname === '/counties/') return { status: 200, body: mockCounties };
   if (url.pathname === '/meta/') return { status: 200, body: mockMeta };
   if (url.pathname === '/map/') return mapResponse(params);
+  if (url.pathname === '/auth/favourites/') return { status: 200, body: mockFavourites };
 
   const detail = url.pathname.match(/^\/counties\/([^/]+)\/$/);
   if (detail) {
