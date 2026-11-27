@@ -176,6 +176,16 @@ The answer itself has no source line: the frontend shows `sources` under it.
 
 County names are matched without regard to case. An unknown county, period or other invalid argument comes back to Claude as a readable error (for example with the list of valid counties), so it can correct the call.
 
+### For the chat panel (CCD-371)
+
+The backend does not know which page the person is on and keeps no conversation. The chat panel has to send both with every question:
+
+1. **History.** Keep every user and assistant message in the panel's state (or `localStorage`, to survive a reload) and send the whole list each time, with the new question last. Store the assistant message as the joined `text` events.
+2. **Page context.** On a county page (`/county/:slug`), send `context: {"county": slug, "variable": <the variable on screen>}`; leave `context` out on other pages. The panel lives in `Layout`, not in the page, so the county page should put its current slug and variable in a shared React context (or store) that the panel reads when it sends a question. Without it, "here" or "this county" mean nothing to the assistant and it asks which county.
+3. **Reading the stream.** `fetch` with `credentials: 'include'`, then read `response.body.getReader()` line by line and parse each line as JSON. Show `tool` as a status line, append `text` to the answer, and on `done` show `sources` as links under it. On `error`, show its `text`.
+4. **Show on map.** If `done.map_action` is not `null`, show a "Show on map" button that opens the map with those four values (`variable`, `season`, `scenario`, `period`, the same as `/map/`). The home map keeps its filters in component state today, so it needs a way to receive them, for example query parameters on `/` or the same shared context.
+5. **Limits.** A signed-out person gets 429 after 3 questions an hour, with `detail` starting "Sign in to keep chatting with Boreas."; show a sign-in link there. Signed-in users send `X-CSRFToken`, like every POST.
+
 ### Behaviour and cost
 
 - The system prompt (`ai_agent/agent.py`) gives the assistant the Boreas persona, keeps it to Irish climate projections, declines off-topic questions and weather forecasts, and answers for one default case (medium emissions, mid-century, whole year) unless the person asks for another.
