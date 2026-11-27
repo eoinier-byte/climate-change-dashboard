@@ -32,6 +32,8 @@ describe('theme colours meet WCAG AA (4.5:1 for text)', () => {
     ['--color-text', '--color-surface'],
     ['--color-text-muted', '--color-bg'],
     ['--color-text-muted', '--color-surface'],
+    ['--color-error', '--color-bg'],
+    ['--color-error', '--color-surface'],
     ['--color-primary', '--color-bg'],
     ['--color-primary', '--color-surface'],
     ['--color-on-primary', '--color-primary'],

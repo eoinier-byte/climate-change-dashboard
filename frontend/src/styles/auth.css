@@ -1,0 +1,225 @@
+/* Login, registration and the other account forms (CCD-324, CCD-325, CCD-328). Colours and spacing come from theme.css. */
+.auth-page {
+  max-width: 28rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.auth-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.auth-field label {
+  font-weight: 600;
+}
+
+.auth-field input {
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.auth-field input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.auth-field__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.auth-field__error {
+  margin: 0;
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+/* A message about the whole form, e.g. "Invalid login or password." The border and text do not rely on colour alone */
+.auth-form__error {
+  padding: var(--space-3);
+  border: 2px solid var(--color-error);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.auth-form__error p {
+  margin: 0;
+}
+
+.auth-form .btn {
+  justify-self: start;
+}
+
+.auth-form .btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* Small helpers for the account and email-link pages (CCD-327, CCD-434, CCD-435, CCD-436) */
+.auth-muted {
+  color: var(--color-text-muted);
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.auth-result__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* The account page */
+.account-page {
+  max-width: 44rem;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.account-section {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.account-section h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.account-photo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 1.6rem;
+  font-weight: 700;
+  object-fit: cover;
+}
+
+.account-photo__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.link-button {
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account-email {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-weight: 600;
+}
+
+.account-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-primary-dark);
+  font-size: 0.9rem;
+}
+
+.account-notice {
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.account-notice p {
+  margin: var(--space-1) 0 0;
+}
+
+.account-section form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.account-section .btn,
+.account-section .btn--secondary {
+  justify-self: start;
+}
+
+/* Delete account (CCD-448). The red border and the words say it is dangerous, not the colour alone. */
+.account-section--danger {
+  border: 2px solid var(--color-error);
+}
+
+.account-section--danger h2 {
+  color: var(--color-error);
+}
+
+.btn--danger-outline {
+  background: transparent;
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--danger-outline:hover {
+  background: var(--color-surface);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--danger {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-on-primary);
+}
+
+.btn--danger:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-on-primary);
+  filter: brightness(0.9);
+}
+
+.account-notice--danger {
+  border-color: var(--color-error);
+}

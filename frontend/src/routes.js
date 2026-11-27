@@ -9,6 +9,11 @@ export const ROUTES = {
   login: '/login',
   register: '/register',
   profile: '/profile',
+  forgotPassword: '/forgot-password',
+  // The three pages the emails link to (docs/api.md, "Links sent by email"): each address ends with /{user_id}/{code}
+  recovery: '/recovery/:userId/:code',
+  verifyEmail: '/verify-email/:userId/:code',
+  emailUpdated: '/email-updated/:userId/:code',
 };
 
 // Build a real county URL from a slug, e.g. countyPath('cork') -> '/county/cork'

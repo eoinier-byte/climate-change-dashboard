@@ -36,18 +36,42 @@ The site uses Django **session authentication**. All calls go through `src/servi
 - A failed write rejects with an `ApiError`. `error.status` is the HTTP status and `error.body` is what the server said (for example `{ email: ['Enter a valid email address.'] }`), so forms can show it.
 - Mock mode (`VITE_USE_MOCKS=true`) refuses writes with a clear message instead of pretending they worked.
 
-### Settings the backend must have (agree with the backend owner)
+### Settings the backend has (checked against `backend/config/settings.py` and `docs/api.md`)
 
-| Setting | Value | Why |
+| Setting | Value on `main` | Why |
 |---|---|---|
 | `CORS_ALLOW_CREDENTIALS` | `True` | Lets the browser send the cookie to the API from another origin |
-| `CORS_ALLOWED_ORIGINS` | The exact frontend origin(s), e.g. `http://localhost:5173` and the deployed site. Never `*` | Browsers refuse a wildcard when cookies are sent |
-| `CSRF_TRUSTED_ORIGINS` | The same origins | Django checks the `Origin` of write requests |
-| A view that sets the CSRF cookie | e.g. `GET /api/auth/csrf/` decorated with `ensure_csrf_cookie` | Django only sets `csrftoken` when a view asks for it. The frontend calls it once before the first write |
-| `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` | `Lax` if the site and API share a domain, `None` plus `Secure` if they do not | Decides whether the browser keeps the cookies on API calls |
-| `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` on the deployed (https) site only | Cookies are not sent over plain http |
+| `CORS_ALLOWED_ORIGINS` | From `.env`. It must list the exact frontend origin, e.g. `http://localhost:5173`. Never `*` | Browsers refuse a wildcard when cookies are sent |
+| `CSRF_TRUSTED_ORIGINS` | The same list | Django checks the `Origin` of write requests |
+| `GET /api/auth/csrf/` | Sets the `csrftoken` cookie (`ensure_csrf_cookie`) | The frontend asks for it by itself before the first write when the cookie is missing, so no call is needed at start-up |
+| `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` | `True` when `DEBUG` is off | Cookies are sent over https only on the live site |
+| `SESSION_COOKIE_SAMESITE`, `CSRF_COOKIE_SAMESITE` | Not set, so Django's default `Lax` | See the warning below |
 
-**Agreed with:** _to be filled in when the backend owner confirms (CCD-409)._
+**Agreed with:** the backend owner's work for CCD-294 / CCD-302 (endpoints in `docs/api.md`). Confirm the live-site origin with the deployment owner (see below).
+
+### Warning for the live site: keep the site and the API on one origin
+
+The `csrftoken` cookie is set by the API, and the page has to read it. A page can only read cookies of its **own** site, and `Lax` cookies are not sent on cross-site `fetch` calls. If the frontend and the API are on different sites (for example two `onrender.com` addresses, which count as different sites), signing in will fail on the live site even though it works locally. Two ways to avoid this:
+
+1. **Same origin (recommended).** Serve the API under the frontend's address (a rewrite rule `/api/*` to the API service, or Django serving the built frontend) and set `VITE_API_URL=/api`. Nothing else changes.
+2. **Different sites.** The backend must set `SESSION_COOKIE_SAMESITE = 'None'` (with `Secure`), and `GET /auth/csrf/` must also return the token in its answer, because the page cannot read the cookie. This needs frontend and backend changes.
+
+## Account pages (CCD-299)
+
+| Page | Address | What it does |
+|---|---|---|
+| Log in | `/login` | Username or email and password. Links to "Forgot your password?" |
+| Register | `/register` | Creates the account, then "Check your email" |
+| Account | `/profile` | Photo, username and name, email (with a pending new address), password. A visitor who is not signed in is sent to `/login` |
+| Forgot password | `/forgot-password` | Asks for an email address and always answers the same, whether or not it has an account |
+| Choose a new password | `/recovery/{user_id}/{code}` | The link in the reset email. It checks the link first, then shows the form |
+| Email confirmed / Email updated | `/verify-email/{user_id}/{code}`, `/email-updated/{user_id}/{code}` | The links in the registration email and the new-email email. Each calls `POST /auth/verify/…` once |
+
+- The three email addresses must match `DOMAIN_NAME` in the backend `.env` (docs/api.md, "Links sent by email"). With `DJANGO_DEBUG=True` the emails are printed in the `runserver` console, so you can copy the link from there.
+- A link works once. React runs effects twice in development, so `EmailLink.jsx` shares one request per link; without that the first call would use the link up and the page would say it had expired.
+- There is no "send the confirmation email again" endpoint yet, so an expired link tells the user to log in and ask for a new one from the Account page.
+- "Delete my account…" (CCD-448) only opens a question. "Yes, delete my account" calls `DELETE /auth/profile/me/delete/`; the server deletes the account and the photo and ends the session in the same request, so the page just forgets the user (`forget()` in `AuthProvider`) and goes to the home page.
+- Form checks are in `auth/validation.js`, server messages in `auth/formErrors.js`. The photo rules (JPEG, PNG or HEIC, up to 50 MB) are in `auth/profileHelpers.js`; the server checks the size in pixels.
 
 ## County page URL settings (CCD-406)
 

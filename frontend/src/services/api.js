@@ -100,6 +100,16 @@ export async function apiGet(path, options = {}) {
 // A read that needs the signed-in user (for example "who am I?"): sends the session cookie.
 export const apiGetWithSession = (path, options = {}) => apiGet(path, { ...options, credentials: 'include' });
 
+// Django only sets the csrftoken cookie when asked (GET /auth/csrf/, docs/api.md). If the cookie is
+// missing, for example on the first visit or after it expired, ask for it before the write goes out.
+// If the cookie still cannot be read afterwards, the write is sent anyway and the server refuses it (403).
+async function csrfToken() {
+  const existing = getCsrfToken();
+  if (existing) return existing;
+  await request('/auth/csrf/', { credentials: 'include' });
+  return getCsrfToken();
+}
+
 // A write (POST, PUT, PATCH or DELETE) with an optional JSON body. It sends the session cookie and
 // the CSRF token, and answers with the parsed JSON, or null when the server sends no body (204).
 export async function apiSend(method, path, data, options = {}) {
@@ -107,9 +117,11 @@ export async function apiSend(method, path, data, options = {}) {
     throw new ApiError('Signing in and saving are not available while VITE_USE_MOCKS=true.', { path });
   }
 
+  // A FormData body (a photo upload) is sent as it is: the browser adds the multipart Content-Type itself
+  const isForm = typeof FormData !== 'undefined' && data instanceof FormData;
   const headers = { Accept: 'application/json', ...options.headers };
-  if (data !== undefined) headers['Content-Type'] = 'application/json';
-  const token = getCsrfToken();
+  if (data !== undefined && !isForm) headers['Content-Type'] = 'application/json';
+  const token = await csrfToken();
   if (token) headers[CSRF_HEADER] = token;
 
   const res = await request(path, {
@@ -117,7 +129,7 @@ export async function apiSend(method, path, data, options = {}) {
     method,
     headers,
     credentials: 'include',
-    body: data === undefined ? undefined : JSON.stringify(data),
+    body: data === undefined || isForm ? data : JSON.stringify(data),
   });
 
   if (res.status === 204) return null;
@@ -168,6 +180,46 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 // The answer is a list of cities; an empty list means there is no close match.
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
+
+// Accounts (CCD-299). The endpoints are described in docs/api.md, "Accounts".
+// Login and register answer { detail } and sign the browser in with the session cookie.
+// A 400 keeps the field errors in error.body, e.g. { email: ['A user with this email already exists.'] }.
+export const registerUser = (data) => apiPost('/auth/register/', data);
+export const loginUser = (data) => apiPost('/auth/login/', data);
+export const logoutUser = () => apiPost('/auth/logout/');
+
+// The signed-in user's profile. Rejects with status 403 when nobody is signed in (the API never sends 401).
+export const getProfile = (opts) => apiGetWithSession('/auth/profile/me/', opts);
+
+// The profile: { username, name, email, avatar, is_verified, pending_email }. Only username and name can be sent here.
+export const updateProfile = (data) => apiPatch('/auth/profile/me/update/', data);
+
+// A new photo: the file goes in a multipart form, field "avatar". Answers { avatar: '<url>' }.
+export function changeAvatar(file) {
+  const form = new FormData();
+  form.append('avatar', file);
+  return apiPatch('/auth/profile/me/change-avatar/', form);
+}
+export const deleteAvatar = () => apiDelete('/auth/profile/me/delete-avatar/');
+
+// Deletes the signed-in user's account and photo for good (204). The server also ends the session.
+export const deleteAccount = () => apiDelete('/auth/profile/me/delete/');
+
+// data: { old_password, new_password, new_password2 }. The user stays signed in; other sessions are signed out.
+export const changePassword = (data) => apiPatch('/auth/profile/me/change-password/', data);
+
+// Asks for a link to a new address (202). The current email stays until the link is opened.
+export const changeEmail = (email) => apiPatch('/auth/profile/me/change-email/', { email });
+
+// Forgotten password. The answer is the same whether or not the address has an account.
+export const requestPasswordReset = (email) => apiPost('/auth/recovery/', { email });
+
+// The pages opened from an email link get user_id and code from the address.
+// Rejects with 404 (unknown link) or 410 (already used or expired).
+export const checkResetLink = (userId, code, opts) => apiGetWithSession(`/auth/reset/${userId}/${code}/`, opts);
+export const resetPassword = (userId, code, data) => apiPost(`/auth/reset/${userId}/${code}/`, data);
+// Confirms a registration or a new email. Rejects with 404, 409 (address taken in the meantime) or 410.
+export const verifyEmailLink = (userId, code) => apiPost(`/auth/verify/${userId}/${code}/`);
 
 // Flood map of one coastal county (CCD-360, CCD-377): the corners of the map ("bounds") and one
 // see-through PNG layer per sea level, from 0 to 2 m in 0.1 m steps, each with the flooded area in km².

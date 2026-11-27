@@ -1,20 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../routes';
 import '../styles/nav.css';
 
-// Paths come from routes.js. When accounts exist (CCD-299), show "Account" (ROUTES.profile)
-// instead of "Login" for a signed-in user.
+// Paths come from routes.js. A signed-in user sees "Account" (ROUTES.profile) and a Log out button
+// instead of "Login" (CCD-326).
 const NAV_ITEMS = [
   { label: 'Map', to: ROUTES.home, end: true },
   { label: 'Flooding', to: ROUTES.seaLevel },
   { label: 'About', to: ROUTES.about },
-  { label: 'Login', to: ROUTES.login },
 ];
 
 export default function NavBar() {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const items = [...NAV_ITEMS, user ? { label: 'Account', to: ROUTES.profile } : { label: 'Login', to: ROUTES.login }];
+
+  // If signing out fails (for example the connection dropped), the user stays signed in and nothing changes
+  const logOut = async () => {
+    close();
+    try {
+      await signOut();
+      navigate(ROUTES.home);
+    } catch {
+      // still signed in
+    }
+  };
 
   // Escape closes the phone menu
   useEffect(() => {
@@ -42,13 +56,20 @@ export default function NavBar() {
           Menu
         </button>
         <ul id="site-nav-links" className="site-nav__links" data-open={open}>
-          {NAV_ITEMS.map(({ label, to, end }) => (
+          {items.map(({ label, to, end }) => (
             <li key={to}>
               <NavLink to={to} end={end} onClick={close}>
                 {label}
               </NavLink>
             </li>
           ))}
+          {user && (
+            <li>
+              <button type="button" className="site-nav__logout" onClick={logOut}>
+                Log out
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </header>

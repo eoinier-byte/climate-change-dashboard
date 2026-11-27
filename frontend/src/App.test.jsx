@@ -12,23 +12,26 @@ vi.mock('./services/api', () => ({
   getProjections: vi.fn(() => new Promise(() => {})),
   getSeaLevel: vi.fn(() => new Promise(() => {})),
   getMap: vi.fn(() => new Promise(() => {})), // the home page map (CCD-380)
+  checkResetLink: vi.fn(() => new Promise(() => {})), // the pages opened from an email (CCD-435, CCD-436)
+  verifyEmailLink: vi.fn(() => new Promise(() => {})),
   getFlood: vi.fn(() => new Promise(() => {})), // the flood map (CCD-377)
 }));
 
 // [path to open, heading the page should show]
-// Pages that are not built yet and still show the Coming soon placeholder
-const pages = [
-  [ROUTES.login, 'Log in'],
-  [ROUTES.register, 'Register'],
-  [ROUTES.profile, 'Profile'],
-];
-
 // Pages that are built, so they have their own tests next to the page file
 const builtPages = [
   [countyPath('cork'), 'County dashboard'],
   [ROUTES.seaLevel, 'Flooding'], // the flood page (CCD-152), tested in pages/SeaLevel.test.jsx
   [ROUTES.about, 'About'], // the methodology page (CCD-372), tested in pages/About.test.jsx
+  [ROUTES.login, 'Log in'], // CCD-325, tested in pages/Login.test.jsx
+  [ROUTES.register, 'Register'], // CCD-324, tested in pages/Register.test.jsx
+  [ROUTES.forgotPassword, 'Forgot your password?'], // CCD-434, tested in pages/ForgotPassword.test.jsx
+  [ROUTES.profile, 'Log in'], // CCD-327: a visitor who is not signed in is sent to the login page; tested in pages/Profile.test.jsx
 ];
+
+// The three pages an email links to. They check the link first, so they show "Checking your link…" at the start.
+// Tested in pages/ResetPassword.test.jsx and pages/EmailLink.test.jsx
+const linkPages = [ROUTES.recovery, ROUTES.verifyEmail, ROUTES.emailUpdated].map((path) => path.replace(':userId', '1').replace(':code', 'abc'));
 
 function renderAt(path) {
   render(
@@ -39,16 +42,15 @@ function renderAt(path) {
 }
 
 describe('routes', () => {
-  it.each(pages)('%s renders its page with a Coming soon placeholder', (path, heading) => {
-    renderAt(path);
-    expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
-    expect(screen.getByText('Coming soon.')).toBeTruthy();
-  });
-
   // The county page shows "County dashboard" while its data is loading
   it.each(builtPages)('%s renders its page', (path, heading) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
+  });
+
+  it.each(linkPages)('%s opens its page and checks the link', (path) => {
+    renderAt(path);
+    expect(screen.getByRole('status').textContent).toBe('Checking your link…');
   });
 
   // The home page is built too (CCD-134), with its own heading
@@ -64,8 +66,8 @@ describe('routes', () => {
   });
 
   it('has a test for every route in the route table', () => {
-    // placeholders + built pages + the home page
-    expect(pages.length + builtPages.length + 1).toBe(Object.keys(ROUTES).length);
+    // built pages + email-link pages + the home page
+    expect(builtPages.length + linkPages.length + 1).toBe(Object.keys(ROUTES).length);
   });
 
   it('shows Page not found, with a link back to the map, for an unknown URL', () => {
