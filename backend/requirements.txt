@@ -54,6 +54,7 @@ python-discovery==1.6.1
 PyYAML==6.0.3
 redis==8.1.0
 referencing==0.37.0
+reportlab==5.1.2
 requests==2.34.2
 rpds-py==2026.9.1
 ruff==0.16.10
