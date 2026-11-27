@@ -157,12 +157,10 @@ export const getMap = (choices = {}, opts) => {
   return apiGet(`/map/?${query}`, opts);
 };
 
-
 // Everyday impact indicators for one county (CCD-364, CCD-375): hot days, frost days,
 // heating degree days and growing season length. A flat list like /projections/: one row per
 // indicator, scenario and period, each with baseline_value, projected_value and change.
 export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, opts);
-
 
 // Climate analogues for one county (CCD-358, CCD-373): the three European cities whose climate today
 // is closest to the county's projected climate, for one scenario and one period, closest first.
@@ -171,9 +169,122 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
 
-
-
 // Flood map of one coastal county (CCD-360, CCD-377): the corners of the map ("bounds") and one
 // see-through PNG layer per sea level, from 0 to 2 m in 0.1 m steps, each with the flooded area in km².
 // An inland county has no flood map, so the server answers 404.
 export const getFlood = (slug, opts) => apiGet(`/flood/${slug}/`, opts);
+
+// AI assistant chat (CCD-347, CCD-386). Unlike the GET calls above, this one POSTs the
+// conversation, and the answer comes back a piece at a time ("streamed"), so the panel can
+// show it while it is being written.
+//
+// messages: the conversation so far, oldest first, e.g. [{ role: 'user', content: 'Will Cork get hotter?' }]
+//           The last one must be from the user. At most 20 messages of 500 characters each.
+// context:  optional, what the person is looking at, e.g. { county: 'cork' }
+// onEvent:  called once for every event the server sends:
+//             { type: 'tool', name, input }   the assistant is looking up data
+//             { type: 'text', text }          the next piece of the answer
+//             { type: 'done', sources }       the answer is finished, with its sources
+//             { type: 'error', text }         the answer could not be finished
+// signal:   optional, from an AbortController, to stop the answer early
+//
+// Rejects with an ApiError with a readable message if the server cannot be reached, answers with
+// an error (e.g. 429), sends a line that cannot be read, or stops before the answer is finished.
+export async function sendChat(messages, context, { onEvent, signal } = {}) {
+  const path = '/agent/chat/';
+
+  // Mock mode: play back an example answer instead of calling the server
+  if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    const { mockChatEvents } = await import('../mocks/chat');
+    for await (const event of mockChatEvents(messages)) {
+      if (signal?.aborted) return; // the panel was closed or a new question was asked
+      onEvent(event);
+    }
+    return;
+  }
+
+  // Only send context when there is some, so the server never gets an empty one
+  const body = { messages };
+  if (context) body.context = context;
+
+  // Signed-in users (CCD-409): the frontend and the API are on different ports, so the browser only
+  // sends the session cookie with credentials: 'include'. With the cookie, Django knows who is asking
+  // (and gives them the signed-in limit), but it then also wants the CSRF token on the POST, like apiSend.
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getCsrfToken();
+  if (token) headers[CSRF_HEADER] = token;
+
+  let res;
+  try {
+    res = await fetch(`${baseUrl()}${path}`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    // Same as apiGet: a cancelled request is passed on, a network failure becomes an ApiError
+    if (error?.name === 'AbortError') throw error;
+    throw new ApiError('Could not reach the server. Check your connection and try again.', { path });
+  }
+
+  if (!res.ok) {
+    // For 429 (too many messages) the server explains why in "detail",
+    // e.g. "Sign in to keep chatting with Boreas.", so show that to the person
+    let detail = '';
+    try {
+      detail = (await res.json()).detail ?? '';
+    } catch {
+      // No JSON in the answer: fall back to the normal message below
+    }
+    throw new ApiError(detail || `API error ${res.status} for ${path}`, { status: res.status, path });
+  }
+
+  // A normal answer always ends with a "done" or "error" event. This notes when one has arrived,
+  // so we can tell a finished answer from one that stopped part-way.
+  let finished = false;
+
+  // Turn one line into an event and pass it on. A broken line becomes a readable error,
+  // not a technical message like "Unexpected token…".
+  function handleLine(line) {
+    if (!line.trim()) return;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      throw new ApiError('Boreas sent an answer that could not be read. Please try again.', { path });
+    }
+    if (event.type === 'done' || event.type === 'error') finished = true;
+    onEvent(event);
+  }
+
+  const cutOff = () => new ApiError('The answer was cut off. Please try again.', { path });
+
+  // Read the answer as it arrives. The server sends one JSON event per line, but a chunk
+  // of data can stop halfway through a line, so keep the unfinished part for the next chunk.
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let leftover = '';
+
+  try {
+    let chunk = await reader.read();
+    while (!chunk.done) {
+      leftover += decoder.decode(chunk.value, { stream: true });
+      const lines = leftover.split('\n');
+      leftover = lines.pop(); // the last piece may not be a whole line yet
+      lines.forEach(handleLine);
+      chunk = await reader.read();
+    }
+    // Anything left after the last line break is the final event
+    handleLine(leftover);
+  } catch (error) {
+    // Stopped on purpose, or a line that could not be read: pass it on as it is
+    if (error?.name === 'AbortError' || error instanceof ApiError) throw error;
+    // Anything else here means the connection dropped part-way through the answer
+    throw cutOff();
+  }
+
+  // The stream ended without "done" or "error": the answer is incomplete
+  if (!finished) throw cutOff();
+}
