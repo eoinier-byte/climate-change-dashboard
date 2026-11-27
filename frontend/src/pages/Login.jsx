@@ -81,6 +81,9 @@ export default function Login() {
           {busy ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+      <p>
+        <Link to={ROUTES.forgotPassword}>Forgot your password?</Link>
+      </p>
     </main>
   );
 }

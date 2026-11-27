@@ -1,5 +1,5 @@
 // The 15 coastal counties (CCD-152). Only these have sea-level projections (Met Office UKCP18)
-// and flood maps (pipeline/data/processed/flood/<slug>/), so the flood page only offers these.
+// and flood maps (backend/static/flood/<slug>/), so the flood page only offers these.
 import { COUNTIES } from './counties';
 
 // The same 15 counties as the flood map folders

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateLogin, validateRegister } from './validation';
+import { validateEmail, validateLogin, validateNewPassword, validatePasswordChange, validateProfile, validateRegister } from './validation';
 
 const goodRegistration = { username: 'ronel', email: 'ronel@example.com', password: 'a-long-password', password2: 'a-long-password' };
 
@@ -61,5 +61,45 @@ describe('validateRegister (CCD-328)', () => {
   it('says when the two passwords differ, but not when the second is still empty', () => {
     expect(validateRegister({ ...goodRegistration, password2: 'something-else' }).password2).toMatch(/do not match/i);
     expect(validateRegister({ ...goodRegistration, password2: '' }).password2).toMatch(/type the password again/i);
+  });
+});
+
+describe('validateProfile (CCD-432)', () => {
+  it('accepts a username, with or without a name', () => {
+    expect(validateProfile({ username: 'ronel', name: '' })).toEqual({});
+    expect(validateProfile({ username: 'ronel', name: 'Ronel Mombo' })).toEqual({});
+  });
+
+  it('refuses an empty username, spaces in it, and one over 150 characters', () => {
+    expect(validateProfile({ username: '  ' }).username).toMatch(/choose a username/i);
+    expect(validateProfile({ username: 'ro nel' }).username).toMatch(/no spaces/i);
+    expect(validateProfile({ username: 'a'.repeat(151) }).username).toMatch(/150/);
+  });
+});
+
+describe('validateEmail (CCD-433, CCD-434)', () => {
+  it('accepts an address and refuses an empty or malformed one', () => {
+    expect(validateEmail({ email: ' a@example.com ' })).toEqual({});
+    expect(validateEmail({ email: '' }).email).toMatch(/enter your email/i);
+    expect(validateEmail({ email: 'nope' }).email).toMatch(/valid email/i);
+  });
+});
+
+describe('validateNewPassword and validatePasswordChange (CCD-433, CCD-435)', () => {
+  const good = { new_password: 'a-long-password', new_password2: 'a-long-password' };
+
+  it('accepts two matching passwords of 8 or more characters', () => {
+    expect(validateNewPassword(good)).toEqual({});
+    expect(validatePasswordChange({ ...good, old_password: 'old' })).toEqual({});
+  });
+
+  it('refuses a short password, an empty repeat and a mismatch', () => {
+    expect(validateNewPassword({ new_password: '1234567', new_password2: '1234567' }).new_password).toMatch(/at least 8/i);
+    expect(validateNewPassword({ ...good, new_password2: '' }).new_password2).toMatch(/again/i);
+    expect(validateNewPassword({ ...good, new_password2: 'different-one' }).new_password2).toMatch(/do not match/i);
+  });
+
+  it('asks for the current password when changing it', () => {
+    expect(validatePasswordChange({ ...good, old_password: '' }).old_password).toMatch(/current password/i);
   });
 });

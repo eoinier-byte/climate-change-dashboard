@@ -56,6 +56,23 @@ The `csrftoken` cookie is set by the API, and the page has to read it. A page ca
 1. **Same origin (recommended).** Serve the API under the frontend's address (a rewrite rule `/api/*` to the API service, or Django serving the built frontend) and set `VITE_API_URL=/api`. Nothing else changes.
 2. **Different sites.** The backend must set `SESSION_COOKIE_SAMESITE = 'None'` (with `Secure`), and `GET /auth/csrf/` must also return the token in its answer, because the page cannot read the cookie. This needs frontend and backend changes.
 
+## Account pages (CCD-299)
+
+| Page | Address | What it does |
+|---|---|---|
+| Log in | `/login` | Username or email and password. Links to "Forgot your password?" |
+| Register | `/register` | Creates the account, then "Check your email" |
+| Account | `/profile` | Photo, username and name, email (with a pending new address), password. A visitor who is not signed in is sent to `/login` |
+| Forgot password | `/forgot-password` | Asks for an email address and always answers the same, whether or not it has an account |
+| Choose a new password | `/recovery/{user_id}/{code}` | The link in the reset email. It checks the link first, then shows the form |
+| Email confirmed / Email updated | `/verify-email/{user_id}/{code}`, `/email-updated/{user_id}/{code}` | The links in the registration email and the new-email email. Each calls `POST /auth/verify/…` once |
+
+- The three email addresses must match `DOMAIN_NAME` in the backend `.env` (docs/api.md, "Links sent by email"). With `DJANGO_DEBUG=True` the emails are printed in the `runserver` console, so you can copy the link from there.
+- A link works once. React runs effects twice in development, so `EmailLink.jsx` shares one request per link; without that the first call would use the link up and the page would say it had expired.
+- There is no "send the confirmation email again" endpoint yet, so an expired link tells the user to log in and ask for a new one from the Account page.
+- There is no "delete account" button: the story for it (CCD-445) belongs to the backend work.
+- Form checks are in `auth/validation.js`, server messages in `auth/formErrors.js`. The photo rules (JPEG, PNG or HEIC, up to 50 MB) are in `auth/profileHelpers.js`; the server checks the size in pixels.
+
 ## County page URL settings (CCD-406)
 
 The county page keeps the chosen scenarios and period in the URL, so a link opens exactly the same view:

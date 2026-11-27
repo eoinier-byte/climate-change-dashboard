@@ -26,6 +26,7 @@ env = environ.Env(
     DB_PORT=(int, 5432),
     CORS_ALLOWED_ORIGINS=(str),
     ANTHROPIC_API_KEY=(str, ''),
+    ASSISTANT_MODEL=(str, 'claude-haiku-5-5'),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
     EMAIL_HOST=(str),
@@ -77,11 +78,13 @@ INSTALLED_APPS = [
     'celery',
     'users',
     'climate',
+    'ai_agent',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -90,6 +93,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
 ROOT_URLCONF = 'config.urls'
 
@@ -158,6 +166,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+FLOOD_DIR = BASE_DIR / 'static' / 'flood'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -172,12 +182,30 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 AUTH_USER_MODEL = 'users.User'
 
 # REST
+THROTTLE_RATES = {
+    'burst': '120/minute',
+    'chat_user': '20/hour',
+    'chat_anon': '3/hour',
+    'login': '5/min',
+    'register': '5/hour',
+    'email': '3/hour',
+    'password': '5/hour',
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.SessionAuthentication'],
+    'DEFAULT_THROTTLE_CLASSES': ['config.throttles.BurstRateThrottle'],
+    'DEFAULT_THROTTLE_RATES': {scope: None for scope in THROTTLE_RATES} if TESTING else THROTTLE_RATES,
+}
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'ai_agent': {'handlers': ['console'], 'level': 'WARNING' if TESTING else 'INFO'}},
 }
 
 # County summary (present-day climate)
@@ -187,6 +215,7 @@ SUMMARY_SEASON = 'annual'
 
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+ASSISTANT_MODEL = env('ASSISTANT_MODEL')
 
 # Redis
 REDIS_HOST = env('REDIS_HOST')

@@ -8,6 +8,11 @@ import {
   apiPost,
   apiPut,
   apiSend,
+  changeAvatar,
+  changeEmail,
+  changePassword,
+  checkResetLink,
+  deleteAvatar,
   getCounties,
   getCounty,
   getCsrfToken,
@@ -18,6 +23,10 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  requestPasswordReset,
+  resetPassword,
+  updateProfile,
+  verifyEmailLink,
 } from './api';
 
 // Tests for the API layer (CCD-141). fetch is replaced with a fake, so no real requests are made.
@@ -399,5 +408,77 @@ describe('account functions (CCD-299)', () => {
     const error = await getProfile().catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(403);
+  });
+});
+
+// The profile and email-link functions (CCD-327, CCD-432 to CCD-436)
+describe('profile and email-link functions (CCD-299)', () => {
+  beforeEach(() => {
+    document.cookie = 'csrftoken=abc123; path=/';
+    fetchMock.mockResolvedValue(fakeResponse({ body: { detail: 'ok' } }));
+  });
+  afterEach(() => {
+    document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  });
+
+  it.each([
+    ['updateProfile', () => updateProfile({ username: 'a', name: 'B' }), 'PATCH', '/auth/profile/me/update/', { username: 'a', name: 'B' }],
+    [
+      'changePassword',
+      () => changePassword({ old_password: 'a', new_password: 'b', new_password2: 'b' }),
+      'PATCH',
+      '/auth/profile/me/change-password/',
+      { old_password: 'a', new_password: 'b', new_password2: 'b' },
+    ],
+    ['changeEmail', () => changeEmail('new@example.com'), 'PATCH', '/auth/profile/me/change-email/', { email: 'new@example.com' }],
+    ['deleteAvatar', () => deleteAvatar(), 'DELETE', '/auth/profile/me/delete-avatar/', undefined],
+    ['requestPasswordReset', () => requestPasswordReset('a@example.com'), 'POST', '/auth/recovery/', { email: 'a@example.com' }],
+    [
+      'resetPassword',
+      () => resetPassword(7, 'code-1', { new_password: 'x', new_password2: 'x' }),
+      'POST',
+      '/auth/reset/7/code-1/',
+      { new_password: 'x', new_password2: 'x' },
+    ],
+    ['verifyEmailLink', () => verifyEmailLink(7, 'code-1'), 'POST', '/auth/verify/7/code-1/', undefined],
+  ])('%s sends a %s to %s with the session cookie and CSRF token', async (_name, call, method, path, body) => {
+    await call();
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}${path}`);
+    expect(options.method).toBe(method);
+    expect(options.credentials).toBe('include');
+    expect(options.headers['X-CSRFToken']).toBe('abc123');
+    if (body === undefined) expect(options.body).toBeUndefined();
+    else expect(JSON.parse(options.body)).toEqual(body);
+  });
+
+  it('changeAvatar sends the file in a multipart form, without a JSON Content-Type', async () => {
+    const file = new File(['x'], 'me.png', { type: 'image/png' });
+
+    await changeAvatar(file);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}/auth/profile/me/change-avatar/`);
+    expect(options.method).toBe('PATCH');
+    expect(options.body).toBeInstanceOf(FormData);
+    expect(options.body.get('avatar').name).toBe('me.png');
+    expect(options.headers['Content-Type']).toBeUndefined();
+    expect(options.headers['X-CSRFToken']).toBe('abc123');
+  });
+
+  it('checkResetLink reads the link without using it up', async () => {
+    await checkResetLink(7, 'code-1');
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}/auth/reset/7/code-1/`);
+    expect(options.method).toBeUndefined(); // a GET
+  });
+
+  it('verifyEmailLink rejects with the status of a used link', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 410, body: { detail: 'expired' } }));
+
+    const error = await verifyEmailLink(7, 'code-1').catch((e) => e);
+    expect(error.status).toBe(410);
   });
 });

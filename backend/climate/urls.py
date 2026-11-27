@@ -5,6 +5,7 @@ from climate.views import (
     ClimateProjectionListView,
     CountyAnalogueListView,
     CountyViewSet,
+    FloodViewSet,
     HealthView,
     ImpactIndicatorListView,
     MapView,
@@ -16,7 +17,7 @@ app_name = 'climate'
 
 router = SimpleRouter()
 router.register('counties', CountyViewSet, basename='county')
-
+router.register('flood', FloodViewSet, basename='flood')
 urlpatterns = [
     path('health/', HealthView.as_view(), name='health'),
     path('meta/', MetaView.as_view(), name='meta'),

@@ -195,7 +195,7 @@ These are known simplifications. They should also be stated on the dashboard nex
 - **Little land may flood.** With 0–2 m of still water, no tide offset and a 90 m surface model, very little land may
   flood. The precompute script is first run on one pilot county (Cork) to check this (decision D5).
   **Pilot result:** land does flood at every level. Cork: 25.47 km² at 0.0 m, 41.06 km² at 1.0 m, 52.30 km² at 2.0 m
-  (`pipeline/data/processed/flood/cork/index.json`), so the layers were then built for all 15 coastal counties.
+  (`backend/static/flood/cork/index.json`), so the layers were then built for all 15 coastal counties.
 - **Sea mask from a land polygon.** Which cells count as sea depends on the land/coastline polygon (D3). Its coastline
   detail limits where the sea starts. Lakes and loughs inside the polygon are treated as land, never as sea.
 - **County totals can miss coastal cells.** A flooded cell is counted for a county only if its centre is inside the
@@ -268,7 +268,7 @@ nothing floods, adding a mean-high-water offset is proposed for Sprint 3.
 **D6. Flood layer format (team; affects CCD-360 and CCD-169).** Confirmed by Taras Ivanysenko (CCD-360 owner) at a team stand-up.
 Reason: one fixed layout lets the precompute script, the API and the map be built in parallel.
 
-- Folder: `pipeline/data/processed/flood/<county-slug>/` for the 15 coastal counties, with slugs as in the County table.
+- Folder: `backend/static/flood/<county-slug>/` for the 15 coastal counties, with slugs as in the County table. Moved from `pipeline/data/processed/flood/` in CCD-362, so Django serves the PNGs as static files and the folder is part of the backend image.
 - One PNG per level: `level_000.png`, `level_010.png`, …, `level_200.png` (level in centimetres, 21 files).
   RGBA, reprojected to Web Mercator (EPSG:3857) so it lines up with web map tiles.
   Flooded = semi-transparent blue; everything else fully transparent.
@@ -383,7 +383,7 @@ Script: `pipeline/flood_precompute.py`. Tests: `pipeline/tests/test_flood_precom
    `flooded_area_km2 = flooded_cells × cell_size² / 1e6`, from the ITM grid, not from the PNG (D6).
    The county's flooded mask is reprojected to Web Mercator (EPSG:3857) with **nearest** resampling (the mask is 0/1;
    bilinear would invent half-flooded pixels), cropped to the county and saved as an RGBA PNG.
-5. **Output** (D6) in `pipeline/data/processed/flood/<slug>/`: `level_000.png` … `level_200.png` and `index.json` with
+5. **Output** (D6) in `backend/static/flood/<slug>/`: `level_000.png` … `level_200.png` and `index.json` with
    `slug`, `bounds` (`[[south, west], [north, east]]`, WGS84, the PNG's own corners), `cell_size_m`, `levels`
    (`level_m`, `file`, `flooded_cells`, `flooded_area_km2`), `attribution` (`DATA_SOURCES.md` §7) and `model_limits` (§7).
 
@@ -400,7 +400,7 @@ pip install -r pipeline/requirements.txt
 FLOOD_ENGINE_PY_DIR=flood_engine/build/python python pipeline/flood_precompute.py \
     --dem data/dem/glo90/ireland_glo90.vrt --land <land polygon> \
     --counties pipeline/data/boundaries/counties_tailte_eireann_2019.geojson \
-    --out pipeline/data/processed/flood --county cork
+    --out backend/static/flood --county cork
 ```
 
 Leave out `--county` to build all 15 coastal counties (only after the Cork pilot, D5). The script prints a table of

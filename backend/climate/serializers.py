@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.conf import settings
+from django.templatetags.static import static
 from rest_framework import serializers
 
 from climate.models import ClimateProjection, County, CountyAnalogue, ImpactIndicator, SeaLevelProjection
@@ -213,6 +214,28 @@ class MapSerializer(serializers.Serializer):
     min = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
     max = serializers.DecimalField(max_digits=8, decimal_places=3, allow_null=True)
     results = MapItemSerializer(many=True)
+
+
+class FloodLevelSerializer(serializers.Serializer):
+    level_m = serializers.FloatField()
+    url = serializers.SerializerMethodField()
+    flooded_cells = serializers.IntegerField()
+    flooded_area_km2 = serializers.FloatField()
+
+    def get_url(self, level) -> str:
+        request = self.context['request']
+        return request.build_absolute_uri(static(f'flood/{self.context["slug"]}/{level["file"]}'))
+
+
+class FloodDetailSerializer(serializers.Serializer):
+    slug = serializers.CharField()
+    bounds = serializers.ListField(
+        child=serializers.ListField(child=serializers.FloatField(), min_length=2, max_length=2)
+    )
+    cell_size_m = serializers.FloatField()
+    levels = FloodLevelSerializer(many=True)
+    attribution = serializers.CharField()
+    model_limits = serializers.CharField()
 
 
 class CountyAnalogueSerializer(serializers.ModelSerializer):

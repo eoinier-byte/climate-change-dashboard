@@ -5,7 +5,7 @@
 | **`data-flow.md`** | **Start here.** How the climate data goes from raw NetCDF → county averages → PostgreSQL → API → charts. The contract between pipeline, backend and frontend |
 | `architecture.md` | System overview and components |
 | `data-model.md` | Database tables / ER diagram (CCD-33) |
-| `api.md` | API endpoints (summary; full response shape in `data-flow.md`), including accounts, profile and email links |
+| `api.md` | API endpoints (summary; full response shape in `data-flow.md`), including accounts, profile, email links, the AI assistant chat and rate limits |
 | `api-examples.md` | One JSON example per endpoint, kept in step with the frontend mocks |
 | `climate-analogues.md` | Climate analogues: data, method (delta method, standardised distance), how to run, results and limitations (CCD-354) |
 | `entities.md` | Every attribute of every table, with units, allowed values and reasons (CCD-38) |

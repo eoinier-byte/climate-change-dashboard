@@ -11,6 +11,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from common.exceptions import Gone
@@ -36,14 +37,20 @@ class CsrfView(APIView):
 
 
 class UserRegisterView(AuthView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'register'
     serializer_class = UserRegisterSerializer
 
 
 class UserLoginView(AuthView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
     serializer_class = UserLoginSerializer
 
 
 class RecoveryView(GenericAPIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'email'
     serializer_class = ResetEmailSerializer
 
     def post(self, request, *args, **kwargs):
@@ -142,7 +149,17 @@ class ProfileViewSet(viewsets.GenericViewSet):
         'change_email': UpdateEmailSerializer,
         'change_avatar': AvatarSerializer,
     }
+    throttle_scopes = {
+        'change_email': 'email',
+        'change_password': 'password',
+    }
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        self.throttle_scope = self.throttle_scopes.get(self.action)
+        if self.throttle_scope:
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action)
