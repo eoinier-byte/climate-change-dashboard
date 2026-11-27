@@ -243,6 +243,11 @@ else:
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
+# Behind Caddy (production), Django sees plain HTTP from Caddy. Caddy says the visitor used HTTPS in
+# this header, so Django builds https:// links (e.g. the flood map image URLs) instead of http:// ones.
+# Locally there is no Caddy and no header, so nothing changes. (CCD-246, docs/security.md row 2)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Email
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

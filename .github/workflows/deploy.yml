@@ -1,0 +1,56 @@
+# Auto-deploy (CCD-278 Add auto-deploy on merge to main)
+# After the CI workflow passes on main, this logs in to the server
+# over SSH, pulls the new code, then rebuilds and restarts the app.
+
+name: Deploy
+
+on:
+  # Run when the CI workflow finishes.
+  workflow_run:
+    # This must match the "name:" line at the top of ci.yml (it is "CI").
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  # Also adds a "Run workflow" button in the Actions tab, for deploying by hand.
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Only deploy if CI passed (a hand-started run is always allowed).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          # These three come from GitHub Secrets (Settings > Secrets and variables > Actions).
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # Stop at the first error.
+            set -e
+
+            # Go to the project folder on the server.
+            cd ~/climate-change-dashboard
+
+            # Get the newest code from main.
+            git pull origin main
+
+            # Rebuild changed images and restart the containers.
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # Load the .env values so we can use the database owner's login.
+            set -a
+            . ./.env
+            set +a
+
+            # Run migrations as the database owner (the app user cannot change tables).
+            docker compose -f docker-compose.prod.yml run --rm \
+              -e DB_USER="$DB_OWNER" -e DB_PASSWORD="$DB_OWNER_PASSWORD" \
+              backend python manage.py migrate --noinput
+
+            # Remove old unused images so the disk doesn't fill up.
+            docker image prune -f
