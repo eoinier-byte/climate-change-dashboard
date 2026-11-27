@@ -187,6 +187,9 @@ export const getAnalogues = (slug, { scenario, period }, opts) =>
 //             { type: 'done', sources }       the answer is finished, with its sources
 //             { type: 'error', text }         the answer could not be finished
 // signal:   optional, from an AbortController, to stop the answer early
+//
+// Rejects with an ApiError with a readable message if the server cannot be reached, answers with
+// an error (e.g. 429), sends a line that cannot be read, or stops before the answer is finished.
 export async function sendChat(messages, context, { onEvent, signal } = {}) {
   const path = '/agent/chat/';
 
@@ -204,11 +207,19 @@ export async function sendChat(messages, context, { onEvent, signal } = {}) {
   const body = { messages };
   if (context) body.context = context;
 
+  // Signed-in users (CCD-409): the frontend and the API are on different ports, so the browser only
+  // sends the session cookie with credentials: 'include'. With the cookie, Django knows who is asking
+  // (and gives them the signed-in limit), but it then also wants the CSRF token on the POST, like apiSend.
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getCsrfToken();
+  if (token) headers[CSRF_HEADER] = token;
+
   let res;
   try {
     res = await fetch(`${baseUrl()}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'include',
       body: JSON.stringify(body),
       signal,
     });
@@ -230,23 +241,50 @@ export async function sendChat(messages, context, { onEvent, signal } = {}) {
     throw new ApiError(detail || `API error ${res.status} for ${path}`, { status: res.status, path });
   }
 
+  // A normal answer always ends with a "done" or "error" event. This notes when one has arrived,
+  // so we can tell a finished answer from one that stopped part-way.
+  let finished = false;
+
+  // Turn one line into an event and pass it on. A broken line becomes a readable error,
+  // not a technical message like "Unexpected token…".
+  function handleLine(line) {
+    if (!line.trim()) return;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      throw new ApiError('Boreas sent an answer that could not be read. Please try again.', { path });
+    }
+    if (event.type === 'done' || event.type === 'error') finished = true;
+    onEvent(event);
+  }
+
+  const cutOff = () => new ApiError('The answer was cut off. Please try again.', { path });
+
   // Read the answer as it arrives. The server sends one JSON event per line, but a chunk
   // of data can stop halfway through a line, so keep the unfinished part for the next chunk.
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let leftover = '';
 
-  let chunk = await reader.read();
-  while (!chunk.done) {
-    leftover += decoder.decode(chunk.value, { stream: true });
-    const lines = leftover.split('\n');
-    leftover = lines.pop(); // the last piece may not be a whole line yet
-    for (const line of lines) {
-      if (line.trim()) onEvent(JSON.parse(line));
+  try {
+    let chunk = await reader.read();
+    while (!chunk.done) {
+      leftover += decoder.decode(chunk.value, { stream: true });
+      const lines = leftover.split('\n');
+      leftover = lines.pop(); // the last piece may not be a whole line yet
+      lines.forEach(handleLine);
+      chunk = await reader.read();
     }
-    chunk = await reader.read();
+    // Anything left after the last line break is the final event
+    handleLine(leftover);
+  } catch (error) {
+    // Stopped on purpose, or a line that could not be read: pass it on as it is
+    if (error?.name === 'AbortError' || error instanceof ApiError) throw error;
+    // Anything else here means the connection dropped part-way through the answer
+    throw cutOff();
   }
 
-  // Anything left after the last line break is the final event
-  if (leftover.trim()) onEvent(JSON.parse(leftover));
+  // The stream ended without "done" or "error": the answer is incomplete
+  if (!finished) throw cutOff();
 }

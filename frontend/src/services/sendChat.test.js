@@ -1,13 +1,16 @@
-// Tests for sendChat (CCD-386, CCD-388): the POST it makes, reading the streamed answer
-// line by line (even when a line is split between two chunks), errors and mock mode.
+// Tests for sendChat (CCD-386, CCD-388): the POST it makes (with the session cookie and CSRF token),
+// reading the streamed answer line by line (even when a line is split between two chunks),
+// and the errors: server answers, network failures, broken lines and cut-off answers.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, sendChat } from './api';
 
 const BASE = 'http://api.test/api';
 const QUESTION = [{ role: 'user', content: 'Will Cork get hotter?' }];
+const DONE = '{"type":"done","sources":[]}\n';
 
-// A fake streamed Response: each string in "chunks" arrives as one piece of data
-function streamResponse(chunks) {
+// A fake streamed Response: each string in "chunks" arrives as one piece of data.
+// If "failAfter" is given, reading after that many chunks throws, like a dropped connection.
+function streamResponse(chunks, { failAfter } = {}) {
   const encoder = new TextEncoder();
   let next = 0;
   return {
@@ -15,14 +18,24 @@ function streamResponse(chunks) {
     status: 200,
     body: {
       getReader: () => ({
-        read: async () =>
-          next < chunks.length
+        read: async () => {
+          if (failAfter !== undefined && next >= failAfter) throw new TypeError('network error');
+          return next < chunks.length
             ? { done: false, value: encoder.encode(chunks[next++]) }
-            : { done: true, value: undefined },
+            : { done: true, value: undefined };
+        },
       }),
     },
   };
 }
+
+// Puts a CSRF token in the cookie, as Django does, or removes it
+const setCsrfCookie = (value) => {
+  document.cookie = `csrftoken=${value}; path=/`;
+};
+const clearCsrfCookie = () => {
+  document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+};
 
 let fetchMock;
 
@@ -31,16 +44,18 @@ beforeEach(() => {
   vi.stubEnv('VITE_USE_MOCKS', 'false');
   fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);
+  clearCsrfCookie();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  clearCsrfCookie();
 });
 
 describe('sendChat', () => {
   it('POSTs the messages and context as JSON to /agent/chat/', async () => {
-    fetchMock.mockResolvedValue(streamResponse([]));
+    fetchMock.mockResolvedValue(streamResponse([DONE]));
     await sendChat(QUESTION, { county: 'cork' }, { onEvent: vi.fn() });
 
     const [url, options] = fetchMock.mock.calls[0];
@@ -50,8 +65,18 @@ describe('sendChat', () => {
     expect(JSON.parse(options.body)).toEqual({ messages: QUESTION, context: { county: 'cork' } });
   });
 
+  it('sends the session cookie and the CSRF token, so signed-in users are recognised', async () => {
+    setCsrfCookie('abc123');
+    fetchMock.mockResolvedValue(streamResponse([DONE]));
+    await sendChat(QUESTION, undefined, { onEvent: vi.fn() });
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.credentials).toBe('include');
+    expect(options.headers['X-CSRFToken']).toBe('abc123');
+  });
+
   it('leaves context out when there is none', async () => {
-    fetchMock.mockResolvedValue(streamResponse([]));
+    fetchMock.mockResolvedValue(streamResponse([DONE]));
     await sendChat(QUESTION, undefined, { onEvent: vi.fn() });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ messages: QUESTION });
   });
@@ -72,6 +97,37 @@ describe('sendChat', () => {
       { type: 'text', text: ' there' },
       { type: 'done', sources: [] },
     ]);
+  });
+
+  it('turns a broken line into a readable error, not a technical one', async () => {
+    fetchMock.mockResolvedValue(streamResponse(['{"type":"text","text":"Hel\n']));
+    const error = await sendChat(QUESTION, undefined, { onEvent: vi.fn() }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe('Boreas sent an answer that could not be read. Please try again.');
+  });
+
+  it('says the answer was cut off when the stream ends without "done" or "error"', async () => {
+    fetchMock.mockResolvedValue(streamResponse(['{"type":"text","text":"Summers will"}\n']));
+    const onEvent = vi.fn();
+    const error = await sendChat(QUESTION, undefined, { onEvent }).catch((e) => e);
+
+    expect(onEvent).toHaveBeenCalledWith({ type: 'text', text: 'Summers will' }); // what did arrive is kept
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe('The answer was cut off. Please try again.');
+  });
+
+  it('says the answer was cut off when the connection drops part-way', async () => {
+    fetchMock.mockResolvedValue(streamResponse(['{"type":"text","text":"Summers"}\n', DONE], { failAfter: 1 }));
+    const error = await sendChat(QUESTION, undefined, { onEvent: vi.fn() }).catch((e) => e);
+    expect(error.message).toBe('The answer was cut off. Please try again.');
+  });
+
+  it('an "error" event counts as a finished answer, not a cut-off one', async () => {
+    fetchMock.mockResolvedValue(streamResponse(['{"type":"error","text":"Boreas could not catch that one."}\n']));
+    const onEvent = vi.fn();
+    await expect(sendChat(QUESTION, undefined, { onEvent })).resolves.toBeUndefined();
+    expect(onEvent).toHaveBeenCalledWith({ type: 'error', text: 'Boreas could not catch that one.' });
   });
 
   it('throws an ApiError with the server message for 429 (too many questions)', async () => {

@@ -164,11 +164,22 @@ export default function ChatPanel() {
                     {message.content}
                     {message.sources?.length > 0 && (
                       <ul className="chat-sources" aria-label="Sources">
-                        {message.sources.map((source) => (
-                          <li key={source.url}>
-                            <a href={source.url}>{source.name}</a>
-                          </li>
-                        ))}
+                                                {message.sources.map((source) => {
+                          // Links to other websites (e.g. climateireland.ie) open in a new tab, so the
+                          // dashboard stays open. Our own pages, like /about, open in the same tab.
+                          const external = /^https?:\/\//.test(source.url);
+                          return (
+                            <li key={source.url}>
+                              <a
+                                href={source.url}
+                                target={external ? '_blank' : undefined}
+                                rel={external ? 'noopener noreferrer' : undefined}
+                              >
+                                {source.name}
+                              </a>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </li>

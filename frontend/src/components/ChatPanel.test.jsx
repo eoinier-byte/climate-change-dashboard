@@ -145,6 +145,30 @@ describe('ChatPanel', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Boreas could not catch that one.');
   });
 
+    it('opens links to other websites in a new tab, and our own pages in the same tab', async () => {
+    const user = userEvent.setup();
+    answerWith([
+      { type: 'text', text: 'Here are the sources.' },
+      {
+        type: 'done',
+        sources: [
+          { name: 'Climate Ireland', url: 'https://www.climateireland.ie/' },
+          { name: 'About this data', url: '/about' },
+        ],
+      },
+    ]);
+    renderWithRouter(<ChatPanel />);
+    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
+    await ask(user, 'Where is this from?');
+
+    const external = await screen.findByRole('link', { name: 'Climate Ireland' });
+    expect(external.getAttribute('target')).toBe('_blank');
+    expect(external.getAttribute('rel')).toBe('noopener noreferrer');
+
+    const internal = screen.getByRole('link', { name: 'About this data' });
+    expect(internal.getAttribute('target')).toBeNull();
+  });
+
   it('cannot send an empty question', async () => {
     const user = userEvent.setup();
     renderWithRouter(<ChatPanel />);
