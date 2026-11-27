@@ -5,7 +5,7 @@
   position: fixed;
   right: var(--space-4);
   bottom: var(--space-4);
-  z-index: 29;
+  z-index: 1100; /* above the Leaflet maps, which go up to 1000 */
   padding: var(--space-3) var(--space-4);
   border: none;
   border-radius: 999px;
