@@ -20,6 +20,35 @@ npm run dev            # http://localhost:5173
 Other commands: `npm run lint`, `npm test`, `npm run build`, `npm run preview`.
 Set the API base URL in `frontend/.env` (`VITE_API_URL=http://localhost:8000/api`).
 
+## Signing in: session cookie and CSRF token (CCD-409)
+
+The site uses Django **session authentication**. All calls go through `src/services/api.js`:
+
+| Call | Cookie sent? | CSRF token sent? | Use for |
+|---|---|---|---|
+| `apiGet`, `getCounties`, ... | No | No | Public data (counties, projections, maps) |
+| `apiGetWithSession(path)` | Yes | No | Reads that need the signed-in user |
+| `apiPost`, `apiPut`, `apiPatch`, `apiDelete` | Yes | Yes (`X-CSRFToken` header) | Login, register, profile, favourites, ... |
+
+- The CSRF token is read from Django's `csrftoken` cookie and sent as the `X-CSRFToken` header on every write.
+- The session cookie is `HttpOnly`, so the page never reads it. The browser sends it with `credentials: 'include'`.
+- **Nothing is written to `localStorage` or `sessionStorage`**: no password, no token. Signing in survives a refresh because the browser keeps the cookie.
+- A failed write rejects with an `ApiError`. `error.status` is the HTTP status and `error.body` is what the server said (for example `{ email: ['Enter a valid email address.'] }`), so forms can show it.
+- Mock mode (`VITE_USE_MOCKS=true`) refuses writes with a clear message instead of pretending they worked.
+
+### Settings the backend must have (agree with the backend owner)
+
+| Setting | Value | Why |
+|---|---|---|
+| `CORS_ALLOW_CREDENTIALS` | `True` | Lets the browser send the cookie to the API from another origin |
+| `CORS_ALLOWED_ORIGINS` | The exact frontend origin(s), e.g. `http://localhost:5173` and the deployed site. Never `*` | Browsers refuse a wildcard when cookies are sent |
+| `CSRF_TRUSTED_ORIGINS` | The same origins | Django checks the `Origin` of write requests |
+| A view that sets the CSRF cookie | e.g. `GET /api/auth/csrf/` decorated with `ensure_csrf_cookie` | Django only sets `csrftoken` when a view asks for it. The frontend calls it once before the first write |
+| `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` | `Lax` if the site and API share a domain, `None` plus `Secure` if they do not | Decides whether the browser keeps the cookies on API calls |
+| `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` on the deployed (https) site only | Cookies are not sent over plain http |
+
+**Agreed with:** _to be filled in when the backend owner confirms (CCD-409)._
+
 ## County page URL settings (CCD-406)
 
 The county page keeps the chosen scenarios and period in the URL, so a link opens exactly the same view:
