@@ -27,6 +27,7 @@ env = environ.Env(
     CORS_ALLOWED_ORIGINS=(str),
     ANTHROPIC_API_KEY=(str, ''),
     ASSISTANT_MODEL=(str, 'claude-haiku-5-5'),
+    ASSISTANT_TOKENS=(int, 4_000),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
     EMAIL_HOST=(str),
@@ -190,6 +191,7 @@ THROTTLE_RATES = {
     'register': '5/hour',
     'email': '3/hour',
     'password': '5/hour',
+    'commentary': '26/hour',
 }
 
 REST_FRAMEWORK = {
@@ -216,6 +218,7 @@ SUMMARY_SEASON = 'annual'
 # Claude AI
 ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
 ASSISTANT_MODEL = env('ASSISTANT_MODEL')
+ASSISTANT_TOKENS = env('ASSISTANT_TOKENS')
 
 # Redis
 REDIS_HOST = env('REDIS_HOST')

@@ -1,11 +1,14 @@
 import json
 
+from django.conf import settings
 from pydantic import BaseModel, ConfigDict, Field
 
+from ai_agent.utils import get_client
 from climate.models import County, DataSource
 from climate.serializers import ClimateSeriesSerializer, CountyAnalogueSerializer, SeaLevelSeriesSerializer
 from common.enums import Scenario, Season, Variable
 
+UNAVAILABLE = 'The north wind has gone chasing Orithyia across the sky. The summary will be back when he returns.'
 RULES = (
     '<role>\n'
     'You write the short climate summary shown at the top of a county page on the Climate Futures '
@@ -48,6 +51,8 @@ RULES = (
     'If the data does not cover a field, say so plainly instead of guessing.\n'
     '</fields>'
 )
+RETRY_TIMEOUT = 20.0
+RETRIES = 1
 
 
 class Commentary(BaseModel):
@@ -86,7 +91,7 @@ def build_payload(county_slug: str, scenario: Scenario) -> dict:
 
 def build_prompt(payload: dict) -> list[dict]:
     data = json.dumps(payload, ensure_ascii=False, default=str)
-    scenario = Scenario(payload['scenario']).label
+    scenario = Scenario(payload['scenario'])
     return [
         {
             'role': 'user',
@@ -96,3 +101,22 @@ def build_prompt(payload: dict) -> list[dict]:
             ),
         }
     ]
+
+
+def generate_commentary(slug: str, scenario: Scenario) -> Commentary | None:
+    payload = build_payload(slug, scenario)
+    response = (
+        get_client()
+        .with_options(timeout=RETRY_TIMEOUT, max_retries=RETRIES)
+        .messages.parse(
+            model=settings.ASSISTANT_MODEL,
+            max_tokens=settings.ASSISTANT_TOKENS,
+            system=RULES,
+            messages=build_prompt(payload),
+            output_format=Commentary,
+            output_config={'effort': 'low'},
+        )
+    )
+    if response.stop_reason != 'end_turn':
+        return None
+    return response.parsed_output

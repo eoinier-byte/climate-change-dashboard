@@ -47,4 +47,14 @@ class ClimateCacheKey(BaseCacheKey):
 
     @classmethod
     def map(cls, variable: str | None, scenario: str | None, season: str | None, period: str | None) -> str:
-        return cls._build('map', variable, scenario, season, period)
+        return cls._build('map', variable, scenario, season, period).lower()
+
+
+class AgentCacheKey(BaseCacheKey):
+    _VERSION = 'v1'
+    _DOMAIN = 'ai_agent'
+    TIMEOUT = 60 if settings.DEBUG else 60 * 60 * 60
+
+    @classmethod
+    def comment(cls, county: str, scenario: str) -> str:
+        return cls._build('comment', county, scenario).lower()
