@@ -2,8 +2,8 @@
 // They send the same kinds of events as the real POST /api/agent/chat/, with short pauses
 // between them, so the chat panel can be built and shown without the backend or an AI key:
 //   - a question with "sea", "flood" or "coast" in it: a sea-level answer (links to the flood map)
-//   - a question with "rain" in it: a rainfall answer (links to the county page and the Ireland map)
-//   - anything else: a temperature answer (the same links)
+//   - a question with "rain" in it: a rainfall answer (links to the county page)
+//   - anything else: a temperature answer (links to the county page and the Ireland map)
 // The county is the page's county (context), or Cork.
 //
 // THESE ARE EXAMPLE ANSWERS, NOT REAL ADVICE OR REAL NUMBERS.

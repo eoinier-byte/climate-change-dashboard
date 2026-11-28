@@ -20,8 +20,15 @@ const MAX_MESSAGES = 20;
 // Under each answer: what it shows (e.g. "Rainfall · RCP4.5 · 2021–2050"), its sources, and links
 // to the part of the site that shows it (see chatLinks.js).
 
-// Links inside an answer: other websites open in a new tab, so the dashboard stays open
+// Links inside an answer and its sources:
+// - our own pages (e.g. "/about") use the router's <Link>, so the page does not reload and the chat
+//   history is kept
+// - other websites open in a new tab, so the dashboard stays open
 function AnswerLink({ href, children }) {
+  // "/about" is one of our pages; "//example.com" is another website, so it is not
+  const internal = /^\/(?!\/)/.test(href ?? '');
+  if (internal) return <Link to={href}>{children}</Link>;
+
   const external = /^https?:\/\//.test(href ?? '');
   return (
     <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
