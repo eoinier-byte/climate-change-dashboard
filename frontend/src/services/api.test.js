@@ -22,6 +22,7 @@ import {
   getMap,
   getProfile,
   getProjections,
+  getReport,
   getSeaLevel,
   loginUser,
   logoutUser,
@@ -366,6 +367,59 @@ describe('session calls (CCD-409)', () => {
     vi.stubEnv('VITE_USE_MOCKS', 'true');
 
     const error = await apiPost('/auth/login/', {}).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toMatch(/VITE_USE_MOCKS/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// The PDF report (CCD-295, CCD-408): a file, not JSON, so it has its own answer shape.
+describe('getReport (CCD-408)', () => {
+  const pdfResponse = (disposition) => ({
+    ok: true,
+    status: 200,
+    blob: () => Promise.resolve(new Blob(['%PDF-1.4'], { type: 'application/pdf' })),
+    headers: { get: (name) => (name === 'Content-Disposition' ? disposition : null) },
+  });
+
+  it('asks for the county and scenario with the session cookie, and answers the file and its name', async () => {
+    fetchMock.mockResolvedValue(pdfResponse('attachment; filename="cork-climate-report.pdf"'));
+
+    const { blob, filename } = await getReport('cork', 'rcp85');
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE}/report/cork/?scenario=rcp85`);
+    expect(options.credentials).toBe('include');
+    // Asking for application/pdf makes the server answer 406, so no Accept header is set
+    expect(options.headers?.Accept).toBeUndefined();
+    expect(blob.type).toBe('application/pdf');
+    expect(filename).toBe('cork-climate-report.pdf');
+  });
+
+  it('makes a name from the county when the server sends none', async () => {
+    fetchMock.mockResolvedValue(pdfResponse(null));
+    const { filename } = await getReport('kerry', 'rcp45');
+    expect(filename).toBe('kerry-climate-report.pdf');
+  });
+
+  it('keeps only the plain file name from the header', async () => {
+    fetchMock.mockResolvedValue(pdfResponse('attachment; filename="../../etc/cork.pdf"'));
+    const { filename } = await getReport('cork', 'rcp45');
+    expect(filename).toBe('cork.pdf');
+  });
+
+  it('rejects with the status when the server refuses (403 signed out)', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 403, json: () => Promise.resolve({ detail: 'Not authenticated.' }) });
+
+    const error = await getReport('cork', 'rcp45').catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
+  });
+
+  it('refuses while mock mode is on, instead of pretending it worked', async () => {
+    vi.stubEnv('VITE_USE_MOCKS', 'true');
+
+    const error = await getReport('cork', 'rcp45').catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error.message).toMatch(/VITE_USE_MOCKS/);
     expect(fetchMock).not.toHaveBeenCalled();

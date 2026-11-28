@@ -181,6 +181,27 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
 
+// The PDF report of a county (CCD-295, CCD-408): GET /report/{slug}/?scenario=rcp45. Signed-in users only
+// (403 otherwise); scenario is rcp26, rcp45 or rcp85. The answer is a file, not JSON, so this returns
+// { blob, filename } for the page to save. The filename is the one the server suggests in Content-Disposition
+// (for example "cork-climate-report.pdf"), or one made from the slug if the header cannot be read.
+export async function getReport(slug, scenario, opts = {}) {
+  const query = new URLSearchParams({ scenario });
+  const path = `/report/${slug}/?${query}`;
+  if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    throw new ApiError('The PDF report is not available while VITE_USE_MOCKS=true.', { path });
+  }
+
+  // No "Accept: application/pdf" here: the server only offers JSON to the content negotiation and would answer
+  // 406 Not Acceptable. The default Accept of fetch (anything) is right; the answer is still the PDF.
+  const res = await request(path, { ...opts, credentials: 'include' });
+  const blob = await res.blob();
+  const named = /filename="?([^";]+)"?/.exec(res.headers?.get?.('Content-Disposition') ?? '');
+  // Only the plain name: never let a header put the file into another folder
+  const filename = named ? named[1].split(/[\\/]/).pop() : `${slug}-climate-report.pdf`;
+  return { blob, filename };
+}
+
 // Accounts (CCD-299). The endpoints are described in docs/api.md, "Accounts".
 // Login and register answer { detail } and sign the browser in with the session cookie.
 // A 400 keeps the field errors in error.body, e.g. { email: ['A user with this email already exists.'] }.

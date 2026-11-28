@@ -14,13 +14,14 @@
 //   3. "What this means for you" - everyday impacts (CCD-375), see components/ImpactsBlock.jsx
 //   4. Warming stripes   - temperature stripes for the ticked scenarios (CCD-391)
 //   5. Climate analogue  - the European city with the closest climate today (CCD-373)
-//   6. Actions           - copy link (share); Download PDF goes here (CCD-408)
+//   6. Actions           - copy link (share) and Download PDF (CCD-408)
 // Coastal counties also get a sea-level rise chart (CCD-407).
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import '../styles/county.css';
 import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
+import DownloadReport from '../components/DownloadReport';
 import FavouriteButton from '../components/FavouriteButton';
 import ClimateAnalogue from '../components/ClimateAnalogue';
 import ImpactsBlock from '../components/ImpactsBlock';
@@ -214,10 +215,11 @@ export default function CountyDashboard() {
 
       {/* 6. Actions */}
       <section className="county-page__actions" aria-labelledby="actions-heading">
-        <h2 id="actions-heading">Share this view</h2>
+        <h2 id="actions-heading">Share or download</h2>
         <div className="county-page__action-buttons">
           <ShareLink />
-          {/* The Download PDF button (CCD-408) goes here, next to the share button */}
+          {/* Download PDF (CCD-408): the report for this county, in the scenario chosen next to the button */}
+          <DownloadReport slug={slug} scenarios={selectedScenarios} />
         </div>
       </section>
     </main>
