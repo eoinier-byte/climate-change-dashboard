@@ -53,7 +53,7 @@ class ClimateCacheKey(BaseCacheKey):
 class AgentCacheKey(BaseCacheKey):
     _VERSION = 'v1'
     _DOMAIN = 'ai_agent'
-    TIMEOUT = 60 if settings.DEBUG else 60 * 60 * 60
+    TIMEOUT = 60 if settings.DEBUG else 60 * 60 * 60 * 24
 
     @classmethod
     def comment(cls, county: str, scenario: str) -> str:
