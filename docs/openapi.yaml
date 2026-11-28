@@ -1,0 +1,1696 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/agent/chat/:
+    post:
+      operationId: agent_chat_create
+      tags:
+      - agent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Chat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Chat'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: 'application/x-ndjson stream, one JSON event per line: {"type":
+            "tool", "name", "input"} while data is looked up, {"type": "text", "text"}
+            for each piece of the answer, {"type": "done", "sources": [{"name", "url"}]}
+            at the end, or {"type": "error", "text"} if the answer could not be finished.'
+        '400':
+          description: Invalid messages or context.
+        '429':
+          description: Over the chat limit.
+  /api/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/auth/favourites/:
+    get:
+      operationId: auth_favourites_list
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountyBrief'
+          description: ''
+    post:
+      operationId: auth_favourites_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavouriteCountyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FavouriteCountyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FavouriteCountyRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountyBrief'
+          description: ''
+        '400':
+          description: No county given.
+        '404':
+          description: Unknown county.
+  /api/auth/favourites/{slug}/:
+    delete:
+      operationId: auth_favourites_destroy
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '404':
+          description: Unknown county.
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLogin'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/auth/profile/me/:
+    get:
+      operationId: auth_profile_me_retrieve
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /api/auth/profile/me/change-avatar/:
+    put:
+      operationId: auth_profile_me_change_avatar_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Avatar'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Avatar'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Avatar'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Avatar'
+          description: ''
+    patch:
+      operationId: auth_profile_me_change_avatar_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAvatar'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAvatar'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAvatar'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Avatar'
+          description: ''
+  /api/auth/profile/me/change-email/:
+    put:
+      operationId: auth_profile_me_change_email_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateEmail'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateEmail'
+          description: ''
+    patch:
+      operationId: auth_profile_me_change_email_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateEmail'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateEmail'
+          description: ''
+  /api/auth/profile/me/change-password/:
+    put:
+      operationId: auth_profile_me_change_password_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdatePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdatePassword'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdatePassword'
+          description: ''
+    patch:
+      operationId: auth_profile_me_change_password_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePassword'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdatePassword'
+          description: ''
+  /api/auth/profile/me/delete/:
+    delete:
+      operationId: auth_profile_me_delete_destroy
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/auth/profile/me/delete-avatar/:
+    delete:
+      operationId: auth_profile_me_delete_avatar_destroy
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/auth/profile/me/update/:
+    put:
+      operationId: auth_profile_me_update_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Profile'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    patch:
+      operationId: auth_profile_me_update_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /api/auth/recovery/:
+    post:
+      operationId: auth_recovery_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetEmail'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetEmail'
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegister'
+          description: ''
+  /api/auth/reset/{user_id}/{code}/:
+    get:
+      operationId: auth_reset_retrieve
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPassword'
+          description: ''
+    post:
+      operationId: auth_reset_create
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPassword'
+          description: ''
+  /api/auth/verify/{user_id}/{code}/:
+    post:
+      operationId: auth_verify_create
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/counties/:
+    get:
+      operationId: counties_list
+      tags:
+      - counties
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/County'
+          description: ''
+  /api/counties/{slug}/:
+    get:
+      operationId: counties_retrieve
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - counties
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountyDetail'
+          description: ''
+  /api/counties/{slug}/analogues/:
+    get:
+      operationId: counties_analogues_list
+      description: The 3 European cities whose present climate (WorldClim 2.1, 1970-2000)
+        is closest to the county's projected climate for one scenario and period,
+        ordered by rank (1 = closest). CCD-358.
+      summary: Climate analogues of a county
+      parameters:
+      - in: query
+        name: period
+        schema:
+          type: string
+          enum:
+          - 2021-2050
+          - 2071-2100
+        description: |-
+          * `2021-2050` - 2021-2050
+          * `2071-2100` - 2071-2100
+        required: true
+      - in: query
+        name: scenario
+        schema:
+          type: string
+          enum:
+          - rcp26
+          - rcp45
+          - rcp85
+        description: |-
+          * `rcp26` - RCP2.6
+          * `rcp45` - RCP4.5
+          * `rcp85` - RCP8.5
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - counties
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountyAnalogue'
+          description: ''
+        '400':
+          description: scenario or period missing or invalid (baseline is not valid)
+        '404':
+          description: Unknown county
+  /api/counties/{slug}/impacts/:
+    get:
+      operationId: counties_impacts_list
+      parameters:
+      - in: query
+        name: period
+        schema:
+          type: string
+      - in: query
+        name: scenario
+        schema:
+          type: string
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - counties
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImpactIndicator'
+          description: ''
+  /api/flood/:
+    get:
+      operationId: flood_list
+      description: Coastal counties that have a flood map, sorted by name.
+      tags:
+      - flood
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/County'
+          description: ''
+  /api/flood/{slug}/:
+    get:
+      operationId: flood_retrieve
+      description: 'Flood map of one coastal county: the map bounds and one transparent
+        PNG layer per sea level, from 0 to 2 m in 0.1 m steps, with the flooded area.'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        description: County slug, e.g. cork
+        required: true
+      tags:
+      - flood
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FloodDetail'
+          description: ''
+        '404':
+          description: There is no flood map for this county.
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      tags:
+      - health
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+          description: ''
+  /api/map/:
+    get:
+      operationId: map_list
+      tags:
+      - map
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Map'
+          description: ''
+  /api/meta/:
+    get:
+      operationId: meta_retrieve
+      description: 'Filter options read from the database: variables, scenarios, periods,
+        seasons, sea level years and data sources.'
+      tags:
+      - meta
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/projections/:
+    get:
+      operationId: projections_list
+      parameters:
+      - in: query
+        name: county
+        schema:
+          type: string
+      - in: query
+        name: period
+        schema:
+          type: string
+      - in: query
+        name: scenario
+        schema:
+          type: string
+      - in: query
+        name: season
+        schema:
+          type: string
+      - in: query
+        name: variable
+        schema:
+          type: string
+      tags:
+      - projections
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClimateProjection'
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - ht
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sea-level/{slug}/:
+    get:
+      operationId: sea_level_retrieve
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - sea-level
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeaLevelSeries'
+          description: ''
+components:
+  schemas:
+    Avatar:
+      type: object
+      properties:
+        avatar:
+          type: string
+          format: uri
+          pattern: (?:jpg|jpeg|png|heic|heif)$
+      required:
+      - avatar
+    Chat:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        context:
+          $ref: '#/components/schemas/PageContext'
+      required:
+      - messages
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        content:
+          type: string
+          maxLength: 4000
+      required:
+      - content
+      - role
+    ClimateProjection:
+      type: object
+      properties:
+        scenario:
+          type: string
+          readOnly: true
+        baseline_period:
+          type: string
+          readOnly: true
+        units:
+          type: string
+          readOnly: true
+        source:
+          type: string
+          readOnly: true
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+        county:
+          type: string
+          readOnly: true
+        period:
+          type: string
+          maxLength: 9
+        season:
+          $ref: '#/components/schemas/SeasonEnum'
+        baseline_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          readOnly: true
+        projected_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          readOnly: true
+        change:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+        variable:
+          $ref: '#/components/schemas/VariableEnum'
+      required:
+      - baseline_period
+      - baseline_value
+      - change
+      - county
+      - period
+      - projected_value
+      - scenario
+      - season
+      - source
+      - units
+      - value
+      - variable
+    County:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        slug:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        has_coastline:
+          type: boolean
+      required:
+      - id
+      - name
+      - slug
+    CountyAnalogue:
+      type: object
+      description: One row of GET /counties/{slug}/analogues/ (CCD-358), shape agreed
+        in docs/api-examples.md.
+      properties:
+        county:
+          type: string
+          readOnly: true
+        scenario:
+          $ref: '#/components/schemas/ScenarioEnum'
+        period:
+          type: string
+          maxLength: 9
+        rank:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        city:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+          readOnly: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+          readOnly: true
+        similarity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,3})?$
+        city_summer_temp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+          readOnly: true
+        city_winter_temp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+          readOnly: true
+        city_annual_precip:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          readOnly: true
+        county_summer_temp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+        county_winter_temp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,3})?$
+        county_annual_precip:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+        temperature_unit:
+          type: string
+          readOnly: true
+        precipitation_unit:
+          type: string
+          readOnly: true
+        city_baseline_period:
+          type: string
+          readOnly: true
+        change_baseline_period:
+          type: string
+          nullable: true
+          readOnly: true
+        source:
+          type: string
+          readOnly: true
+      required:
+      - change_baseline_period
+      - city
+      - city_annual_precip
+      - city_baseline_period
+      - city_summer_temp
+      - city_winter_temp
+      - country
+      - county
+      - county_annual_precip
+      - county_summer_temp
+      - county_winter_temp
+      - latitude
+      - longitude
+      - period
+      - precipitation_unit
+      - rank
+      - scenario
+      - similarity
+      - source
+      - temperature_unit
+    CountyBrief:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+        slug:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        has_coastline:
+          type: boolean
+      required:
+      - name
+      - slug
+    CountyDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        slug:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        has_coastline:
+          type: boolean
+        summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - id
+      - name
+      - slug
+      - summary
+    Detail:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    FavouriteCountyRequest:
+      type: object
+      properties:
+        county:
+          type: string
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - county
+    FloodDetail:
+      type: object
+      properties:
+        slug:
+          type: string
+        bounds:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+              format: double
+            maxItems: 2
+            minItems: 2
+        cell_size_m:
+          type: number
+          format: double
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/FloodLevel'
+        attribution:
+          type: string
+        model_limits:
+          type: string
+      required:
+      - attribution
+      - bounds
+      - cell_size_m
+      - levels
+      - model_limits
+      - slug
+    FloodLevel:
+      type: object
+      properties:
+        level_m:
+          type: number
+          format: double
+        url:
+          type: string
+          readOnly: true
+        flooded_cells:
+          type: integer
+        flooded_area_km2:
+          type: number
+          format: double
+      required:
+      - flooded_area_km2
+      - flooded_cells
+      - level_m
+      - url
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    ImpactIndicator:
+      type: object
+      properties:
+        scenario:
+          type: string
+          readOnly: true
+        baseline_period:
+          type: string
+          readOnly: true
+        units:
+          type: string
+          readOnly: true
+        source:
+          type: string
+          readOnly: true
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+        county:
+          type: string
+          readOnly: true
+        period:
+          type: string
+          maxLength: 9
+        season:
+          $ref: '#/components/schemas/SeasonEnum'
+        baseline_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          readOnly: true
+        projected_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          readOnly: true
+        change:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+        indicator:
+          $ref: '#/components/schemas/IndicatorEnum'
+      required:
+      - baseline_period
+      - baseline_value
+      - change
+      - county
+      - indicator
+      - period
+      - projected_value
+      - scenario
+      - season
+      - source
+      - units
+      - value
+    IndicatorEnum:
+      enum:
+      - frost_days
+      - summer_days
+      - heating_degree_days
+      - growing_season_length
+      type: string
+      description: |-
+        * `frost_days` - Frost days
+        * `summer_days` - Summer days
+        * `heating_degree_days` - Heating degree days
+        * `growing_season_length` - Growing season length
+    Map:
+      type: object
+      properties:
+        variable:
+          type: string
+        scenario:
+          type: string
+        period:
+          type: string
+        season:
+          type: string
+        unit:
+          type: string
+          nullable: true
+        min:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          nullable: true
+        max:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapItem'
+      required:
+      - max
+      - min
+      - period
+      - results
+      - scenario
+      - season
+      - unit
+      - variable
+    MapItem:
+      type: object
+      properties:
+        county:
+          $ref: '#/components/schemas/CountyBrief'
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,3})?$
+        unit:
+          $ref: '#/components/schemas/UnitEnum'
+      required:
+      - county
+      - unit
+      - value
+    PageContext:
+      type: object
+      properties:
+        county:
+          type: string
+        variable:
+          $ref: '#/components/schemas/VariableEnum'
+    PatchedAvatar:
+      type: object
+      properties:
+        avatar:
+          type: string
+          format: uri
+          pattern: (?:jpg|jpeg|png|heic|heif)$
+    PatchedProfile:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        name:
+          type: string
+          nullable: true
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          readOnly: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        is_verified:
+          type: boolean
+          readOnly: true
+        pending_email:
+          type: string
+          format: email
+          readOnly: true
+          nullable: true
+    PatchedUpdateEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+    PatchedUpdatePassword:
+      type: object
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+        new_password2:
+          type: string
+          writeOnly: true
+        old_password:
+          type: string
+          writeOnly: true
+    Profile:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        name:
+          type: string
+          nullable: true
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          readOnly: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        is_verified:
+          type: boolean
+          readOnly: true
+        pending_email:
+          type: string
+          format: email
+          readOnly: true
+          nullable: true
+      required:
+      - avatar
+      - email
+      - is_verified
+      - pending_email
+      - username
+    ResetEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+      required:
+      - email
+    ResetPassword:
+      type: object
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+        new_password2:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - new_password2
+    RoleEnum:
+      enum:
+      - user
+      - assistant
+      type: string
+      description: |-
+        * `user` - user
+        * `assistant` - assistant
+    ScenarioEnum:
+      enum:
+      - baseline
+      - rcp26
+      - rcp45
+      - rcp85
+      type: string
+      description: |-
+        * `baseline` - Baseline
+        * `rcp26` - RCP2.6
+        * `rcp45` - RCP4.5
+        * `rcp85` - RCP8.5
+    SeaLevelSeries:
+      type: object
+      properties:
+        county:
+          type: string
+        slug:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        has_coastline:
+          type: boolean
+        unit:
+          type: string
+          nullable: true
+          readOnly: true
+        baseline_period:
+          type: string
+          nullable: true
+          readOnly: true
+        years:
+          type: array
+          items:
+            type: integer
+          readOnly: true
+        series:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - baseline_period
+      - county
+      - series
+      - slug
+      - unit
+      - years
+    SeasonEnum:
+      enum:
+      - annual
+      - winter
+      - spring
+      - summer
+      - autumn
+      type: string
+      description: |-
+        * `annual` - Annual
+        * `winter` - Winter
+        * `spring` - Spring
+        * `summer` - Summer
+        * `autumn` - Autumn
+    UnitEnum:
+      enum:
+      - degC
+      - mm
+      - cm
+      - days
+      - degC_days
+      type: string
+      description: |-
+        * `degC` - °C
+        * `mm` - mm
+        * `cm` - cm
+        * `days` - days
+        * `degC_days` - °C·days
+    UpdateEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+      required:
+      - email
+    UpdatePassword:
+      type: object
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+        new_password2:
+          type: string
+          writeOnly: true
+        old_password:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - new_password2
+      - old_password
+    UserLogin:
+      type: object
+      properties:
+        login:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - login
+      - password
+    UserRegister:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        password2:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+      - password2
+      - username
+    VariableEnum:
+      enum:
+      - temperature
+      - precipitation
+      type: string
+      description: |-
+        * `temperature` - Temperature
+        * `precipitation` - Precipitation
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

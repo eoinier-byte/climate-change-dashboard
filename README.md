@@ -10,6 +10,8 @@ MTU group project 2026. A web app where a user picks an Irish county and sees ho
 
 **Documentation:** start at [docs/README.md](docs/README.md), the index of every document in `docs/`.
 
+**API reference:** route table and example responses for the main endpoints in [docs/api-examples.md](docs/api-examples.md); every endpoint, with parameters and response schema, in the OpenAPI 3 schema [docs/openapi.yaml](docs/openapi.yaml), regenerated with `cd backend && python manage.py spectacular --file ../docs/openapi.yaml` (live Swagger UI at `/api/docs/` when `DJANGO_DEBUG=True`).
+
 - **Jira:** project `CCD` (backlog, sprints, Planning Poker). Story IDs in this repo (e.g. `CCD-25`) refer to Jira issues.
 - **Confluence:** Product Goal, Assumptions, Scope, Stakeholders, Risk Assessment (space `SCRUM`).
 
