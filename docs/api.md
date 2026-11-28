@@ -235,6 +235,46 @@ The backend does not know which page the person is on and keeps no conversation.
 - At most 6 model turns per question, 4,000 output tokens per turn, low effort, 30 s timeout. The system prompt and tools are cached between calls (`cache_control`).
 - Every question writes one log line to the `ai_agent.agent` logger: outcome, time, tools used and token counts, including cached tokens. The text of the conversation is not logged.
 
+## County commentary (CCD-197)
+
+A short AI-generated summary for the top of a county page, written by Claude from the county's own data. Planned endpoint: `GET /api/counties/{slug}/commentary/?scenario=rcp45` (CCD-200).
+
+### Rules (CCD-198)
+
+The rules are the system prompt `RULES` in `ai_agent/commentary.py`:
+
+- Claude gets the county data as JSON in the request (temperature and precipitation by season for every scenario and period with the change from the baseline, the climate analogues, and sea-level rise for coastal counties). It calls no tools.
+- Every number must come from that data, with its unit. No numbers or facts from the model's own knowledge, and no new numbers worked out from the data (differences, sums, averages): to compare, it gives both values. Rounding to one decimal place is allowed.
+- Plain English, one or two sentences per field, no Markdown. The scenarios are the low, medium and high emissions futures; the periods are "around mid-century" and "by the end of the century"; it says "projected", never "will be".
+
+### Output
+
+Claude answers with structured output following the `Commentary` model in the same file:
+
+```json
+{
+  "summary": "...",
+  "temperature": "...",
+  "precipitation": "...",
+  "scenarios": "...",
+  "analogue": "...",
+  "sea_level": "... or null for an inland county"
+}
+```
+
+| Field | Content |
+|---|---|
+| `summary` | The main change for the county |
+| `temperature` | Annual change by the end of the century and the season that warms the most |
+| `precipitation` | Annual change by the end of the century and the season with the biggest change |
+| `scenarios` | The chosen emissions future compared with the low and high ones (end-of-century annual temperature) |
+| `analogue` | The closest European city (rank 1) to the county's end-of-century climate |
+| `sea_level` | Sea-level rise by the end of the century; `null` for an inland county |
+
+### When it fails
+
+A reply that breaks the rules (a number not in the data, checked by CCD-203) is generated once more. If the second reply also fails, or the API call fails, nothing is cached and the endpoint returns 503; the page hides the block.
+
 ## Rate limits (CCD-351)
 
 Over a limit the API returns **429** with the wait time in `detail`. The limits are in `THROTTLE_RATES` in Django settings and are stored in the Redis cache (if Redis is down, they are not enforced). Tests run with every limit off.
