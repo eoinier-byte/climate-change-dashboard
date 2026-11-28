@@ -3,7 +3,8 @@ from http import HTTPStatus
 import anthropic
 from django.core.cache import cache
 from django.http import StreamingHttpResponse
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.exceptions import NotFound, Throttled, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -60,6 +61,46 @@ class CommentView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'commentary'
 
+    @extend_schema(
+        summary='AI-generated climate summary of a county',
+        description=(
+            'A short plain-language summary written by Claude from the county data for one emissions scenario. '
+            'Generated once and cached; a failed or unfinished reply is not cached. CCD-197.'
+        ),
+        parameters=[
+            OpenApiParameter('county', OpenApiParameter.PATH, description='County slug, e.g. cork'),
+            OpenApiParameter(
+                'scenario',
+                OpenApiParameter.PATH,
+                enum=[s.value for s in Scenario if s != Scenario.BASELINE],
+                description='Emissions scenario of the summary.',
+            ),
+        ],
+        responses={
+            HTTPStatus.OK: inline_serializer(
+                'CountyCommentary',
+                {
+                    'commentary': inline_serializer(
+                        'Commentary',
+                        {
+                            'summary': serializers.CharField(),
+                            'temperature': serializers.CharField(),
+                            'precipitation': serializers.CharField(),
+                            'scenarios': serializers.CharField(),
+                            'analogue': serializers.CharField(),
+                            'sea_level': serializers.CharField(allow_null=True),
+                        },
+                    )
+                },
+            ),
+            HTTPStatus.BAD_REQUEST: OpenApiResponse(description='Unknown scenario, or the baseline.'),
+            HTTPStatus.NOT_FOUND: OpenApiResponse(description='Unknown county.'),
+            HTTPStatus.TOO_MANY_REQUESTS: OpenApiResponse(description='Over the commentary limit.'),
+            HTTPStatus.SERVICE_UNAVAILABLE: OpenApiResponse(
+                description='The summary could not be written (API error, timeout or unfinished reply).'
+            ),
+        },
+    )
     def get(self, request, county, scenario):
         if scenario not in Scenario.values or scenario == Scenario.BASELINE:
             raise ValidationError({'scenario': [f'Unknown scenario: {scenario}.']})
