@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  addFavourite,
   apiDelete,
   apiGet,
   apiGetWithSession,
@@ -17,6 +18,7 @@ import {
   getCounties,
   getCounty,
   getCsrfToken,
+  getFavourites,
   getMap,
   getProfile,
   getProjections,
@@ -24,6 +26,7 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  removeFavourite,
   requestPasswordReset,
   resetPassword,
   updateProfile,
@@ -403,6 +406,14 @@ describe('account functions (CCD-299)', () => {
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
 
+  it('getFavourites asks for the list of the signed-in user, with the session cookie', async () => {
+    fetchMock.mockResolvedValue(fakeResponse({ body: [{ name: 'Cork', slug: 'cork', has_coastline: true }] }));
+
+    await expect(getFavourites()).resolves.toEqual([{ name: 'Cork', slug: 'cork', has_coastline: true }]);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/auth/favourites/`);
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
   it('getProfile rejects with status 403 when nobody is signed in', async () => {
     fetchMock.mockResolvedValue(fakeResponse({ ok: false, status: 403, body: { detail: 'Not authenticated.' } }));
 
@@ -443,6 +454,8 @@ describe('profile and email-link functions (CCD-299)', () => {
       { new_password: 'x', new_password2: 'x' },
     ],
     ['verifyEmailLink', () => verifyEmailLink(7, 'code-1'), 'POST', '/auth/verify/7/code-1/', undefined],
+    ['addFavourite', () => addFavourite('cork'), 'POST', '/auth/favourites/', { county: 'cork' }],
+    ['removeFavourite', () => removeFavourite('cork'), 'DELETE', '/auth/favourites/cork/', undefined],
   ])('%s sends a %s to %s with the session cookie and CSRF token', async (_name, call, method, path, body) => {
     await call();
 

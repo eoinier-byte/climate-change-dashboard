@@ -26,6 +26,7 @@ function renderProfile({ user = baseUser, status = 'signedIn', refresh = vi.fn()
 
 beforeEach(() => {
   vi.resetAllMocks();
+  api.getFavourites.mockResolvedValue([]); // "My counties" loads its list
 });
 
 describe('Profile page: who may see it', () => {
@@ -58,10 +59,11 @@ describe('Profile page: who may see it', () => {
     expect(screen.getByRole('status').textContent).toBe('Loading your account…');
   });
 
-  it('shows the four sections', () => {
+  it('shows the five sections', () => {
     renderProfile();
     expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Your details' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'My counties' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Email' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Password' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Delete account' })).toBeTruthy();

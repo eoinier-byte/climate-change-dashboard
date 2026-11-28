@@ -14,6 +14,7 @@ vi.mock('./services/api', () => ({
   getMap: vi.fn(() => new Promise(() => {})), // the home page map (CCD-380)
   checkResetLink: vi.fn(() => new Promise(() => {})), // the pages opened from an email (CCD-435, CCD-436)
   verifyEmailLink: vi.fn(() => new Promise(() => {})),
+  getFavourites: vi.fn(() => new Promise(() => {})), // the county star and "My counties" (CCD-413, CCD-414)
   getFlood: vi.fn(() => new Promise(() => {})), // the flood map (CCD-377)
 }));
 

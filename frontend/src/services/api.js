@@ -218,6 +218,11 @@ export const requestPasswordReset = (email) => apiPost('/auth/recovery/', { emai
 // Rejects with 404 (unknown link) or 410 (already used or expired).
 export const checkResetLink = (userId, code, opts) => apiGetWithSession(`/auth/reset/${userId}/${code}/`, opts);
 export const resetPassword = (userId, code, data) => apiPost(`/auth/reset/${userId}/${code}/`, data);
+// Favourite counties of the signed-in user (CCD-411): [{ name, slug, has_coastline }] sorted by name.
+// Adding one that is already a favourite, or removing one that is not, is not an error.
+export const getFavourites = (opts) => apiGetWithSession('/auth/favourites/', opts);
+export const addFavourite = (slug) => apiPost('/auth/favourites/', { county: slug });
+export const removeFavourite = (slug) => apiDelete(`/auth/favourites/${slug}/`);
 // Confirms a registration or a new email. Rejects with 404, 409 (address taken in the meantime) or 410.
 export const verifyEmailLink = (userId, code) => apiPost(`/auth/verify/${userId}/${code}/`);
 
