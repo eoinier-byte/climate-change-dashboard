@@ -1,6 +1,6 @@
 # User database security (CCD-296)
 
-Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-313 (deployment checks and tests). Findings are from `main` on 27 Nov 2026, updated the same evening after #90 (favourite counties, Swagger fixes). The fixes in [Changes needed in shared files](#changes-needed-in-shared-files) are for their owners to agree and apply. They are **not applied yet**.
+Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-313 (deployment checks and tests). Findings are from `main` on 27 Nov 2026, updated the same evening after #90 (favourite counties, Swagger fixes), and on 28 Nov after the production deployment (#101, CCD-246). The fixes in [Changes needed in shared files](#4-changes-needed-in-shared-files) are for their owners to apply; section 4 shows which are done.
 
 ## 1. Database access rules (CCD-311)
 
@@ -19,7 +19,8 @@ Covers CCD-311 (database access), CCD-312 (personal data and privacy) and CCD-31
 | Local (docker-compose) | `DB_USER` (`climate_admin` in `.env.example`) | `docker-compose.yml` passes `DB_USER` as `POSTGRES_USER`. The postgres image makes that user a **superuser**, and Django connects with it. Breaks rule 1. |
 | Local (docker-compose) | — | Postgres is published as `"${DB_PORT:-5432}:5432"` and Redis as `"${REDIS_PORT:-6379}:6379"`. Both bind to **every interface** of the laptop, and Redis has no password. Breaks rule 3 on a shared network. |
 | CI (`.github/workflows/ci.yml`) | `ccd`, the container's `POSTGRES_USER` | A superuser in a throwaway test container that only exists for the job. Acceptable for CI. |
-| Production | Set on the host, not in the repo | Rules 1–5 apply. Section 4 lists the deployment actions. |
+| Production (`docker-compose.prod.yml`, since 28 Nov) | `APP_DB_USER` (`climate_app` in `.env.production.example`) | Django and the worker connect as the limited role, created on the database's first start by `deploy/postgres-init/01-app-role.sh` (`SELECT`, `INSERT`, `UPDATE`, `DELETE` on tables, `USAGE`, `SELECT` on sequences). Migrations and data loading run as the owner `DB_OWNER` (`deploy.yml`, [deployment.md](deployment.md) §3). Meets rules 1 and 2. |
+| Production | — | `db` and `redis` publish no ports: only containers on the server's private Docker network reach them, and only Caddy publishes 80 and 443. Checked from outside on 28 Nov: 443 open; 5432, 6379 and 8000 closed. The database is on the same server as the backend, so there is no network hop that needs TLS. Meets rule 3. |
 
 ## 2. Privacy note (CCD-312)
 
@@ -76,20 +77,22 @@ The check does not flag these, but they matter in production: `ALLOWED_HOSTS = [
 
 ## 4. Changes needed in shared files
 
-None of these are applied here. Each is a change to a file its owner is working on.
+None of these are applied by this document. Each is a change to a file its owner is working on. Status checked on `main` on 28 Nov 2026.
 
 | # | Problem | Setting or change that fixes it | File | Owner |
 |---|---|---|---|---|
 | 1 | `security.W004` | `SECURE_HSTS_SECONDS = 0 if DEBUG else 3600` (raise to 31536000 once HTTPS is confirmed stable), `SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG` | `backend/config/settings.py` | Taras |
-| 2 | `security.W008` | `SECURE_SSL_REDIRECT = not DEBUG` and, behind the host's HTTPS proxy, `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')` | `backend/config/settings.py` | Taras |
+| 2 | `security.W008` | `SECURE_SSL_REDIRECT = not DEBUG` and, behind the host's HTTPS proxy, `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')`. **Half done:** `SECURE_PROXY_SSL_HEADER` added in #101 (Eoin). `SECURE_SSL_REDIRECT` is still missing, so the warning stays. Caddy already redirects HTTP to HTTPS on the live site | `backend/config/settings.py` | Taras |
 | 3 | ~~`drf_spectacular.W001` / `W002`~~ **Done** (`0ab9a12`, Taras) | Return type hint or `@extend_schema_field` on `get_summary`; rename one `CountySerializer` (or set `ref_name`); `serializer_class` or `@extend_schema` on the six views | `climate/serializers.py`, `climate/views.py`, `users/views.py` | Taras |
 | 4 | `ALLOWED_HOSTS = ['*']` | `ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])`, plus `ALLOWED_HOSTS` in `.env.example` | `backend/config/settings.py`, `.env.example` | Taras |
 | 5 | Debug toolbar app and middleware load in production | Add `debug_toolbar` to `INSTALLED_APPS`/`MIDDLEWARE` only when `DEBUG` is on (the URLs already are) | `backend/config/settings.py` | Taras |
 | 6 | Celery task records kept after account deletion | `CELERY_RESULT_EXPIRES = timedelta(days=1)` (with celery beat running the cleanup), or `CELERY_RESULT_EXTENDED = False` so arguments are not stored | `backend/config/settings.py` | Taras |
 | 7 | `check --deploy` not in CI | Backend job step: `python manage.py check --deploy --fail-level WARNING`, after #1–#5 are merged so it passes | `.github/workflows/ci.yml` | Eoin |
 | 8 | App connects as superuser (local) | Create a limited app role in an init script (`docker-entrypoint-initdb.d`); Django uses it, migrations use the owner | `docker-compose.yml`, `.env.example` | Eoin |
-| 9 | App database role in production | Create the limited role on the hosted database; set `DB_USER`/`DB_PASSWORD` on the host to it; run migrations as the owner in the deploy step | Host settings | Eoin |
+| 9 | ~~App database role in production~~ **Done** (#101, Eoin) | `deploy/postgres-init/01-app-role.sh` creates the limited role; `docker-compose.prod.yml` sets `DB_USER` to it; `deploy.yml` runs migrations as the owner | `docker-compose.prod.yml`, `deploy/`, `.github/workflows/deploy.yml` | Eoin |
 | 10 | Postgres and Redis on every interface (local) | Publish as `"127.0.0.1:${DB_PORT:-5432}:5432"` and `"127.0.0.1:${REDIS_PORT:-6379}:6379"` | `docker-compose.yml` | Eoin |
-| 11 | Production database reachable only by the backend | Turn on the host's IP allow-list or private networking, and `sslmode=require` | Host settings | Eoin |
+| 11 | ~~Production database reachable only by the backend~~ **Done** (#101, Eoin) | `db` and `redis` publish no ports and sit on the private Docker network with the backend. `sslmode=require` is not needed: the database is on the same server, so traffic never leaves it | `docker-compose.prod.yml` | Eoin |
 
-When #1, #2, #4 and #5 are merged, run `check --deploy` again with the same variables. The expected result is `System check identified no issues`.
+Rows 9 and 11 are based on the committed production files and the outside port check on 28 Nov. The server runs the committed `docker-compose.prod.yml`: a nested `services:` key that broke validation was fixed in #105, and the Deploy workflow has passed since.
+
+Rows 8 and 10 are still open because #101 changed only the production compose file, not the local `docker-compose.yml`. When #1, #2, #4 and #5 are merged, run `check --deploy` again with the same variables. The expected result is `System check identified no issues`.
