@@ -1,11 +1,12 @@
-// Tests for the AI assistant chat panel (CCD-386, CCD-388): opening and closing, sending a
-// question with the county it was asked on, the answer appearing, sources and errors.
-import { screen } from '@testing-library/react';
+// Tests for the AI assistant chat panel (CCD-386, CCD-387, CCD-388): opening and closing, sending a
+// question with the county it was asked on, the answer appearing as formatted text, sources, the
+// label and links under an answer, and errors.
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatPanel from './ChatPanel';
 import { ApiError, sendChat } from '../services/api';
-import { renderWithRouter } from '../test/renderWithRouter';
+import { currentLocation, renderWithRouter } from '../test/renderWithRouter';
 
 // Replace the real chat call with a fake, so the tests never need the backend or an AI key.
 // ApiError is kept real, so a test can make the fake throw one.
@@ -14,6 +15,8 @@ vi.mock('../services/api', async (importOriginal) => {
   return { ApiError: real.ApiError, sendChat: vi.fn() };
 });
 
+const RAIN_45_MID = { variable: 'precipitation', season: 'annual', scenario: 'rcp45', period: '2021-2050' };
+
 // A fake sendChat that "streams" the given events, then finishes
 function answerWith(events) {
   vi.mocked(sendChat).mockImplementation(async (_messages, _context, { onEvent }) => {
@@ -21,9 +24,18 @@ function answerWith(events) {
   });
 }
 
-// Open the panel and ask a question by typing it and pressing Enter
+// Ask a question by typing it and pressing Enter
 async function ask(user, question) {
   await user.type(screen.getByLabelText('Your question'), `${question}{Enter}`);
+}
+
+// Open the page at "url", open the panel and ask a question
+async function openAndAsk(question, url = '/') {
+  const user = userEvent.setup();
+  renderWithRouter(<ChatPanel />, { url });
+  await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
+  await ask(user, question);
+  return user;
 }
 
 describe('ChatPanel', () => {
@@ -33,7 +45,7 @@ describe('ChatPanel', () => {
       { type: 'tool', name: 'get_projections', input: { county: 'cork' } },
       { type: 'text', text: 'Summers in Cork ' },
       { type: 'text', text: 'are projected to get warmer.' },
-      { type: 'done', sources: [{ name: 'About this data', url: '/about' }] },
+      { type: 'done', sources: [{ name: 'About this data', url: '/about' }], map_action: null },
     ]);
   });
 
@@ -62,10 +74,7 @@ describe('ChatPanel', () => {
   });
 
   it('sends the question with the county, then shows the answer and its sources', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<ChatPanel />, { url: '/county/cork' });
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'Will Cork get hotter?');
+    await openAndAsk('Will Cork get hotter?', '/county/cork');
 
     // The question and the joined pieces of the answer are on screen
     expect(await screen.findByText('Summers in Cork are projected to get warmer.')).toBeTruthy();
@@ -79,74 +88,113 @@ describe('ChatPanel', () => {
   });
 
   it('sends no county when the question is asked away from a county page', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<ChatPanel />, { url: '/about' });
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'Which county warms most?');
-
+    await openAndAsk('Which county warms most?', '/about');
     await screen.findByText('Summers in Cork are projected to get warmer.');
     expect(vi.mocked(sendChat).mock.calls[0][1]).toBeUndefined();
   });
 
-  it('sends the earlier conversation with a follow-up, cutting long answers to 500 characters', async () => {
-    const user = userEvent.setup();
-    const longAnswer = 'x'.repeat(600);
+  it('sends the earlier conversation with a follow-up, cutting answers to 4,000 characters', async () => {
+    const longAnswer = 'x'.repeat(4100);
     answerWith([{ type: 'text', text: longAnswer }, { type: 'done', sources: [] }]);
-    renderWithRouter(<ChatPanel />);
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-
-    await ask(user, 'First question');
+    const user = await openAndAsk('First question');
     await screen.findByText(longAnswer);
+
     await ask(user, 'Second question');
 
     const [messages] = vi.mocked(sendChat).mock.calls[1];
     expect(messages).toEqual([
       { role: 'user', content: 'First question' },
-      { role: 'assistant', content: 'x'.repeat(500) },
+      { role: 'assistant', content: 'x'.repeat(4000) },
       { role: 'user', content: 'Second question' },
     ]);
   });
 
+  it('draws the answer from Markdown, so bold text and lists are formatted', async () => {
+    answerWith([
+      { type: 'text', text: '**Warmer** summers:\n\n- more hot days\n- fewer frosts' },
+      { type: 'done', sources: [] },
+    ]);
+    await openAndAsk('What changes?');
+
+    expect((await screen.findByText('Warmer')).tagName).toBe('STRONG');
+    expect(screen.getByText('more hot days').tagName).toBe('LI');
+    expect(screen.queryByText(/\*\*/)).toBeNull(); // no raw ** left on screen
+  });
+
+  it('shows what the answer is about, and links to the county page and the Ireland map', async () => {
+    answerWith([
+      { type: 'tool', name: 'get_projections', input: { county: 'cork' } },
+      { type: 'text', text: 'Cork gets a little wetter.' },
+      { type: 'done', sources: [], map_action: RAIN_45_MID },
+    ]);
+    await openAndAsk('Will Cork get wetter?');
+
+    expect(await screen.findByText('Rainfall · RCP4.5 · 2021–2050')).toBeTruthy();
+    const links = within(screen.getByRole('list', { name: 'See it on the site' }));
+    expect(links.getByRole('link', { name: "See it on Cork's page" }).getAttribute('href')).toBe(
+      '/county/cork?rcp=45&period=2021-2050#rainfall-heading',
+    );
+    expect(links.getByRole('link', { name: 'Show RCP4.5, 2050 on the Ireland map' }).getAttribute('href')).toBe(
+      '/?rcp=45&year=2050',
+    );
+  });
+
+  it('opens the page when a link is clicked', async () => {
+    answerWith([
+      { type: 'text', text: 'Here is the map.' },
+      { type: 'done', sources: [], map_action: RAIN_45_MID },
+    ]);
+    const user = await openAndAsk('Show me the map', '/about');
+
+    await user.click(await screen.findByRole('link', { name: 'Show RCP4.5, 2050 on the Ireland map' }));
+    expect(currentLocation()).toBe('/?rcp=45&year=2050');
+  });
+
+  it('shows no links before the answer is finished', async () => {
+    // Text arrives, but "done" never does
+    vi.mocked(sendChat).mockImplementation((_messages, _context, { onEvent }) => {
+      onEvent({ type: 'text', text: 'Still writing' });
+      return new Promise(() => {});
+    });
+    await openAndAsk('Will Cork get wetter?', '/county/cork');
+
+    await screen.findByText('Still writing');
+    expect(screen.queryByRole('list', { name: 'See it on the site' })).toBeNull();
+  });
+
   it('shows "Looking up the data…" while the assistant looks something up', async () => {
-    const user = userEvent.setup();
     // Sends a "tool" event, then never finishes
     vi.mocked(sendChat).mockImplementation((_messages, _context, { onEvent }) => {
       onEvent({ type: 'tool', name: 'get_sea_level', input: { county: 'cork' } });
       return new Promise(() => {});
     });
-    renderWithRouter(<ChatPanel />);
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'Will the sea rise?');
+    await openAndAsk('Will the sea rise?');
 
     expect(await screen.findByText('Looking up the data…')).toBeTruthy();
     // While an answer is coming in, nothing else can be sent
     expect(screen.getByRole('button', { name: 'Send' }).disabled).toBe(true);
   });
 
-  it('shows the server message when the chat limit is reached', async () => {
-    const user = userEvent.setup();
+  it('shows the server message and a sign-in link when the chat limit is reached', async () => {
     vi.mocked(sendChat).mockRejectedValue(
       new ApiError('Sign in to keep chatting with Boreas.', { status: 429, path: '/agent/chat/' }),
     );
-    renderWithRouter(<ChatPanel />);
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'One more question');
+    await openAndAsk('One more question');
 
     expect((await screen.findByRole('alert')).textContent).toBe('Sign in to keep chatting with Boreas.');
+    expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/login');
+    expect(screen.getByRole('link', { name: 'create an account' }).getAttribute('href')).toBe('/register');
   });
 
-  it('shows the text of an "error" event', async () => {
-    const user = userEvent.setup();
+  it('shows the text of an "error" event, with no sign-in link', async () => {
     answerWith([{ type: 'error', text: 'Boreas could not catch that one.' }]);
-    renderWithRouter(<ChatPanel />);
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'Hello');
+    await openAndAsk('Hello');
 
     expect((await screen.findByRole('alert')).textContent).toBe('Boreas could not catch that one.');
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
   });
 
-    it('opens links to other websites in a new tab, and our own pages in the same tab', async () => {
-    const user = userEvent.setup();
+  it('opens links to other websites in a new tab, and our own pages in the same tab', async () => {
     answerWith([
       { type: 'text', text: 'Here are the sources.' },
       {
@@ -157,9 +205,7 @@ describe('ChatPanel', () => {
         ],
       },
     ]);
-    renderWithRouter(<ChatPanel />);
-    await user.click(screen.getByRole('button', { name: 'Ask Boreas' }));
-    await ask(user, 'Where is this from?');
+    await openAndAsk('Where is this from?');
 
     const external = await screen.findByRole('link', { name: 'Climate Ireland' });
     expect(external.getAttribute('target')).toBe('_blank');

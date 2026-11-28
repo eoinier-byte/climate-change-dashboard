@@ -253,7 +253,7 @@ export async function sendChat(messages, context, { onEvent, signal } = {}) {
   // Mock mode: play back an example answer instead of calling the server
   if (import.meta.env.VITE_USE_MOCKS === 'true') {
     const { mockChatEvents } = await import('../mocks/chat');
-    for await (const event of mockChatEvents(messages)) {
+    for await (const event of mockChatEvents(messages, context)) {
       if (signal?.aborted) return; // the panel was closed or a new question was asked
       onEvent(event);
     }
