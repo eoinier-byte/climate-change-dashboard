@@ -1,0 +1,25 @@
+# Caddy config for the live site (CCD-246 Deploy Application). {$DOMAIN} comes from the .env file.
+# Caddy gets and renews the HTTPS certificate for the domain by itself.
+{$DOMAIN} {
+	encode gzip
+
+	# The API, the admin and Django's static files (incl. the flood maps) go to Django
+	@django path /api/* /admin* /static/*
+	handle @django {
+		reverse_proxy backend:8000
+	}
+
+	# Uploaded profile photos
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	# Everything else is the React site. Unknown paths (e.g. /county/cork) get index.html,
+	# so React Router can show the right page.
+	handle {
+		root * /srv/site
+		try_files {path} /index.html
+		file_server
+	}
+}
