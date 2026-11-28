@@ -273,3 +273,24 @@ describe('analogues (proposed: GET /counties/{slug}/analogues/)', () => {
     expect(answer.body[field]).toBeDefined();
   });
 });
+
+describe('commentary (built: GET /agent/commentary/{slug}/{scenario}/)', () => {
+  it('has the six texts, and a sea-level line for a coastal county', () => {
+    const { commentary } = body('/agent/commentary/cork/rcp45/');
+    expect(Object.keys(commentary)).toEqual(['summary', 'temperature', 'precipitation', 'scenarios', 'analogue', 'sea_level']);
+    expect(commentary.summary).toContain('Cork');
+    expect(commentary.sea_level).toMatch(/sea level/i);
+  });
+
+  it('has no sea-level line (null) for an inland county', () => {
+    expect(body('/agent/commentary/offaly/rcp45/').commentary.sea_level).toBeNull();
+  });
+
+  it.each(['baseline', 'rcp60'])('a scenario of %s is a 400', (scenario) => {
+    expect(mockGet(`/agent/commentary/cork/${scenario}/`).status).toBe(400);
+  });
+
+  it('an unknown county is a 404', () => {
+    expect(mockGet('/agent/commentary/atlantis/rcp45/').status).toBe(404);
+  });
+});
