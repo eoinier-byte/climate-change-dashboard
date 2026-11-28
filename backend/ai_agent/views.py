@@ -68,9 +68,10 @@ class CommentView(APIView):
             'Generated once and cached; a failed or unfinished reply is not cached. CCD-197.'
         ),
         parameters=[
-            OpenApiParameter('county', OpenApiParameter.PATH, description='County slug, e.g. cork'),
+            OpenApiParameter('county', str, OpenApiParameter.PATH, description='County slug, e.g. cork'),
             OpenApiParameter(
                 'scenario',
+                str,
                 OpenApiParameter.PATH,
                 enum=[s.value for s in Scenario if s != Scenario.BASELINE],
                 description='Emissions scenario of the summary.',

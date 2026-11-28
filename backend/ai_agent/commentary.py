@@ -91,7 +91,7 @@ def build_payload(county_slug: str, scenario: Scenario) -> dict:
 
 def build_prompt(payload: dict) -> list[dict]:
     data = json.dumps(payload, ensure_ascii=False, default=str)
-    scenario = Scenario(payload['scenario'])
+    scenario = Scenario(payload['scenario']).label
     return [
         {
             'role': 'user',
