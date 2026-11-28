@@ -244,7 +244,7 @@ describe('CountyDashboard', () => {
       'What this means for you',
       'Warming stripes',
       'Climate analogue',
-      'Share this view',
+      'Share or download',
     ]);
   });
 
