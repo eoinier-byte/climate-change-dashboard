@@ -83,10 +83,11 @@ GitHub Actions runs the **CI** workflow ([`.github/workflows/ci.yml`](.github/wo
 | `pipeline` | Pipeline scripts compile; pipeline tests |
 | `backend` | Django tests against a fresh PostgreSQL |
 | `frontend` | ESLint, build, Vitest tests |
+| `e2e` | Playwright end-to-end tests in a real Chrome (example data) |
 | `cpp` | C++ flood engine build and tests, Python binding tests |
 | `notify` | Posts to the team's Discord channel if any job fails |
 
-A pull request can only be merged into `main` when all five checks are green and one teammate has approved it (branch protection). Deployment on merge (CCD-278) is not set up yet.
+A pull request can only be merged into `main` when all CI checks are green and one teammate has approved it (branch protection). After a merge, the **Deploy** workflow puts `main` live on https://ccd-ireland.duckdns.org once CI passes (CCD-278, see [docs/ci-cd.md](docs/ci-cd.md#7-deploy-cd) and [docs/deployment.md](docs/deployment.md)).
 
 **When CI fails:** open the link in the Discord message (or **Details** next to the red ✗ on the PR), click the red job, then the red step, and read the `##[error]` lines at the bottom. Fix it on the same branch and push; CI runs again by itself. Full guide, with common errors and how to re-run a job: [docs/ci-cd.md](docs/ci-cd.md).
 
@@ -103,10 +104,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Name | Role |
 |---|---|
-| Eoin Ryan | Product Owner, climate data pipeline |
-| Taras Ivanysenko | [to confirm] |
-| Ronel Mombo | [to confirm] |
-| Artur Romanov | [to confirm] |
+| Eoin Ryan | Product Owner; frontend pages, deployment and CI/CD |
+| Taras Ivanysenko | Backend: API, accounts, AI assistant, flood endpoints, PDF report |
+| Ronel Mombo | Scrum Master; frontend: home page, maps, compare, account pages |
+| Artur Romanov | Data and documentation: climate analogues, database, technical docs, security |
 
 ## Data sources
 

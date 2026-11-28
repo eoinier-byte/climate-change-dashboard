@@ -9,7 +9,7 @@
 // Whether the ▶ button is running is not in the URL: a shared link opens paused.
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ALL_SCENARIOS, SCENARIO_LABELS } from '../styles/scenarioColors';
+import { ALL_SCENARIOS, SCENARIO_LABELS, SCENARIO_PLAIN_NAMES } from '../styles/scenarioColors';
 import { DEFAULT_PERIOD, PERIODS } from './useCountyView';
 
 export const DEFAULT_SCENARIO = 'rcp85';
@@ -33,15 +33,10 @@ export function periodToYear(period) {
   return period.slice(-4);
 }
 
-// Plain-language names for the scenarios, with the RCP name for people who know it
-const PLAIN_NAMES = {
-  rcp26: 'If the world cuts emissions',
-  rcp45: 'Middle path',
-  rcp85: 'If nothing is done',
-};
+// Plain-language names for the scenarios (from scenarioColors.js), with the RCP name for people who know it
 export const MAP_SCENARIOS = ALL_SCENARIOS.map((value) => ({
   value,
-  plain: PLAIN_NAMES[value],
+  plain: SCENARIO_PLAIN_NAMES[value],
   rcp: SCENARIO_LABELS[value],
 }));
 
