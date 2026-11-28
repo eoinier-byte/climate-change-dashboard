@@ -61,7 +61,7 @@ describe('ScenarioFilter', () => {
   it('describes each scenario in its label', () => {
     render(<ScenarioFilter selected={['rcp26', 'rcp45', 'rcp85']} onChange={() => {}} />);
 
-    expect(screen.getByRole('checkbox', { name: 'RCP2.6 (strong climate action)' })).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'RCP8.5 (high emissions)' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'RCP2.6 (If the world cuts emissions)' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'RCP8.5 (If nothing is done)' })).toBeTruthy();
   });
 });

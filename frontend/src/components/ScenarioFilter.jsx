@@ -4,14 +4,7 @@
 //   "onChange" - called with the new list when a box is ticked or unticked
 // At least one scenario always stays ticked, so the charts are never empty.
 // ALL_SCENARIOS lives in scenarioColors.js: a component file may only export components
-import { ALL_SCENARIOS, SCENARIO_COLORS, SCENARIO_LABELS } from '../styles/scenarioColors';
-
-// A short description of each scenario, so people know what they are choosing
-const DESCRIPTIONS = {
-  rcp26: 'strong climate action',
-  rcp45: 'some climate action',
-  rcp85: 'high emissions',
-};
+import { ALL_SCENARIOS, SCENARIO_COLORS, SCENARIO_LABELS, SCENARIO_PLAIN_NAMES } from '../styles/scenarioColors';
 
 // id of the hint text, so the disabled tick box can point to it (aria-describedby)
 const HINT_ID = 'scenario-filter-hint';
@@ -55,7 +48,8 @@ export default function ScenarioFilter({ selected, onChange }) {
               style={{ backgroundColor: SCENARIO_COLORS[scenario] }}
               aria-hidden="true"
             />
-            {SCENARIO_LABELS[scenario]} ({DESCRIPTIONS[scenario]})
+            {/* The RCP code plus its plain name, the same words as the map and Compare (CCD-426) */}
+            {SCENARIO_LABELS[scenario]} ({SCENARIO_PLAIN_NAMES[scenario]})
           </label>
         );
       })}

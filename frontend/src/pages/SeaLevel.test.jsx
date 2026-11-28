@@ -90,7 +90,7 @@ describe('SeaLevel page', () => {
     const card2050 = await screen.findByRole('article', { name: 'Cork, by 2050' });
     expect(within(card2050).getByText('+24.4 cm')).toBeTruthy(); // RCP4.5 in 2050
 
-    // The tick box's name starts with the scenario's label, e.g. "RCP4.5 (some climate action)"
+    // The tick box's name starts with the scenario's label, e.g. "RCP4.5 (Middle path)"
     await user.click(screen.getByRole('checkbox', { name: new RegExp(SCENARIO_LABELS.rcp45.replace('.', '\\.')) }));
 
     expect(within(screen.getByRole('article', { name: 'Cork, by 2050' })).queryByText('+24.4 cm')).toBeNull();

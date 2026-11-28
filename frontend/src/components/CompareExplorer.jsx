@@ -10,7 +10,7 @@ import { useId, useState } from 'react';
 import { COUNTIES } from '../data/counties';
 import { useProjectionRows } from '../hooks/useCompareData';
 import useExplorerView, { COUNTY_PERIODS, MODES } from '../hooks/useExplorerView';
-import { ALL_SCENARIOS, SCENARIO_COLORS, SCENARIO_LABELS } from '../styles/scenarioColors';
+import { ALL_SCENARIOS, SCENARIO_COLORS, SCENARIO_LABELS, SCENARIO_PLAIN_NAMES } from '../styles/scenarioColors';
 import ErrorMessage from './ErrorMessage';
 import Loading from './Loading';
 import {
@@ -33,8 +33,6 @@ const MODE_NAMES = {
   scenarios: 'One county, several scenarios',
   counties: 'Two counties, one scenario',
 };
-
-const SCENARIO_PLAIN = { rcp26: 'If the world cuts emissions', rcp45: 'Middle path', rcp85: 'If nothing is done' };
 
 const nameOf = (slug) => COUNTIES.find((county) => county.slug === slug)?.name ?? slug.charAt(0).toUpperCase() + slug.slice(1);
 
@@ -339,7 +337,7 @@ export default function CompareExplorer({ prefix = '' }) {
                     onChange={() => view.setScenario(scenario)}
                   />
                   <span className="explorer__swatch" style={{ backgroundColor: SCENARIO_COLORS[scenario] }} aria-hidden="true" />
-                  {SCENARIO_LABELS[scenario]}: {SCENARIO_PLAIN[scenario]}
+                  {SCENARIO_LABELS[scenario]}: {SCENARIO_PLAIN_NAMES[scenario]}
                 </label>
               ))}
             </fieldset>
