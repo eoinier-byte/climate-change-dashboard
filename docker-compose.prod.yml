@@ -1,107 +1,106 @@
+# Production setup for the live site (CCD-246 Deploy Application, CCD-248 to CCD-252).
+# Used on the server only:  docker compose -f docker-compose.prod.yml up -d --build
+# Local development still uses docker-compose.yml.
+#
+# What runs:
+#   web     Caddy: HTTPS for the domain, serves the React site, passes /api, /admin and /static to Django
+#   backend Django + gunicorn (the API)
+#   worker  Celery: sends account emails in the background (CCD-437)
+#   db      PostgreSQL
+#   redis   Redis: cache and the Celery queue
+#
+# Security (docs/security.md, rows 8-11, CCD-311):
+#   - Only "web" has open ports (80 and 443). db and redis have NO ports, so only the
+#     containers on this private network can reach them, not the internet.
+#   - Django connects as a limited database user (APP_DB_USER) that can only read and write
+#     rows. The owner (DB_OWNER) is only used for migrations.
+
 services:
-  # Production setup for the live site (CCD-246 Deploy Application, CCD-248 to CCD-252).
-  # Used on the server only:  docker compose -f docker-compose.prod.yml up -d --build
-  # Local development still uses docker-compose.yml.
-  #
-  # What runs:
-  #   web     Caddy: HTTPS for the domain, serves the React site, passes /api, /admin and /static to Django
-  #   backend Django + gunicorn (the API)
-  #   worker  Celery: sends account emails in the background (CCD-437)
-  #   db      PostgreSQL
-  #   redis   Redis: cache and the Celery queue
-  #
-  # Security (docs/security.md, rows 8-11, CCD-311):
-  #   - Only "web" has open ports (80 and 443). db and redis have NO ports, so only the
-  #     containers on this private network can reach them, not the internet.
-  #   - Django connects as a limited database user (APP_DB_USER) that can only read and write
-  #     rows. The owner (DB_OWNER) is only used for migrations.
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_OWNER}            # owns the tables; used only for migrations
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER}           # read by the init script below
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, the first time the database is created: makes the limited app user
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_OWNER} -d ${DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
-  services:
-    db:
-      image: postgres:16
-      environment:
-        POSTGRES_DB: ${DB_NAME}
-        POSTGRES_USER: ${DB_OWNER}            # owns the tables; used only for migrations
-        POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD}
-        APP_DB_USER: ${APP_DB_USER}           # read by the init script below
-        APP_DB_PASSWORD: ${APP_DB_PASSWORD}
-      volumes:
-        - pgdata:/var/lib/postgresql/data
-        # Runs once, the first time the database is created: makes the limited app user
-        - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
-      healthcheck:
-        test: [ "CMD-SHELL", "pg_isready -U ${DB_OWNER} -d ${DB_NAME}" ]
-        interval: 5s
-        timeout: 5s
-        retries: 10
-      restart: unless-stopped
+  redis:
+    image: redis:8.6.3
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
 
-    redis:
-      image: redis:8.6.3
-      volumes:
-        - redis-data:/data
-      restart: unless-stopped
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${APP_DB_USER}               # Django uses the limited user, never the owner
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - media:/app/media                    # uploaded profile photos survive restarts and deploys
+      - ./pipeline/data:/pipeline/data:ro   # the processed CSVs for load_data (read only)
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
-    backend:
-      build: ./backend
-      env_file: .env
-      environment:
-        DB_HOST: db
-        DB_PORT: 5432
-        DB_USER: ${APP_DB_USER}               # Django uses the limited user, never the owner
-        DB_PASSWORD: ${APP_DB_PASSWORD}
-        REDIS_HOST: redis
-        REDIS_PORT: 6379
-      volumes:
-        - media:/app/media                    # uploaded profile photos survive restarts and deploys
-        - ./pipeline/data:/pipeline/data:ro   # the processed CSVs for load_data (read only)
-      depends_on:
-        db:
-          condition: service_healthy
-        redis:
-          condition: service_started
-      restart: unless-stopped
+  worker:
+    build: ./backend
+    command: celery -A config worker --loglevel=info
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${APP_DB_USER}
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
-    worker:
-      build: ./backend
-      command: celery -A config worker --loglevel=info
-      env_file: .env
-      environment:
-        DB_HOST: db
-        DB_PORT: 5432
-        DB_USER: ${APP_DB_USER}
-        DB_PASSWORD: ${APP_DB_PASSWORD}
-        REDIS_HOST: redis
-        REDIS_PORT: 6379
-      volumes:
-        - media:/app/media
-      depends_on:
-        db:
-          condition: service_healthy
-        redis:
-          condition: service_started
-      restart: unless-stopped
+  web:
+    build: ./frontend                       # builds the React site inside Docker (frontend/Dockerfile)
+    environment:
+      DOMAIN: ${DOMAIN}                     # e.g. climatefutures.me; Caddy gets its HTTPS certificate
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - media:/srv/media:ro                 # serves the profile photos
+      - caddy-data:/data                    # keeps the HTTPS certificates
+      - caddy-config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
 
-    web:
-      build: ./frontend                       # builds the React site inside Docker (frontend/Dockerfile)
-      environment:
-        DOMAIN: ${DOMAIN}                     # e.g. climatefutures.me; Caddy gets its HTTPS certificate
-      ports:
-        - "80:80"
-        - "443:443"
-        - "443:443/udp"
-      volumes:
-        - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-        - media:/srv/media:ro                 # serves the profile photos
-        - caddy-data:/data                    # keeps the HTTPS certificates
-        - caddy-config:/config
-      depends_on:
-        - backend
-      restart: unless-stopped
-
-  volumes:
-    pgdata:
-    redis-data:
-    media:
-    caddy-data:
-    caddy-config:
+volumes:
+  pgdata:
+  redis-data:
+  media:
+  caddy-data:
+  caddy-config:
