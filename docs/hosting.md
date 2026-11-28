@@ -1,6 +1,6 @@
 # Hosting choice (CCD-247)
 
-Status: **Proposed, waiting for team agreement** (9 Nov 2026)
+Status: **Decided: Google Cloud VM + DuckDNS** (27 Nov 2026). Live at https://ccd-ireland.duckdns.org. The options below are the original comparison from 9 Nov.
 
 ## What we need
 
@@ -42,20 +42,40 @@ Notes:
 
 Namecheap in the GitHub Student Pack gives a free `.me` domain for one year, plus an SSL certificate. Render, Heroku, Azure and Oracle can all use a custom domain, so this works with whichever host we pick. One year covers the 6 Dec 2026 submission. After that it would need renewing (paid), or we go back to the host's free URL.
 
-## Proposed decision
+## Decision (27 Nov 2026)
 
-**Option A: Render (frontend + backend) and Neon (database).**
+**One Google Cloud virtual machine running everything with Docker Compose, with a free DuckDNS domain.** Live at **https://ccd-ireland.duckdns.org**. How it is set up and deployed: [deployment.md](deployment.md).
 
-Reasons:
-1. It is the only option that costs €0 **and** needs no card, so nobody can be charged by mistake.
-2. Everything still runs on 6 Dec 2026 (Neon free does not expire).
-3. Low setup effort, which matters with one week left in Sprint 2.
+| | |
+|---|---|
+| Server | Google Cloud Compute Engine, e2-medium (2 vCPU, 4 GB), europe-west2 (London), Ubuntu 24.04 |
+| Runs | Caddy (HTTPS + React site), Django + gunicorn, Celery worker, PostgreSQL, Redis, all in `docker-compose.prod.yml` |
+| Domain | `ccd-ireland.duckdns.org` (DuckDNS, free). HTTPS certificate from Let's Encrypt, renewed by Caddy |
+| Cost | €0: covered by the Google Cloud free trial ($300 credit, about $35 a month for this VM). The trial ends about 25 Feb 2027 |
+| Deploys | Automatic after CI passes on `main` (CCD-278 Add auto-deploy on merge to main, `.github/workflows/deploy.yml`) |
 
-Trade-off we accept: the backend sleeps after 15 minutes idle, so the first request takes about a minute. Before a demo or marking, open the site a few minutes early.
+### Why the first proposal (Render + Neon) changed
 
-**Still open: user avatars (CCD-428).** Avatars are saved to `backend/media/` on the server's disk. Render's free web service wipes its disk on every deploy and restart, so uploaded avatars would disappear. Before going live, either store them in an object store (e.g. Cloudinary or S3 with `django-storages`) or accept that avatars reset after a deploy. The account emails also need a Celery worker and Redis in production (CCD-437): with `DJANGO_DEBUG=False` the emails are only queued, and without a worker they are never sent.
+1. **No background worker on Render's free plan.** Account emails need a Celery worker and Redis (CCD-437). Render's free plan has no worker service and no reliable free Redis.
+2. **Avatars would be lost.** Render's free disk is wiped on every deploy (CCD-428). On our own server the avatars are kept in a Docker volume.
+3. **Sleeping backend.** Render's free backend sleeps after 15 minutes, which is bad for a demo.
 
-Accounts are created by Eoin (deployment owner) using his GitHub login. Secrets (database URL, Django secret key, API keys) are stored on Render and in GitHub Secrets, never in the repo.
+### Why Google Cloud and not the other options
+
+| Option | What happened |
+|---|---|
+| D: Oracle Always Free | Chosen first, but the account sign-up had not been approved by 27 Nov. It also has the idle-server reclaim risk |
+| C: Azure for Students | Signed up with the MTU account, but MTU's sign-in rules block the Azure portal for student logins |
+| Google Cloud free trial | Instant sign-up and a normal Ubuntu server, so the same Docker Compose files work. Needs a card for a check, but the trial never charges unless it is upgraded by hand |
+
+Trade-offs we accept:
+- One server owned by one person (Eoin). If he is unavailable, nobody else can fix the server. Teammates can be given SSH access (deployment.md §8).
+- The trial credit ends about 25 Feb 2027. That is after the 6 Dec 2026 submission; before then we either upgrade, move to Oracle, or shut it down.
+- We look after the server ourselves (security updates, backups). Backups use the `db/` scripts (deployment.md §7).
+
+### Domain
+
+The Namecheap `.me` domain needs the GitHub Student Pack, which was still being approved. DuckDNS is free and works now. A `.me` domain can replace it later by changing `DOMAIN` in the server `.env` and the DNS record.
 
 ## Agreed by
 
@@ -69,6 +89,7 @@ Accounts are created by Eoin (deployment owner) using his GitHub login. Secrets 
 - [GitHub Student Developer Pack](https://education.github.com/pack)
 - [Oracle Cloud Free Tier docs](https://docs.oracle.com/iaas/Content/FreeTier/freetier.htm)
 - [Oracle Always Free resources (idle reclamation)](https://docs.oracle.com/iaas/Content/FreeTier/resourceref.htm)
+- [Google Cloud free trial](https://docs.cloud.google.com/free)
 - [Render pricing explained (livemy.app, Aug 2026)](https://livemy.app/blog/render-pricing)
 - [Neon pricing](https://neon.com/pricing)
 - [Neon Free plan limits](https://neon.com/faqs/free-plan-limits-and-quotas)

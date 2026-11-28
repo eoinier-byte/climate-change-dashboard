@@ -6,6 +6,8 @@ MTU group project 2026. A web app where a user picks an Irish county and sees ho
 
 > Academic prototype. We visualise published climate **projections**; we do not produce forecasts. Data from EPA Climate Ireland / Met Éireann TRANSLATE, Met Office UKCP18 and Tailte Éireann, used with attribution.
 
+**Live site:** https://ccd-ireland.duckdns.org (deployed automatically from `main`, see [docs/deployment.md](docs/deployment.md)).
+
 **Data sources:** see [DATA_SOURCES.md](DATA_SOURCES.md) for every dataset used, its licence and required attribution.
 
 **Documentation:** start at [docs/README.md](docs/README.md), the index of every document in `docs/`.

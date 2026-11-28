@@ -1,10 +1,10 @@
 # CI/CD pipeline (CCD-273)
 
-Owner: Eoin Ryan · Workflow file: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) · Last updated: 13 November 2026
+Owner: Eoin Ryan · Workflow files: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) · Last updated: 27 November 2026
 
 Every pull request, and every push to `main`, runs the **CI** workflow on GitHub Actions. It checks the Python, Django, React and C++ code, and posts to the team's Discord channel if anything fails. A pull request can't be merged into `main` until every check is green and a teammate has approved it.
 
-Deployment (the "CD" part, CCD-278 Add auto-deploy on merge to main) is not set up yet. It waits on the hosting decision (CCD-246 Deploy Application, [docs/hosting.md](hosting.md)).
+When CI passes on `main`, the **Deploy** workflow puts the new version on the live site, https://ccd-ireland.duckdns.org (the "CD" part, CCD-278 Add auto-deploy on merge to main). See [section 7](#7-deploy-cd).
 
 ---
 
@@ -88,3 +88,17 @@ Run these before you push, so CI doesn't catch you out:
 - Edit `.github/workflows/ci.yml` on a branch and open a PR like any other change. The PR runs the new version of the workflow, so you can see it work before merging.
 - If you add a **new job** that must pass, also add its name under **Require status checks to pass** in the branch protection settings, otherwise a failure in it won't block merging.
 - Keep a comment above each step saying what it does, with the Jira key.
+
+## 7. Deploy (CD)
+
+Workflow file: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml). Server setup and manual steps: [deployment.md](deployment.md).
+
+| | |
+|---|---|
+| When it runs | After the **CI** workflow finishes on `main` (`workflow_run`). It only deploys if CI **succeeded**. Pull requests never deploy |
+| By hand | GitHub → **Actions** → **Deploy** → **Run workflow** |
+| What it does | Connects to the server over SSH (`appleboy/ssh-action`), then: `git pull origin main` → `docker compose -f docker-compose.prod.yml up -d --build` → `migrate --noinput` as the database owner → `docker image prune -f` |
+| Secrets | `SERVER_HOST` (server IP), `SERVER_USER` (Linux user), `SERVER_SSH_KEY` (a deploy key made only for GitHub, not a person's own key) |
+| If it fails | The live site keeps running the containers it already had. Open the Deploy run, read the failed step's log (same as section 4), fix and merge again, or re-run the job |
+
+So a change reaches the live site like this: **branch → pull request (CI + review) → merge to `main` → CI on `main` → Deploy → live site**.

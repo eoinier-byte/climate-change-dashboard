@@ -14,6 +14,7 @@
 | `variables.md` | Column specification for `climate_data.csv` (CCD-20) |
 | `ai-assistant-spike.md` | AI assistant spike: cost, response time, model choice and Sprint 3 tools (CCD-343, CCD-346) |
 | `hosting.md` | Hosting options compared and the chosen platform (CCD-247) |
+| `deployment.md` | What gets deployed, environment variable names, first deploy, redeploy, post-deploy checks, backup and restore (CCD-257) |
 | `setup.md` | Local PostgreSQL setup, environment variables, backups and restore (CCD-33, CCD-272) |
 | `pipeline.md` | Data pipeline: every step, cleaning, validation checks, the one-command rebuild and how long it takes (CCD-258) |
 | `cleaning-rules.md` | Which values the pipeline removes and why (CCD-275) |
