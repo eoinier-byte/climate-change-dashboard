@@ -9,6 +9,7 @@
 //
 // Page layout, top to bottom (CCD-180). Blocks still to be built have a reserved CountySlot,
 // so they can be added without moving anything else:
+//   0. AI summary        - short AI-written summary that follows the scenario (CCD-285)
 //   1. Headline numbers  - county name, today's climate
 //   2. Charts            - scenario/period controls, temperature, rainfall, sea level
 //   3. "What this means for you" - everyday impacts (CCD-375), see components/ImpactsBlock.jsx
@@ -23,6 +24,7 @@ import CountySelect from '../components/CountySelect';
 import CountySlot from '../components/CountySlot';
 import DownloadReport from '../components/DownloadReport';
 import FavouriteButton from '../components/FavouriteButton';
+import AiCommentary from '../components/AiCommentary';
 import ClimateAnalogue from '../components/ClimateAnalogue';
 import ImpactsBlock from '../components/ImpactsBlock';
 import Loading from '../components/Loading';
@@ -148,6 +150,10 @@ export default function CountyDashboard() {
         with the {summary.period} average.
       </p>
       <FavouriteButton slug={slug} />
+
+      {/* AI-generated summary (CCD-285). It loads its own text and follows the ticked scenarios; it hides itself
+          when no summary is available. */}
+      <AiCommentary slug={slug} selected={selectedScenarios} />
 
       {/* 1. Headline numbers: today's climate, the baseline (1976-2005) annual values */}
       <section aria-labelledby="today-heading">

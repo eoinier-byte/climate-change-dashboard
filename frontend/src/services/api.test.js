@@ -16,6 +16,7 @@ import {
   deleteAccount,
   deleteAvatar,
   getCounties,
+  getCommentary,
   getCounty,
   getCsrfToken,
   getFavourites,
@@ -49,6 +50,7 @@ const endpoints = [
     `${BASE}/projections/?county=cork&variable=temperature`,
   ],
   ['getSeaLevel', () => getSeaLevel('cork'), `${BASE}/sea-level/cork/`],
+  ['getCommentary', () => getCommentary('cork', 'rcp45'), `${BASE}/agent/commentary/cork/rcp45/`],
   [
     'getMap',
     () => getMap(MAP_CHOICES),

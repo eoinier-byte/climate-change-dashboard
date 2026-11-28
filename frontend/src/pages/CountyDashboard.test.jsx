@@ -1,10 +1,10 @@
 // Tests for the county dashboard page (CCD-149, CCD-142, CCD-143, CCD-407, CCD-406, CCD-375, CCD-391).
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CountyDashboard from './CountyDashboard';
-import { getAnalogues, getCounties, getCounty, getImpacts, getProjections, getSeaLevel } from '../services/api';
+import { getAnalogues, getCommentary, getCounties, getCounty, getImpacts, getProjections, getSeaLevel } from '../services/api';
 import { analogueRows } from '../test/analogueRows';
 import { mockImpactsCork } from '../mocks/impacts';
 import { mockCork, mockCorkRows } from '../mocks/countyRows';
@@ -19,6 +19,7 @@ vi.mock('../services/api', () => ({
   getSeaLevel: vi.fn(),
   getImpacts: vi.fn(),
   getAnalogues: vi.fn(),
+  getCommentary: vi.fn(),
 }));
 
 // The test browser (jsdom) cannot draw on a <canvas>, so swap the real charts
@@ -76,6 +77,7 @@ describe('CountyDashboard', () => {
     getSeaLevel.mockResolvedValue(mockSeaLevelCork);
     getImpacts.mockResolvedValue(mockImpactsCork);
     getAnalogues.mockResolvedValue(analogueRows);
+    getCommentary.mockResolvedValue({ commentary: { summary: 'Cork is projected to get warmer.', sea_level: null } });
   });
 
 
@@ -84,6 +86,20 @@ describe('CountyDashboard', () => {
     expect(await screen.findByText(/most like/, {}, { timeout: 5000 })).toBeTruthy();
     // Every scenario is ticked by default, so it asks for the highest one, and the default period
     expect(getAnalogues).toHaveBeenCalledWith('cork', { scenario: 'rcp85', period: '2071-2100' }, expect.anything());
+  });
+
+  it('shows the AI-generated summary and asks for the highest ticked scenario (CCD-285)', async () => {
+    renderCounty('cork', '?rcp=26,45');
+    expect(await screen.findByText('Cork is projected to get warmer.', {}, { timeout: 5000 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /AI-generated summary/ })).toBeTruthy();
+    expect(getCommentary).toHaveBeenCalledWith('cork', 'rcp45', expect.anything());
+  });
+
+  it('still shows the charts when there is no AI summary (CCD-285)', async () => {
+    getCommentary.mockRejectedValue(new Error('API error 503 for /agent/commentary/cork/rcp85/'));
+    renderCounty('cork');
+    expect(await screen.findByRole('heading', { name: 'Temperature' })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /AI-generated summary/ })).toBeNull());
   });
 
   it('shows the "What this means for you" impacts block for the county (CCD-375)', async () => {
@@ -237,6 +253,7 @@ describe('CountyDashboard', () => {
 
     const sections = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
     expect(sections).toEqual([
+      'AI-generated summary',
       "Today's climate (1976-2005 average)",
       'Temperature',
       'Rainfall',

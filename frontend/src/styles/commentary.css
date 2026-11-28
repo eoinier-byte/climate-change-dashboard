@@ -1,0 +1,23 @@
+/* AI-generated summary block at the top of the county page (CCD-285). Uses the theme variables from theme.css only. */
+
+.commentary {
+  max-width: 48rem;
+}
+
+.commentary__note {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.commentary__summary {
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+
+.commentary__list {
+  padding-left: var(--space-6);
+}
+
+.commentary__list li + li {
+  margin-top: var(--space-2);
+}

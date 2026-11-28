@@ -241,6 +241,32 @@ function analogues(county, params) {
   return { status: 200, body: rows };
 }
 
+// GET /agent/commentary/{slug}/{scenario}/ (CCD-197, Taras): the AI-written summary of a county for one scenario.
+// Cork's wording and figures with the county's own name; the sea-level line is null for an inland county.
+// Like the real endpoint, baseline or an unknown scenario is a 400 and an unknown county a 404. The text is an
+// example, not written by an AI.
+const COMMENTARY_SCENARIOS = ['rcp26', 'rcp45', 'rcp85'];
+const COMMENTARY_FUTURES = { rcp26: 'low', rcp45: 'medium', rcp85: 'high' };
+
+function commentary(county, scenario) {
+  if (!COMMENTARY_SCENARIOS.includes(scenario)) {
+    return { status: 400, body: { detail: `Invalid scenario: ${scenario}. Valid scenarios are: ${COMMENTARY_SCENARIOS.join(', ')}` } };
+  }
+  return {
+    status: 200,
+    body: {
+      commentary: {
+        summary: `Under the ${COMMENTARY_FUTURES[scenario]} emissions future, ${county.name} is projected to get warmer and wetter by the end of the century. This is example text for mock mode.`,
+        temperature: 'By the end of the century the annual temperature is projected to rise by 1.5 °C, with summer warming the most.',
+        precipitation: 'By the end of the century annual rainfall is projected to rise by 4.0%, with the biggest change in winter.',
+        scenarios: 'The annual temperature rise is projected to be higher than under the low future (0.7 °C) and lower than under the high future (2.7 °C).',
+        analogue: "By the end of the century, the county's projected climate is closest to Brest in France.",
+        sea_level: county.has_coastline ? 'Sea level is projected to rise by 59 cm by the end of the century.' : null,
+      },
+    },
+  };
+}
+
 // POST /reports/ (CCD-307, Taras): not routed below, because services/api.js has no POST function yet.
 // These are the request and the 202 answer, for when it has.
 export const mockReportRequest = { county: 'cork', scenarios: ['rcp45', 'rcp85'], period: '2071-2100' };
@@ -278,6 +304,12 @@ export function mockGet(path) {
   if (analoguesMatch) {
     const county = bySlug(analoguesMatch[1]);
     return county ? analogues(county, params) : notFound();
+  }
+
+  const commentaryMatch = url.pathname.match(/^\/agent\/commentary\/([^/]+)\/([^/]+)\/$/);
+  if (commentaryMatch) {
+    const county = bySlug(commentaryMatch[1]);
+    return county ? commentary(county, commentaryMatch[2]) : notFound();
   }
 
   const sea = url.pathname.match(/^\/sea-level\/([^/]+)\/$/);

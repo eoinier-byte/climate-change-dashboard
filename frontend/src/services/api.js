@@ -181,6 +181,13 @@ export const getImpacts = (slug, opts) => apiGet(`/counties/${slug}/impacts/`, o
 export const getAnalogues = (slug, { scenario, period }, opts) =>
   apiGet(`/counties/${slug}/analogues/?${new URLSearchParams({ scenario, period })}`, opts);
 
+// The AI-written summary of a county (CCD-197, CCD-285): GET /agent/commentary/{slug}/{scenario}/, where scenario is
+// rcp26, rcp45 or rcp85. Public, so no cookie is sent. The answer is { commentary: { summary, temperature,
+// precipitation, scenarios, analogue, sea_level } } with sea_level null for an inland county. The first request for a
+// county and scenario can take a few seconds while the text is written; after that it is cached. A 503 means no
+// summary is available right now (the page hides the block).
+export const getCommentary = (slug, scenario, opts) => apiGet(`/agent/commentary/${slug}/${scenario}/`, opts);
+
 // The PDF report of a county (CCD-295, CCD-408): GET /report/{slug}/?scenario=rcp45. Signed-in users only
 // (403 otherwise); scenario is rcp26, rcp45 or rcp85. The answer is a file, not JSON, so this returns
 // { blob, filename } for the page to save. The filename is the one the server suggests in Content-Disposition
