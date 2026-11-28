@@ -93,6 +93,6 @@ None of these are applied by this document. Each is a change to a file its owner
 | 10 | Postgres and Redis on every interface (local) | Publish as `"127.0.0.1:${DB_PORT:-5432}:5432"` and `"127.0.0.1:${REDIS_PORT:-6379}:6379"` | `docker-compose.yml` | Eoin |
 | 11 | ~~Production database reachable only by the backend~~ **Done** (#101, Eoin) | `db` and `redis` publish no ports and sit on the private Docker network with the backend. `sslmode=require` is not needed: the database is on the same server, so traffic never leaves it | `docker-compose.prod.yml` | Eoin |
 
-Rows 9 and 11 are based on the committed production files and the outside port check on 28 Nov. On that date `docker compose -f docker-compose.prod.yml config` rejected the committed file (a second `services:` key nested inside the first), so the server was running from a local copy. Until the committed file is fixed, an auto-deploy cannot apply it.
+Rows 9 and 11 are based on the committed production files and the outside port check on 28 Nov. The server runs the committed `docker-compose.prod.yml`: a nested `services:` key that broke validation was fixed in #105, and the Deploy workflow has passed since.
 
 Rows 8 and 10 are still open because #101 changed only the production compose file, not the local `docker-compose.yml`. When #1, #2, #4 and #5 are merged, run `check --deploy` again with the same variables. The expected result is `System check identified no issues`.
