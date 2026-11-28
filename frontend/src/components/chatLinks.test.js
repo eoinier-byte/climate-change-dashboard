@@ -33,16 +33,18 @@ describe('answerLabel', () => {
 });
 
 describe('chatLinks', () => {
-  it("links to the county's page at the right section, and to the Ireland map", () => {
+  it("links a rainfall answer to the county's Rainfall section, but not to the Ireland map", () => {
+    // The Ireland map only shows temperature, so a rainfall answer does not link to it
     expect(chatLinks({ mapAction: RAIN_45_MID, pageCounty: 'cork' })).toEqual([
       { label: "See it on Cork's page", to: '/county/cork?rcp=45&period=2021-2050#rainfall-heading' },
-      { label: 'Show RCP4.5, 2050 on the Ireland map', to: '/?rcp=45&year=2050' },
     ]);
   });
 
-  it('goes to the Temperature section for a temperature answer', () => {
-    const [countyLink] = chatLinks({ mapAction: TEMP_85_END, pageCounty: 'kerry' });
-    expect(countyLink.to).toBe('/county/kerry?rcp=85&period=2071-2100#temperature-heading');
+  it("links a temperature answer to the county's Temperature section and to the Ireland map", () => {
+    expect(chatLinks({ mapAction: TEMP_85_END, pageCounty: 'kerry' })).toEqual([
+      { label: "See it on Kerry's page", to: '/county/kerry?rcp=85&period=2071-2100#temperature-heading' },
+      { label: 'Show RCP8.5, 2100 on the Ireland map', to: '/?rcp=85&year=2100' },
+    ]);
   });
 
   it('only links to the Ireland map when the answer is not about one county', () => {
@@ -63,6 +65,10 @@ describe('chatLinks', () => {
   it('gives no flood map for an inland county', () => {
     const tools = [{ name: 'get_sea_level', input: { county: 'kildare' } }];
     expect(chatLinks({ mapAction: null, tools })).toEqual([]);
+  });
+
+  it('gives no links for a rainfall answer that is not about one county', () => {
+    expect(chatLinks({ mapAction: RAIN_45_MID })).toEqual([]);
   });
 
   it('gives no links without a map view or a sea-level answer', () => {

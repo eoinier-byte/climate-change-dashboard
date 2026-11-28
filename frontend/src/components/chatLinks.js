@@ -7,7 +7,7 @@
 //
 // The links it can give:
 //   "See it on Cork's page"              /county/cork?rcp=45&period=2021-2050#rainfall-heading
-//   "Show RCP4.5, 2050 on the Ireland map" /?rcp=45&year=2050 (the home page map)
+//   "Show RCP4.5, 2050 on the Ireland map" /?rcp=45&year=2050 (the home page map, temperature answers only)
 //   "Open the flood map for Cork"         /sea-level?county=cork&rcp=45 (sea-level answers, coastal counties)
 import { isCoastal } from '../data/coastalCounties';
 import { COUNTIES } from '../data/counties';
@@ -62,9 +62,12 @@ export function chatLinks({ mapAction, tools = [], pageCounty }) {
       });
     }
 
-    // The home page map of Ireland (it shows yearly temperature, so the label names the scenario and year)
-    const query = new URLSearchParams({ rcp: rcpNumber(scenario), year: lastYear(period) });
-    links.push({ label: `Show ${SCENARIO_LABELS[scenario]}, ${lastYear(period)} on the Ireland map`, to: `/?${query}` });
+    // The home page map of Ireland. It only shows yearly temperature, so it is only offered for a
+    // temperature answer: someone who asked about rain would otherwise land on a temperature map.
+    if (variable === 'temperature') {
+      const query = new URLSearchParams({ rcp: rcpNumber(scenario), year: lastYear(period) });
+      links.push({ label: `Show ${SCENARIO_LABELS[scenario]}, ${lastYear(period)} on the Ireland map`, to: `/?${query}` });
+    }
   }
 
   // A sea-level answer about a coastal county: its flood map

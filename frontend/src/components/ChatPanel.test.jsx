@@ -16,6 +16,7 @@ vi.mock('../services/api', async (importOriginal) => {
 });
 
 const RAIN_45_MID = { variable: 'precipitation', season: 'annual', scenario: 'rcp45', period: '2021-2050' };
+const TEMP_45_MID = { variable: 'temperature', season: 'annual', scenario: 'rcp45', period: '2021-2050' };
 
 // A fake sendChat that "streams" the given events, then finishes
 function answerWith(events) {
@@ -121,7 +122,7 @@ describe('ChatPanel', () => {
     expect(screen.queryByText(/\*\*/)).toBeNull(); // no raw ** left on screen
   });
 
-  it('shows what the answer is about, and links to the county page and the Ireland map', async () => {
+  it('shows what a rainfall answer is about, and links to the county page but not the Ireland map', async () => {
     answerWith([
       { type: 'tool', name: 'get_projections', input: { county: 'cork' } },
       { type: 'text', text: 'Cork gets a little wetter.' },
@@ -134,6 +135,23 @@ describe('ChatPanel', () => {
     expect(links.getByRole('link', { name: "See it on Cork's page" }).getAttribute('href')).toBe(
       '/county/cork?rcp=45&period=2021-2050#rainfall-heading',
     );
+    // The Ireland map only shows temperature
+    expect(links.queryByRole('link', { name: /Ireland map/ })).toBeNull();
+  });
+
+  it('links a temperature answer to the county page and the Ireland map', async () => {
+    answerWith([
+      { type: 'tool', name: 'get_projections', input: { county: 'cork' } },
+      { type: 'text', text: 'Cork gets warmer.' },
+      { type: 'done', sources: [], map_action: TEMP_45_MID },
+    ]);
+    await openAndAsk('Will Cork get warmer?');
+
+    expect(await screen.findByText('Temperature · RCP4.5 · 2021–2050')).toBeTruthy();
+    const links = within(screen.getByRole('list', { name: 'See it on the site' }));
+    expect(links.getByRole('link', { name: "See it on Cork's page" }).getAttribute('href')).toBe(
+      '/county/cork?rcp=45&period=2021-2050#temperature-heading',
+    );
     expect(links.getByRole('link', { name: 'Show RCP4.5, 2050 on the Ireland map' }).getAttribute('href')).toBe(
       '/?rcp=45&year=2050',
     );
@@ -142,7 +160,7 @@ describe('ChatPanel', () => {
   it('opens the page when a link is clicked', async () => {
     answerWith([
       { type: 'text', text: 'Here is the map.' },
-      { type: 'done', sources: [], map_action: RAIN_45_MID },
+      { type: 'done', sources: [], map_action: TEMP_45_MID },
     ]);
     const user = await openAndAsk('Show me the map', '/about');
 
@@ -213,6 +231,25 @@ describe('ChatPanel', () => {
 
     const internal = screen.getByRole('link', { name: 'About this data' });
     expect(internal.getAttribute('target')).toBeNull();
+  });
+
+  it('opens our own pages without reloading, so the chat history stays', async () => {
+    answerWith([
+      { type: 'text', text: 'See [how the data was made](/about).' },
+      { type: 'done', sources: [{ name: 'About this data', url: '/about' }] },
+    ]);
+    const user = await openAndAsk('Where is this from?');
+
+    // A link inside the answer goes to the page through the router (a plain <a> would reload the page)
+    await user.click(await screen.findByRole('link', { name: 'how the data was made' }));
+    expect(currentLocation()).toBe('/about');
+    // The conversation is still there
+    expect(screen.getByText('Where is this from?')).toBeTruthy();
+
+    // The same for a source
+    await user.click(screen.getByRole('link', { name: 'About this data' }));
+    expect(currentLocation()).toBe('/about');
+    expect(screen.getByText('Where is this from?')).toBeTruthy();
   });
 
   it('cannot send an empty question', async () => {
