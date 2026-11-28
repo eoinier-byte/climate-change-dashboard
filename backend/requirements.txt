@@ -40,7 +40,7 @@ kombu==5.7.0
 nodeenv==1.11.0
 opentelemetry-api==1.45.2
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 pillow-heif==1.8.1
 platformdirs==4.12.4
 pre_commit==4.6.2
@@ -54,6 +54,7 @@ python-discovery==1.6.1
 PyYAML==6.0.3
 redis==8.1.0
 referencing==0.37.0
+reportlab==5.1.2
 requests==2.34.2
 rpds-py==2026.9.1
 ruff==0.16.10

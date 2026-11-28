@@ -21,7 +21,7 @@ The response shapes, change-from-baseline rules and frontend usage are in **[dat
 | GET | `/flood/` | Coastal counties that have a flood map, sorted by name (same shape as `/counties/`) | 405 for POST | CCD-360, CCD-362 | 3 |
 | GET | `/flood/{slug}/` | Flood map of one county: bounds and one PNG layer per sea level, 0–2 m; see [Flood maps](#flood-maps-ccd-360) | 404 no flood map for this county | CCD-360, CCD-362 | 3 |
 | GET, POST | `/auth/...` | Accounts, profile, email links: see [Accounts](#accounts-ccd-294-ccd-427-ccd-441) below | 400 / 403 / 404 / 409 / 410 | CCD-294, CCD-427, CCD-441 | 3 |
-| POST | `/reports/` | Email a county report | 400 / 403 / 429 | | 3 |
+| GET | `/report/{slug}/?scenario=` | County climate report as a PDF download, signed-in users only; see [County report](#county-report-ccd-295) | 400 unknown scenario; 403 signed out; 404 unknown county | CCD-295, CCD-369 | 3 |
 | POST | `/agent/chat/` | AI assistant (Boreas): answers a question about the data, streamed as NDJSON events; see [AI assistant](#ai-assistant-ccd-347) | 400 invalid history or context; 429 over the limit | CCD-347, CCD-349, CCD-351 | 3 |
 
 ## `/map/` (CCD-338)
@@ -84,6 +84,16 @@ The flood layers come from the C++ flood engine ([flood-engine.md](flood-engine.
 - The `0 m` layer already shows some flooded land (about 380 km² over the 15 counties), most likely low ground below 0 m in the elevation data and its error. Show the change from it, or label it, rather than presenting it as flooding today.
 - The slug is not case-sensitive. A county with no flood map (inland, or unknown) is a 404.
 - To rebuild the layers, see [flood-engine.md](flood-engine.md) §11 (`--out backend/static/flood`). On the live site the PNGs are served by WhiteNoise (see [architecture.md](architecture.md)), because Django itself does not serve static files when `DEBUG` is off.
+
+## County report (CCD-295)
+
+`GET /api/report/cork/?scenario=rcp85` returns a one-page PDF report of the county, built on request with ReportLab (`climate/report.py`); nothing is stored. The report used to be planned as an email; it is now a download (agreed with Eoin, 27 Nov 2026).
+
+- Signed-in users only (403 otherwise). A signed-in browser can link to it directly, for example a "Download PDF" button (CCD-408) as `<a href="…/api/report/cork/?scenario=rcp45">`.
+- `scenario` is optional: `rcp26`, `rcp45` (default) or `rcp85`. `baseline` or any other value is a 400.
+- The answer is `application/pdf` with `Content-Disposition: attachment; filename="cork-climate-report.pdf"`, so the browser saves it.
+- Contents: the county and the scenario, temperature and precipitation (annual) for the baseline and every future period with the change, sea-level rise for every year in the data for coastal counties, a note that these are projections, not forecasts, and the data sources with their attribution and licence.
+- The look follows the site (`frontend/src/styles/theme.css`): the green header, the scenario colours and the grey table headers.
 
 ## Accounts (CCD-294, CCD-427, CCD-441)
 
