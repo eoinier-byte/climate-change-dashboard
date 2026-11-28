@@ -138,6 +138,5 @@ Measured on 27 Nov 2026 on a laptop, with a fresh download of every raw file. Al
 
 ## 8. Known gaps
 
-- `pipeline/data/processed/worldclim_cities.csv` and `worldclim_counties.csv` are **not committed on `main`**, but `compute_analogues` reads them from there by default. On a fresh clone, run `python worldclim_baseline.py` first (it downloads WorldClim and Natural Earth), or commit the two files.
 - The "Re-running everything" section of [data-flow.md](data-flow.md) is from Sprint 1: it names `10_validate_county_averages.py` and `load_climate_data`, which were replaced by `validate_aggregation.py` and `load_data`. This page has the current commands.
 - The flood layers (`build_land_polygon.py`, `flood_precompute.py`) are not part of the rebuild above. They need the Copernicus DEM, which can't be committed. See [pipeline/README.md](../pipeline/README.md#rebuilding-the-flood-layers-ccd-400) and [flood-engine.md](flood-engine.md).

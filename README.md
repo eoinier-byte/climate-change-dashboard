@@ -46,7 +46,7 @@ Needs Python 3.12+, Node 22+, and Docker (for PostgreSQL).
 cp .env.example .env            # then fill in values; never commit .env
 docker compose up -d db
 
-# 2. Data pipeline (optional: climate, sea level and impact indicator CSVs are committed; the WorldClim CSVs are not, so run worldclim_baseline.py before compute_analogues). Downloads, full rebuild and timings: docs/pipeline.md section 7
+# 2. Data pipeline (optional: every processed CSV is committed, so the backend can load and compute_analogues can run without it). Downloads, full rebuild and timings: docs/pipeline.md section 7
 cd pipeline && pip install -r requirements.txt && python 08_sea_level_json_to_csv.py && python process_climate_data.py && python process_indicators.py && python worldclim_baseline.py
 
 # 3. Backend API
