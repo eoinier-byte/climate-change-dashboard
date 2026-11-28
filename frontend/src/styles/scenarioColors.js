@@ -16,3 +16,12 @@ export const SCENARIO_LABELS = {
   rcp45: 'RCP4.5',
   rcp85: 'RCP8.5',
 };
+
+// Plain-language names for the scenarios (CCD-426), the one list used across the site, so people who don't
+// know the RCP codes still know what they are choosing. Shown next to the RCP code, e.g. "RCP4.5: Middle path".
+// The longer explanation of each one is on the About page.
+export const SCENARIO_PLAIN_NAMES = {
+  rcp26: 'If the world cuts emissions',
+  rcp45: 'Middle path',
+  rcp85: 'If nothing is done',
+};
