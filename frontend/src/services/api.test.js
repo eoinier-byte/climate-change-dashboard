@@ -390,7 +390,8 @@ describe('getReport (CCD-408)', () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe(`${BASE}/report/cork/?scenario=rcp85`);
     expect(options.credentials).toBe('include');
-    expect(options.headers.Accept).toBe('application/pdf');
+    // Asking for application/pdf makes the server answer 406, so no Accept header is set
+    expect(options.headers?.Accept).toBeUndefined();
     expect(blob.type).toBe('application/pdf');
     expect(filename).toBe('cork-climate-report.pdf');
   });

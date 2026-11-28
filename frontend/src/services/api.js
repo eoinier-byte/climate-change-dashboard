@@ -192,7 +192,9 @@ export async function getReport(slug, scenario, opts = {}) {
     throw new ApiError('The PDF report is not available while VITE_USE_MOCKS=true.', { path });
   }
 
-  const res = await request(path, { ...opts, credentials: 'include', headers: { Accept: 'application/pdf' } });
+  // No "Accept: application/pdf" here: the server only offers JSON to the content negotiation and would answer
+  // 406 Not Acceptable. The default Accept of fetch (anything) is right; the answer is still the PDF.
+  const res = await request(path, { ...opts, credentials: 'include' });
   const blob = await res.blob();
   const named = /filename="?([^";]+)"?/.exec(res.headers?.get?.('Content-Disposition') ?? '');
   // Only the plain name: never let a header put the file into another folder
