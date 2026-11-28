@@ -2,20 +2,19 @@ import json
 import logging
 import time
 from collections import Counter
-from functools import cache
 from typing import Iterator
 
 import anthropic
 from django.conf import settings
 
 from ai_agent.tools import get_projections, get_sea_level, map_view_error, rank_counties, show_on_map
+from ai_agent.utils import get_client
 from climate.models import DataSource
 
 logger = logging.getLogger(__name__)
 
 Messages = list[dict[str, str]]
 USAGE_FIELDS = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')
-TOKENS = 4000
 ITERATIONS = 6
 TOOL_SOURCES = {
     'get_projections': 'translate',
@@ -121,12 +120,7 @@ SYSTEM = (
     '</example>\n'
     '</examples>'
 )
-FALLBACK = 'Boreas could not catch that one — the winds are unsettled. Please try again in a moment.'
-
-
-@cache
-def get_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=30.0)
+FALLBACK = 'The north wind has gone chasing Orithyia across the sky. Please ask again when he returns.'
 
 
 def chunk(kind: str, **fields) -> str:
@@ -162,7 +156,7 @@ def stream_ask(messages: Messages, context: dict | None = None) -> Iterator[str]
 
     runner = get_client().beta.messages.tool_runner(
         model=settings.ASSISTANT_MODEL,
-        max_tokens=TOKENS,
+        max_tokens=settings.ASSISTANT_TOKENS,
         system=SYSTEM,
         messages=messages,
         tools=[get_projections, get_sea_level, rank_counties, show_on_map],

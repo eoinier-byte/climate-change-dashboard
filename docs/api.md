@@ -22,6 +22,7 @@ The response shapes, change-from-baseline rules and frontend usage are in **[dat
 | GET | `/flood/{slug}/` | Flood map of one county: bounds and one PNG layer per sea level, 0–2 m; see [Flood maps](#flood-maps-ccd-360) | 404 no flood map for this county | CCD-360, CCD-362 | 3 |
 | GET, POST | `/auth/...` | Accounts, profile, email links: see [Accounts](#accounts-ccd-294-ccd-427-ccd-441) below | 400 / 403 / 404 / 409 / 410 | CCD-294, CCD-427, CCD-441 | 3 |
 | GET | `/report/{slug}/?scenario=` | County climate report as a PDF download, signed-in users only; see [County report](#county-report-ccd-295) | 400 unknown scenario; 403 signed out; 404 unknown county | CCD-295, CCD-369 | 3 |
+| GET | `/agent/commentary/{slug}/{scenario}/` | AI-generated summary of a county for one scenario, cached; see [County commentary](#county-commentary-ccd-197) | 400 unknown scenario or baseline; 404 unknown county; 429 over the limit; 503 could not be written | CCD-197 | 3 |
 | POST | `/agent/chat/` | AI assistant (Boreas): answers a question about the data, streamed as NDJSON events; see [AI assistant](#ai-assistant-ccd-347) | 400 invalid history or context; 429 over the limit | CCD-347, CCD-349, CCD-351 | 3 |
 
 ## `/map/` (CCD-338)
@@ -235,6 +236,55 @@ The backend does not know which page the person is on and keeps no conversation.
 - At most 6 model turns per question, 4,000 output tokens per turn, low effort, 30 s timeout. The system prompt and tools are cached between calls (`cache_control`).
 - Every question writes one log line to the `ai_agent.agent` logger: outcome, time, tools used and token counts, including cached tokens. The text of the conversation is not logged.
 
+## County commentary (CCD-197)
+
+`GET /api/agent/commentary/cork/rcp45/` returns a short AI-generated summary for the top of a county page, written by Claude (`ASSISTANT_MODEL`) from the county's own data. Public, no CSRF. The frontend is CCD-454.
+
+- The path takes the county slug and the scenario: `rcp26`, `rcp45` or `rcp85`. `baseline` or any other value is a 400; an unknown county is a 404.
+- Each summary is generated once and cached in Redis per county and scenario (`AgentCacheKey.comment`, 60 hours; 60 seconds when `DEBUG` is on). Only a finished reply is cached.
+- The Claude call has a 20 s timeout and 1 retry, so a request that has to generate the text can take a few seconds and at worst about 40 s.
+- Limited to 26 requests an hour per user or IP (`commentary` scope, see [Rate limits](#rate-limits-ccd-351)).
+
+```json
+{
+  "commentary": {
+    "summary": "Under the medium emissions future, Offaly is projected to get warmer and wetter by the end of the century...",
+    "temperature": "By the end of the century the annual temperature is projected to rise by 1.5 °C...",
+    "precipitation": "By the end of the century annual rainfall is projected to rise by 5.8%...",
+    "scenarios": "...higher than under the low future (0.8 °C) and lower than under the high future (2.8 °C).",
+    "analogue": "By the end of the century, the county's projected climate is closest to Brest in France.",
+    "sea_level": null
+  }
+}
+```
+
+### Rules (CCD-198)
+
+The rules are the system prompt `RULES` in `ai_agent/commentary.py`:
+
+- Claude gets the county data as JSON in the request (temperature and precipitation by season for every scenario and period with the change from the baseline, the climate analogues, and sea-level rise for coastal counties). It calls no tools.
+- Every number must come from that data, with its unit. No numbers or facts from the model's own knowledge, and no new numbers worked out from the data (differences, sums, averages): to compare, it gives both values. Rounding to one decimal place is allowed.
+- Plain English, one or two sentences per field, no Markdown. The scenarios are the low, medium and high emissions futures; the periods are "around mid-century" and "by the end of the century"; it says "projected", never "will be".
+
+### Output
+
+Claude answers with structured output following the `Commentary` model in the same file, one plain-text field per insight:
+
+| Field | Content |
+|---|---|
+| `summary` | The main change for the county |
+| `temperature` | Annual change by the end of the century and the season that warms the most |
+| `precipitation` | Annual change by the end of the century and the season with the biggest change |
+| `scenarios` | The chosen emissions future compared with the low and high ones (end-of-century annual temperature) |
+| `analogue` | The closest European city (rank 1) to the county's end-of-century climate |
+| `sea_level` | Sea-level rise by the end of the century; `null` for an inland county |
+
+### When it fails
+
+If the API call fails or times out, or the reply is unfinished (cut off or refused), nothing is cached and the endpoint returns **503** with `detail`: "The north wind has gone chasing Orithyia across the sky. The summary will be back when he returns." (`UNAVAILABLE` in `ai_agent/commentary.py`). The next request tries again, so a failure never sticks. The page hides the block on 503.
+
+The numbers were checked by hand against the data for a coastal and an inland county (Cork, Offaly); there is no automatic number check (CCD-203 was dropped).
+
 ## Rate limits (CCD-351)
 
 Over a limit the API returns **429** with the wait time in `detail`. The limits are in `THROTTLE_RATES` in Django settings and are stored in the Redis cache (if Redis is down, they are not enforced). Tests run with every limit off.
@@ -244,6 +294,7 @@ Over a limit the API returns **429** with the wait time in `detail`. The limits 
 | `burst` | every endpoint without its own limit | 120 / minute | user, or IP when signed out |
 | `chat_anon` | `/agent/chat/`, signed out | 3 / hour | IP; the 429 says `Sign in to keep chatting with Boreas.` |
 | `chat_user` | `/agent/chat/`, signed in | 20 / hour | user |
+| `commentary` | `/agent/commentary/{slug}/{scenario}/` | 26 / hour | user, or IP when signed out |
 | `login` | `/auth/login/` | 5 / minute | IP |
 | `register` | `/auth/register/` | 5 / hour | IP |
 | `email` | `/auth/recovery/`, `/auth/profile/me/change-email/` | 3 / hour | IP or user |
