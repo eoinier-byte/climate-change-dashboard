@@ -60,7 +60,11 @@ describe('DownloadReport', () => {
     renderButton({ scenarios: ['rcp85'] });
     const choice = screen.getByLabelText('Scenario in the report');
     expect(choice.value).toBe('rcp85');
-    expect(Array.from(choice.options).map((option) => option.textContent)).toEqual(['RCP2.6', 'RCP4.5', 'RCP8.5']);
+    expect(Array.from(choice.options).map((option) => option.textContent)).toEqual([
+      'RCP2.6: If the world cuts emissions',
+      'RCP4.5: Middle path',
+      'RCP8.5: If nothing is done',
+    ]);
   });
 
   it('asks for the county and the scenario, then saves the file under the name from the server', async () => {

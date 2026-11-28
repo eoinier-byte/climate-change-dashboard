@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getReport } from '../services/api';
-import { ALL_SCENARIOS, SCENARIO_LABELS } from '../styles/scenarioColors';
+import { ALL_SCENARIOS, SCENARIO_LABELS, SCENARIO_PLAIN_NAMES } from '../styles/scenarioColors';
 import { ROUTES } from '../routes';
 
 // What to tell the visitor when the report cannot be made (CCD-408)
@@ -78,7 +78,7 @@ export default function DownloadReport({ slug, scenarios = ALL_SCENARIOS }) {
         <select id={selectId} value={scenario} disabled={busy} onChange={(event) => setChoice(event.target.value)}>
           {ALL_SCENARIOS.map((value) => (
             <option key={value} value={value}>
-              {SCENARIO_LABELS[value]}
+              {SCENARIO_LABELS[value]}: {SCENARIO_PLAIN_NAMES[value]}
             </option>
           ))}
         </select>
